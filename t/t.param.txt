@@ -1,0 +1,14 @@
+# First test, a simple value
+param1 = value1
+
+# Same with a space to trim at the beginning and at the end.
+ param2 =  value2 
+
+# comment a param key/value pair
+# param3 = value3 (should be undef)
+
+# Pram as a list of values
+param4 = value4.1;value4.2;value4.3
+
+# Pram as a list of values with spaces to trim
+param5 = value 5.1; value 5.2  ;   value 5.3

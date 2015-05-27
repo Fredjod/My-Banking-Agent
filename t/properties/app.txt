@@ -1,0 +1,6 @@
+workbook.categories.path = t.categories.xls
+worksheet.categories.name = categories
+account.number.label = BANK ACCOUNT NUMBER
+income.families = MONTHLY INCOMES; EXCEPTIONAL INCOMES
+expense.families = MONTHLY EXPENSES; WEEKLY EXPENSES; EXCEPTIONAL EXPENSES
+operation.keyword.default = DEFAULT
