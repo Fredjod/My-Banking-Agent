@@ -13,8 +13,9 @@ The following external CPAN libraries are used by this program. No need to insta
 This is not a "yet another bank statement manager". It has only one main objective : alert the account owner by email when something not expected occurs on his bank statement, bad news (more expenses than planed) or good news (more incomes than hoped). 
 The core engine automatically downloads your statements from your online bank account. Specific dev is required per bank website. The first bank available will be Credit Mutuel (France), and then should follow BNP (France) and Citibank (USA).
 <P>
-The security aspect will be addressed, your online bank password is never stored in any config file.
-The project is still under development. Don't hesitate to post your interest in this project for supporting the hard work...
+The security aspect will be addressed, the online bank passwords are never stored in any config file of MB@. The passwords are only stored and read from a 3rd party vault solution (like MacOSX keychains application).
+The project is still under development. Don't hesitate to post your interest in this project for supporting the hard work.
+Some specific modules for accessing more bank website will require extra support by interested and motivated developers...
 
 <b>Features</b>
 <ul>
