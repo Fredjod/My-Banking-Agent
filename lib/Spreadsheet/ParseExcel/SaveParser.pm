@@ -16,6 +16,7 @@ package Spreadsheet::ParseExcel::SaveParser;
 # Documentation after __END__
 #
 
+use lib "../../../lib";
 use strict;
 use warnings;
 

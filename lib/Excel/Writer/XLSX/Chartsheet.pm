@@ -13,6 +13,7 @@ package Excel::Writer::XLSX::Chartsheet;
 
 # perltidy with the following options: -mbl=2 -pt=0 -nola
 
+use lib "../../../../lib";
 use 5.008002;
 use strict;
 use warnings;

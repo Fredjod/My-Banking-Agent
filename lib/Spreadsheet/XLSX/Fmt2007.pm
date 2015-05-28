@@ -4,6 +4,7 @@
 # This Program is ALPHA version.
 #==============================================================================
 package Spreadsheet::XLSX::Fmt2007;
+use lib "../../../lib";
 use strict;
 use warnings;
 
