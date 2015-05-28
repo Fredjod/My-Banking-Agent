@@ -2,7 +2,7 @@
 
 <b>A web agent for monitoring your bank accounts balance</b>
 
-The MB@ core engine is written in Perl and the GUI is Excel documents. Thus can work on any OS and give lot of flexibility for generating your own report/graph with Excel features.
+The MB@ core engine is written in Perl and the GUI is Excel documents. Thus can work on any OS and gives lot of flexibility for generating your own report/graph with Excel features.
 The following external CPAN libraries are used by this program. No need to install them separetly on your computer, they are already packaged with the rest of MB@ files.
 <ul>
 <li>Spreadsheet::ParseExcel v0.65 and Spreadsheet::XLSX v0.13 for reading any Excel format files</li>
