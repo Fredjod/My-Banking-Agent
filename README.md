@@ -16,7 +16,7 @@ The core engine automatically downloads your statements from your online bank ac
 The security aspect will be addressed, the online bank passwords are never stored in any config file of MB@. The passwords are only stored and read from a 3rd party vault solution (like MacOSX keychains application).
 <P>
 The project is still under development. Don't hesitate to post your interest in this project for supporting the hard work.
-Some specific modules for accessing more bank website will require extra support by interested and motivated developers. Actually, this is needed to have an active online login in order to develop the connection to a specific bank website. Some of them are challenging especially when the password input field is a captcha!
+Some specific modules for accessing more bank websites will require extra support by interested and motivated developers. Actually, this is needed to have an active online login in order to develop the connection to a specific bank website. Some of them are challenging especially when the password input field is a captcha!
 
 <b>Features</b>
 <ul>
