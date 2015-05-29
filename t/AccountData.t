@@ -1,4 +1,4 @@
-use Test::More tests => 20;
+use Test::More tests => 21;
 # use Test::More qw( no_plan );
 use lib '../lib';
 use Data::Dumper;
@@ -9,7 +9,8 @@ use strict;
 #do 'Helpers/ConfReader.pm';
 require_ok "AccountStatement::AccountData";
 my $data = AccountStatement::AccountData->new ();
-is($data->getAccountNumber(), '33033050050029', 'Get Account number from t.categrories.xls');
+is($data->getBankName(), 'CREDIT MUTUEL', 'Get bank name from t.categrories.xls');
+is($data->getAccountNumber(), '033033050050029', 'Get Account number from t.categrories.xls');
 my $categories = $data->getCategories();
 # print Dumper $categories, "\n";
 is(@$categories[0]->{FAMILY}, 'EXCEPTIONAL INCOMES', 'Get the family of default income category in t.categrories.xls');

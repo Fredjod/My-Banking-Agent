@@ -1,0 +1,10 @@
+workbook.categories.path = t.categories.xls
+worksheet.categories.name = categories
+account.number.label = BANK ACCOUNT NUMBER
+bank.name.label = BANK NAME
+CREDIT MUTUEL.connector=CMWebConnector
+# BNP.connector=BNPWebConnector
+# CITIBANK.connector=CBWebConnector
+income.families = MONTHLY INCOMES; EXCEPTIONAL INCOMES
+expense.families = MONTHLY EXPENSES; WEEKLY EXPENSES; EXCEPTIONAL EXPENSES
+operation.keyword.default = DEFAULT

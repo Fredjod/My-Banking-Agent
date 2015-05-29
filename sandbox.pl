@@ -8,8 +8,8 @@ use DateTime;
 use Spreadsheet::ParseExcel;
 use Spreadsheet::XLSX;
 use File::Basename;
-
 use Imager;
+use HTML::Parser;
 
 =pod
 my $imagefile = "NSImgGrille.gif";
@@ -107,8 +107,3 @@ for my $worksheet ( $workbook->worksheets() ) {
 }
 
 =cut
-my %hash;
-$hash{F1}='value1';
-$hash{F2}='value2';
-$key='F1';
-print $hash{$key}, "\n";

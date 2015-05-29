@@ -17,9 +17,9 @@ sub new
     my ($class) = @_;
     
     my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $bankAccountNumber = initAccountNumber($prop); # return the bank account number and the row number position
     my $self = {
-    	_accountNumber =>	$bankAccountNumber,
+    	_bankName => initBankName($prop),
+    	_accountNumber =>	initAccountNumber($prop),
     	_categories => 	initCategoriesDefinition($prop),
     	_operations => undef
     };
@@ -30,18 +30,30 @@ sub new
 
 sub initAccountNumber {
 	my ($prop) = @_;
+	return lookForPairKeyValue($prop, $prop->readParamValue("account.number.label"));	
+	
+}
+
+sub initBankName {
+	my ($prop) = @_;
+	return lookForPairKeyValue($prop, $prop->readParamValue("bank.name.label"));	
+	
+}
+
+sub lookForPairKeyValue {
+	my ($prop, $key) = @_;
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.categories.path"));	
 	my $worksheet = $workbook->worksheet($prop->readParamValue("worksheet.categories.name"));		
 	my ( $row_min, $row_max ) = $worksheet->row_range();
-	my $bankAccountNumber;
+	my $value;
 	my $row;
 	for $row ( $row_min .. $row_max ) {
 		my $cell = $worksheet->get_cell( $row, 0 );
-		next unless $cell && uc $cell->value() eq $prop->readParamValue("account.number.label");
-		$bankAccountNumber = $worksheet->get_cell( $row, 1 )->value();
+		next unless $cell && uc $cell->value() eq $key;
+		$value = $worksheet->get_cell( $row, 1 )->value();
 		last;
 	}
-	return $bankAccountNumber;	
+	return $value;	
 	
 }
 
@@ -235,6 +247,11 @@ sub dumpOperations {
 sub getAccountNumber {
 	 my( $self ) = @_;
 	return $self->{_accountNumber};
+}
+
+sub getBankName {
+	 my( $self ) = @_;
+	return $self->{_bankName};
 }
 
 sub getCategories {
