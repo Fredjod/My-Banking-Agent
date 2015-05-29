@@ -1,7 +1,7 @@
 package WebConnector::GenericWebConnector;
 # This is an abstract class, must never be instanciated!
 # This is the super class of all the web connectors.
-# The web connectors have to implement 3 methods: logIn(user, password), logOut() and downloadCSV(dateFrom, dateTo)
+# The web connectors have to implement 3 methods: logIn(user, password), logOut() and downloadCSV(accountnumber, dateFrom, dateTo)
 
 use lib '../../lib';
 use strict;
@@ -19,7 +19,7 @@ sub new
         _ua =>			LWP::UserAgent->new(),
         _cookie_jar =>	HTTP::Cookies->new(),
          _url =>		$url,
-         _response => "",
+         _response => undef,
     };
     my $ua = $self->{_ua};
 	$ua->ssl_opts( 'verify_hostname' => 0 );
@@ -51,7 +51,7 @@ sub logOut {
 }
 
 sub downloadCSV {
-	# Parameters: Account number, dateFrom and dateTo
+	# Parameters: Accountnumber, dateFrom and dateTo
 	# Need to be implelented per bank website
 	# Return the CSV file as a string.
 	return "";
