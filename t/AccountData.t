@@ -1,4 +1,4 @@
-use Test::More tests => 21;
+use Test::More tests => 22;
 # use Test::More qw( no_plan );
 use lib '../lib';
 use Data::Dumper;
@@ -10,7 +10,8 @@ use strict;
 require_ok "AccountStatement::AccountData";
 my $data = AccountStatement::AccountData->new ();
 is($data->getBankName(), 'CREDIT MUTUEL', 'Get bank name from t.categrories.xls');
-is($data->getAccountNumber(), '033033050050029', 'Get Account number from t.categrories.xls');
+is($data->getAccountNumber(), '#033033050050029', 'Get Account number from t.categrories.xls');
+is($data->getAccountDesc(), 'Jacques & Sophie joint account', 'Get Account description from t.categrories.xls');
 my $categories = $data->getCategories();
 # print Dumper $categories, "\n";
 is(@$categories[0]->{FAMILY}, 'EXCEPTIONAL INCOMES', 'Get the family of default income category in t.categrories.xls');
@@ -28,14 +29,12 @@ close $in;
 # print Dumper $operations, "\n";
 # print Dumper @$operations[0], "\n";
 
-my $operations = $data->loadExtendedOperation($csvData);
+my $operations = $data->parseCSVBankData($csvData);
 is(@$operations[0]->{FAMILY}, "WEEKLY EXPENSES", 'Check whether the 1st operation family');
 is(@$operations[29]->{TYPEOP}, 1, 'Check whether the 30th operation is requlifed as incomes (insurrance return)');
 is(@$operations[29]->{FAMILY}, "EXCEPTIONAL INCOMES", 'Check whether the 30th operation is requlifed as exceptional incomes');
 is(@$operations[52]->{DEBIT}, -17.51, 'Check whether the 51st operation expenses value');
 is(@$operations[$#{$operations}]->{SOLDE}, 7949.07, 'Check the solde of the last operation');
-
-#$data->dumpOperations('t.operations.csv');
 
 my $pivot1 = $data->groupBy ('CATEGORY', 'CREDIT');
 # print Dumper @$pivot1[0], "\n";
@@ -51,4 +50,5 @@ is(@$pivot2[0]->{'Assurance'}, -97.3, 'Check Assurance total category');
 is(@$pivot2[0]->{'Depenses courantes'}, -1421.49, 'Check Depenses courantes total category');
 is(@$pivot2[1], -3813.95, 'Check total debits');
 
+$data->generateDashBoard();
 

@@ -6,10 +6,13 @@ use warnings;
 use MIME::Base64;
 use DateTime;
 use Spreadsheet::ParseExcel;
+use Excel::Writer::XLSX;
 use Spreadsheet::XLSX;
 use File::Basename;
 use Imager;
 use HTML::Parser;
+use Data::Dumper;
+use Helpers::ExcelWorkbook;
 
 =pod
 my $imagefile = "NSImgGrille.gif";
@@ -43,35 +46,35 @@ sub rgba2hex {
     printf "\nImager: Number of colours: %d\n", scalar keys %colors;
 }
 
+=cut
 
-use Excel::Writer::XLSX;
-
-    # Create a new Excel workbook
-    my $workbook = Excel::Writer::XLSX->new( 'perl.xlsx' );
-
-    # Add a worksheet
-    $worksheet = $workbook->add_worksheet();
 
     #  Add and define a format
-    $format = $workbook->add_format();
-    $format->set_bold();
-    $format->set_color( 'red' );
-    $format->set_align( 'center' );
+    #$format = $workbook->add_format();
+    #$format->set_bold();
+    #$format->set_color( 'red' );
+    #$format->set_align( 'center' );
 
     # Write a formatted and unformatted string, row and column notation.
-    $col = $row = 0;
-    $worksheet->write( $row, $col, 'Hi Excel!', $format );
-    $worksheet->write( 1, $col, 'Hi Excel!' );
+    #$col = $row = 0;
+    #$worksheet->write( $row, $col, 'Hi Excel!', $format );
+    #$worksheet->write( 1, $col, 'Hi Excel!' );
 
     # Write a number and a formula using A1 notation
-    $worksheet->write( 'A3', 1.2345 );
-    $worksheet->write( 'A4', '=SIN(PI()/4)' );
+    #$worksheet->write( 'A3', 1.2345 );
+    #$worksheet->write( 'A4', '=SIN(PI()/4)' );
 
 
 
 
+# Create a new Excel workbook
+my $wb_out = Excel::Writer::XLSX->new( 'copy_categ.xlsx' );
 
-my $filePath = "categories.xls";
+# Add a worksheet
+my $ws_out = $wb_out->add_worksheet();
+
+
+my $filePath = "t/t.categories.xls";
 unless (-e $filePath) { die "File ".$filePath." can't be found"; }
 my($filename, $dirs, $ext) = fileparse($filePath, qr/\.[^.]*/);
 unless ($ext eq '.xls' or $ext eq '.xlsx') { die "File extension ".$ext." is not expected (only .xls or .xlsx files)"; }
@@ -87,22 +90,21 @@ if ($ext eq ".xls") {
 }
 
 
-for my $worksheet ( $workbook->worksheets() ) {
+my $worksheet = $workbook->worksheet(0);
 
-	my ( $row_min, $row_max ) = $worksheet->row_range();
-	my ( $col_min, $col_max ) = $worksheet->col_range();
+my ( $row_min, $row_max ) = $worksheet->row_range();
+my ( $col_min, $col_max ) = $worksheet->col_range();
 
-	for my $row ( $row_min .. $row_max ) {
-		for my $col ( $col_min .. $col_max ) {
-
-			my $cell = $worksheet->get_cell( $row, $col );
-			next unless $cell;
-
-			print "Row, Col    = ($row, $col)\n";
-			print "Value       = ", $cell->value(),       "\n";
-			print "Unformatted = ", $cell->unformatted(), "\n";
-			print "\n";
-		}
+for my $row ( $row_min .. $row_max ) {
+	for my $col ( $col_min .. $col_max ) {
+		my $cell = $worksheet->get_cell( $row, $col );
+		next unless $cell;
+		my $fx_in = $cell->get_format();
+		my $font = Helpers::ExcelWorkbook->fontTranslator($fx_in->{Font});
+		my $shading = Helpers::ExcelWorkbook->cellFormatTranslator($fx_in);;
+		my $fx_out = $wb_out->add_format( %$font , %$shading);
+		$ws_out->write( $row, $col, $cell->unformatted(), $fx_out );
+		print "$row/$col: ", $fx_in->{Font}->{Name}, "\n";
 	}
 }
 

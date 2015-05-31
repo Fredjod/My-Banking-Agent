@@ -7,7 +7,11 @@ use DateTime;
 use Helpers::ExcelWorkbook;
 use Spreadsheet::ParseExcel;
 use Spreadsheet::XLSX;
+use Spreadsheet::WriteExcel;
+#use Excel::Writer::XLSX;
+use Spreadsheet::WriteExcel::Utility;
 use Helpers::ConfReader;
+use utf8;
 
 use constant INCOME		=> 1;
 use constant EXPENSE	=> 2;
@@ -20,12 +24,18 @@ sub new
     my $self = {
     	_bankName => initBankName($prop),
     	_accountNumber =>	initAccountNumber($prop),
+    	_accountDesc =>	initAccountDesc($prop),
     	_categories => 	initCategoriesDefinition($prop),
     	_operations => undef
     };
     if ( !defined $self->{_accountNumber} ) { die "bank account number value not found!"; }
     bless $self, $class;
     return $self;
+}
+
+sub initAccountDesc {
+	my ($prop) = @_;
+	return lookForPairKeyValue($prop, $prop->readParamValue("account.desc.label"));	
 }
 
 sub initAccountNumber {
@@ -54,7 +64,6 @@ sub lookForPairKeyValue {
 		last;
 	}
 	return $value;	
-	
 }
 
 sub initCategoriesDefinition {
@@ -125,7 +134,7 @@ sub trim {
 	return $str =~ s/^\s+|\s+$//gr;
 }
 
-sub loadExtendedOperation {
+sub parseCSVBankData {
 	my( $self, $csvBankData) = @_;
 	# The raw bank data should be a CSV string.
 	# Expected columns are: [0]Date d'opŽration;[1]Date de valeur;[2]DŽbit;[3]CrŽdit;[4]LibellŽ;[5]Solde
@@ -214,34 +223,132 @@ sub groupBy {
 	return [\%pivot, $tot];
 }
 
-sub dumpOperations {
-	my( $self, $filePath ) = @_;
-	open CSV, ">", $filePath or die "Couldn't open file $filePath\n";
-	my $ope = $self->getOperations();
-	print CSV 	'DATEOPE', ",",
-				'DATEVALUE',",",
-				'DEBIT', ",",
-				'CREDIT', ",",
-				'TYPEOP', ",",
-				'FAMILY', ",",
-				'CATEGORY', ",",
-				'LIBELLE', ",",		
-				'SOLDE', ",",
-			"\n";
+sub generateDashBoard {
+	my( $self ) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	# TODO: gerer dynamiquement le annee/mois dans nom du fichier.	
 
-	for (my $i=0; $i<$#{$ope}+1; $i++) {
-		print CSV 	@$ope[$i]->{DATEOPE}, ",",
-					@$ope[$i]->{DATEVALUE},",",
-					@$ope[$i]->{DEBIT}, ",",
-					@$ope[$i]->{CREDIT}, ",",
-					@$ope[$i]->{TYPEOP}, ",",
-					@$ope[$i]->{FAMILY}, ",",
-					@$ope[$i]->{CATEGORY}, ",",
-					@$ope[$i]->{LIBELLE}, ",",		
-					@$ope[$i]->{SOLDE}, ",",
-				"\n";
+	my $wb_out = Spreadsheet::WriteExcel->new( $self->getAccountNumber().$prop->readParamValue('excel.report.basename').'1505'.'.xls' );
+	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
+	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
+	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));	
+
+	
+	### Summary sheet
+	my $ws_tpl = $wb_tpl->worksheet( 0 );		
+	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
+
+	my ( $row_min, $row_max ) = $ws_tpl->row_range();
+	my ( $col_min, $col_max ) = $ws_tpl->col_range();
+	
+	my $ops = $self->getOperations();
+	my $rshift = 0;
+
+	for my $row ( 0 .. $row_max ) {
+		for my $col ( 0 .. $col_max ) {
+			my $cell = $ws_tpl->get_cell( $row, $col );
+			next unless $cell;			
+			my $value = $cell->value();
+			my $fx_tpl = $cell->get_format();
+			my $font = Helpers::ExcelWorkbook->fontTranslator($fx_tpl->{Font});
+			my $shading = Helpers::ExcelWorkbook->cellFormatTranslator($fx_tpl);
+			my $fx_out = $wb_out->add_format( %$font, %$shading);
+
+			if ($value eq '<ACCOUNT_NUMBER>') { $ws_out->write( $row+$rshift, $col, $self->getAccountNumber, $fx_out ); next; }
+			if ($value eq '<ACCOUNT_DESC>') { $ws_out->write( $row+$rshift, $col, $self->getAccountDesc, $fx_out); next; }
+			if ($value eq '<CURR_MONTH>') { $ws_out->write( $row+$rshift, $col, 'May 2015', $fx_out ); next; }
+			if ($value eq '<INIT_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[0]->{SOLDE}, $currency_format ); next; }
+			if ($value eq '<END_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[$#{$ops}]->{SOLDE}, $currency_format ); next; }
+			if ($value eq '<LOOP_EXPENSES>') {
+				my $rshift = $self->displayPivot($wb_out, $ws_out, $row+$rshift, $col, $currency_format, $fx_out, 'DEBIT');
+				next;
+			}
+			if ($value eq '<LOOP_INCOMES>') { 
+				my $rshift = $self->displayPivot($wb_out, $ws_out, $row+$rshift, $col, $currency_format, $fx_out, 'CREDIT');
+				next;
+			}
+			#else, copy the value and format from the template
+			$ws_out->write( $row, $col, $value, $fx_out );
+		}
 	}
-	close CSV;		
+	### Details sheet
+	$ws_tpl = $wb_tpl->worksheet( 1 );		
+	$ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
+	my @dataRow = (	
+		'DATEOPE',
+		'DATEVALUE',
+		'DEBIT',
+		'CREDIT',
+		'TYPEOP',
+		'FAMILY',
+		'CATEGORY',
+		'LIBELLE',	
+		'SOLDE',
+	);
+	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
+	foreach my $i (0 .. $#{$ops}) {
+		@dataRow = (
+			@$ops[$i]->{DATEOPE},
+			@$ops[$i]->{DATEVALUE},
+			@$ops[$i]->{DEBIT},
+			@$ops[$i]->{CREDIT},
+			@$ops[$i]->{TYPEOP},
+			@$ops[$i]->{FAMILY},
+			@$ops[$i]->{CATEGORY},
+			@$ops[$i]->{LIBELLE},	
+			@$ops[$i]->{SOLDE},
+		);
+		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
+	}
+	$ws_out->autofilter(0, 0, $#{$ops}, $#dataRow+1);
+}
+
+sub displayPivot {
+	my( $self, $wb_out, $ws_out, $row, $col, $currency_format, $fx_out, $type ) = @_;
+	my $categories = $self->getCategories();
+	my $rinit = $row;
+	my $pivot = $self->groupBy ('CATEGORY', $type);
+	foreach my $i (0 .. $#{$categories}) {
+		if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? INCOME : EXPENSE) ) {
+			$ws_out->write( $row, $col, @$categories[$i]->{'CATEGORY'}, $fx_out );
+			foreach my $key ( keys @$pivot[0] ) {
+				if ( $key eq @$categories[$i]->{'CATEGORY'} && @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? INCOME : EXPENSE) ) {
+					$ws_out->write( $row, $col+1, @$pivot[0]->{$key}, $currency_format );	
+				}
+			}
+			$row++;
+		}
+	}
+	my $fx_tot = $wb_out->add_format();
+	my $fx_sum = $wb_out->add_format();
+    $fx_tot->copy($fx_out);
+    $fx_tot->set_bold();
+   	$fx_sum->copy($currency_format);
+   	$fx_sum->set_bold();
+	$ws_out->write( $row, $col, 'Total', $fx_tot ); 	
+	$ws_out->write( $row, $col+1, '=SUM('.xl_rowcol_to_cell( $rinit, $col+1 ).':'.xl_rowcol_to_cell( $row-1, $col+1 ).')', $fx_sum ); 
+	return $row - $rinit;		
+}
+
+sub displayDetailsDataRow {
+	my( $self, $ws_out, $row, $dataRow, $date_format, $currency_format) = @_;
+	foreach my $i (0 .. $#{$dataRow}) {
+		if (@$dataRow[$i]=~/\d/) { # currency column?
+			$ws_out->write( $row, $i, @$dataRow[$i], $currency_format ); 
+		}
+		if (@$dataRow[$i] =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
+			my $date = sprintf "%4d-%02d-%02dT", $3, $2, $1;
+			$ws_out->write_date_time($row, $i, $date, $date_format);
+		}
+		else {
+			$ws_out->write( $row, $i, @$dataRow[$i] );
+		}
+	}
+}
+
+sub getAccountDesc {
+	 my( $self ) = @_;
+	return $self->{_accountDesc};
 }
 
 sub getAccountNumber {

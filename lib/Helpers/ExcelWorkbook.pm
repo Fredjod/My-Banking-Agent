@@ -7,6 +7,8 @@ use MIME::Base64;
 use DateTime;
 use Spreadsheet::ParseExcel;
 use Spreadsheet::XLSX;
+use Spreadsheet::ParseExcel;
+use Excel::Writer::XLSX;
 use File::Basename;
 
 sub new
@@ -33,5 +35,29 @@ sub openExcelWorkbook {
 		$workbook = Spreadsheet::XLSX -> new ($filePath);
 	}
 	return $workbook
+}
+
+sub fontTranslator {
+	my ($class, $parsedFont) = @_;
+	my %font = (
+        font  => $parsedFont->{Name},
+        size  => $parsedFont->{Height},
+        color => $parsedFont->{Color},
+        bold  => $parsedFont->{Bold},
+        italic => $parsedFont->{Italic},
+        underline=> $parsedFont->{Underline},
+    );
+    return \%font;
+}
+
+sub cellFormatTranslator {
+	my ($class, $parsedFx) = @_;
+	my $colorFill = $parsedFx->{Fill};
+    my %shading = (
+        bg_color => @$colorFill[2],
+        fg_color => @$colorFill[1],
+        pattern  => @$colorFill[0],
+    );
+    return \%shading;
 }
 1;
