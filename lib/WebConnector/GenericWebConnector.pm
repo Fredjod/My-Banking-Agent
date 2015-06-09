@@ -11,6 +11,9 @@ use HTTP::Request;
 use HTTP::Cookies;
 use MIME::Base64;
 use DateTime;
+use Helpers::Logger;
+use Encode;
+
 
 sub new
 {
@@ -50,10 +53,117 @@ sub logOut {
 	return 1;	
 }
 
-sub downloadCSV {
-	# Parameters: Accountnumber, dateFrom and dateTo
+sub download {
+	# Parameters: Accountnumber, dateFrom, dateTo, $format
 	# Need to be implelented per bank website
-	# Return the CSV file as a string.
+	# return the dowloaded file with the given format (ofx, qif)
 	return "";
 }
+
+sub downloadBankStatement {
+	# Parameters: Accountnumber, dateFrom, dateTo
+	# Need to be implelented per bank website
+	# Return an array of hashes. Each hash is a transaction with the following info and format:
+	# [ 
+	#	{
+    #      'DATE' => 'DD/MM/YYYY',
+    #      'AMOUNT' => -NNNN.NN,
+   	#      'DETAILS' => 'A string describing the transaction',
+    #      'BALANCE' => -NNNN.NN,
+    #    },
+    #    {
+    #		...
+	#	 }
+    # ]
+    # The year is formatted with 4 digits
+    # Amount and balance decimal separator is the point (.)
+    #
+    # This array is built wit the OFX format for reading the balance value
+    # and the QIf format for reading the transaction info (date, amount and details)
+	return ();
+}
+
+sub parseOFXforBalance {
+	my ( $self, $OFXdata, $decimalSep ) = @_;
+	my $logger = Helpers::Logger->new();
+	if ( !defined $decimalSep ) { $decimalSep = '.' }
+	
+	unless ($OFXdata =~ /<BALAMT>([-]?\d+$decimalSep\d+|\d+$decimalSep|$decimalSep\d+)/ ) {
+		$logger->print ( "Can't read balance value in OFX data", Helpers::Logger::ERROR);
+		$logger->print ( "OFX Data: $OFXdata", Helpers::Logger::DEBUG);
+		die ("Can't read balance value in OFX data");
+	}
+	my $balance = $1;
+	$balance =~ s/,/./;
+	return $balance;
+}
+
+sub parseQIF {
+	my ( $self, $QIFdata, $dateFormat, $USdate, $thousandSep, $decimalSep ) = @_;
+	my $logger = Helpers::Logger->new();
+
+	my @records = split ('\^', $QIFdata);
+	my @bankData;
+	
+	foreach my $i (0 .. $#records-1) {
+		my %item;
+		# parse date value of the transaction: DD/MM/YYYY
+		unless ($records[$i] =~ /^D$dateFormat/m) {
+			$logger->print ( "Can't read date value in QIF file", Helpers::Logger::ERROR);
+			$logger->print ( "Can't read date value: $records[$i]", Helpers::Logger::DEBUG);			
+			die ("Can't read date value in QIF file");
+		}
+		my $date;
+		if ($USdate) { $date = "$2/$1/" } else { $date = "$1/$2/" }
+		my $year = $3;
+		if ($year =~ /[0-9]{4}/) { $date .= $year; } else { $date .= "20$year"; }
+		$item{DATE} = $date;
+		
+		# parse amount transaction value: NNNNN.NN
+		$records[$i] =~ s/$thousandSep//;
+		unless ($records[$i] =~ /^T([-]?\d+$decimalSep\d+|\d+$decimalSep|$decimalSep\d+)/m) {
+			$logger->print ( "Can't read amount value in QIF file", Helpers::Logger::ERROR);
+			$logger->print ( "Can't read amount value: $records[$i]", Helpers::Logger::DEBUG);			
+			die ("Can't read amount value in QIF file");
+		}
+		$item{AMOUNT} = $1;
+
+		# parse details transaction info		
+		unless ($records[$i] =~ /^P(.*)/m) {
+			$logger->print ( "Can't read details value in QIF file", Helpers::Logger::ERROR);
+			$logger->print ( "Can't read details value: $records[$i]", Helpers::Logger::DEBUG);			
+			die ("Can't read details value in QIF file");
+		}
+		my $val = $1;
+		$val =~ s/\r|\n//g;
+		$item{DETAILS} = encode("UTF-8", $val);
+
+		# balance set to 0 at this point			
+		$item{BALANCE} = 0;
+		
+		push (@bankData, \%item);
+	}
+	return \@bankData;
+}
+
+sub backwardBalanceCompute {
+	my ( $self, $bankData, $balance ) = @_;
+	@$bankData[$#{$bankData}]->{BALANCE} = $balance;
+	for ( my $i = $#{$bankData} - 1; $i>=0; $i-- ) {
+		$balance -= @$bankData[$i+1]->{AMOUNT};
+		@$bankData[$i]->{BALANCE} = sprintf("%.2f", $balance);
+	}
+	return $bankData;
+}
+
+sub forwardBalanceCompute {
+	my ( $self, $bankData, $balance ) = @_;
+	@$bankData[0]->{BALANCE} = $balance;
+	for ( my $i = 1; $i<=$#{$bankData}; $i++ ) {
+		$balance -= @$bankData[$i-1]->{AMOUNT};
+		@$bankData[$i]->{BALANCE} = sprintf("%.2f", $balance);
+	}
+	return $bankData;
+}
+
 1;

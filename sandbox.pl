@@ -13,7 +13,9 @@ use Imager;
 use HTML::Parser;
 use Data::Dumper;
 use Helpers::ExcelWorkbook;
+use Encode;
 
+	
 =pod
 my $imagefile = "NSImgGrille.gif";
 
@@ -46,7 +48,6 @@ sub rgba2hex {
     printf "\nImager: Number of colours: %d\n", scalar keys %colors;
 }
 
-=cut
 
 
     #  Add and define a format

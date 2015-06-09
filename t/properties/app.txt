@@ -1,3 +1,6 @@
+logs.output = STDOUT
+# log level possible value: DEBUG, INFO or ERROR. Default is INFO.
+logs.level = DEBUG
 workbook.categories.path = t.categories.xls
 worksheet.categories.name = categories
 account.number.label = BANK ACCOUNT NUMBER

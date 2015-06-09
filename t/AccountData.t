@@ -5,12 +5,13 @@ use Data::Dumper;
 use diagnostics;
 use warnings;
 use strict;
+use WebConnector::GenericWebConnector;
 
 #do 'Helpers/ConfReader.pm';
 require_ok "AccountStatement::AccountData";
 my $data = AccountStatement::AccountData->new ();
 is($data->getBankName(), 'CREDIT MUTUEL', 'Get bank name from t.categrories.xls');
-is($data->getAccountNumber(), '#033033050050029', 'Get Account number from t.categrories.xls');
+is($data->getAccountNumber(), '033033050050029', 'Get Account number from t.categrories.xls');
 is($data->getAccountDesc(), 'Jacques & Sophie joint account', 'Get Account description from t.categrories.xls');
 my $categories = $data->getCategories();
 # print Dumper $categories, "\n";
@@ -22,19 +23,46 @@ is(@$categories[2]->{TYPEOPE}, 1, 'Get the operation type of this first category
 is_deeply(@$categories[2]->{KEYWORDS}, ['ADP GESTION DES PAIEMENT'], 'Get the keywords of this first category');
 is(@$categories[$#{$categories}]->{CATEGORY}, 'Divers', 'Get the last user category in t.categrories.xls');
 
-open my $in, "<", "t.bankdata.csv" or die "Can't open file t.bankdata.csv file!\n";
-read $in, my $csvData, -s $in;
+# Citibank testing
+open my $in, "<", "t.citibank.bankdata.ofx" or die "Can't open file t.citibank.bankdata.ofx file!\n";
+read $in, my $ofx, -s $in;
 close $in;	
 
-# print Dumper $operations, "\n";
-# print Dumper @$operations[0], "\n";
+open $in, "<", "t.citibank.bankdata.qif" or die "Can't open file t.citibank.bankdata.qif file!\n";
+read $in, my $qif, -s $in;
+close $in;
 
-my $operations = $data->parseCSVBankData($csvData);
+my $parser = WebConnector::GenericWebConnector->new();
+my $balance = $parser->parseOFXforBalance($ofx, '.');
+my $bankData = $parser->parseQIF ($qif, '([0-9]{2})-([0-9]{2})-([0-9]{4})', 1, '', '.');
+$parser->forwardBalanceCompute ( $bankData, $balance );
+
+my $operations = $data->parseBankStatement($bankData);
+print Dumper $operations, "\n";
+
+
+# CM testing
+open $in, "<", "t.cm.bankdata.ofx" or die "Can't open file t.cm.bankdata.ofx file!\n";
+read $in, $ofx, -s $in;
+close $in;	
+
+open $in, "<", "t.cm.bankdata.qif" or die "Can't open file t.cm.bankdata.qif file!\n";
+read $in, $qif, -s $in;
+close $in;
+
+$parser = WebConnector::GenericWebConnector->new();
+$balance = $parser->parseOFXforBalance($ofx, '.');
+$bankData = $parser->parseQIF ($qif, '([0-9]{2})\/([0-9]{2})\/([0-9]{2})', 0, ',', '.');
+$parser->backwardBalanceCompute ( $bankData, $balance );
+
+$operations = $data->parseBankStatement($bankData);
 is(@$operations[0]->{FAMILY}, "WEEKLY EXPENSES", 'Check whether the 1st operation family');
 is(@$operations[29]->{TYPEOP}, 1, 'Check whether the 30th operation is requlifed as incomes (insurrance return)');
 is(@$operations[29]->{FAMILY}, "EXCEPTIONAL INCOMES", 'Check whether the 30th operation is requlifed as exceptional incomes');
 is(@$operations[52]->{DEBIT}, -17.51, 'Check whether the 51st operation expenses value');
 is(@$operations[$#{$operations}]->{SOLDE}, 7949.07, 'Check the solde of the last operation');
+
+print Dumper $operations, "\n";
 
 my $pivot1 = $data->groupBy ('CATEGORY', 'CREDIT');
 # print Dumper @$pivot1[0], "\n";

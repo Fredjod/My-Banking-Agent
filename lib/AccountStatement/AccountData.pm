@@ -12,6 +12,8 @@ use Spreadsheet::WriteExcel;
 use Spreadsheet::WriteExcel::Utility;
 use Helpers::ConfReader;
 use utf8;
+use Data::Dumper;
+use Helpers::Logger;
 
 use constant INCOME		=> 1;
 use constant EXPENSE	=> 2;
@@ -40,8 +42,7 @@ sub initAccountDesc {
 
 sub initAccountNumber {
 	my ($prop) = @_;
-	return lookForPairKeyValue($prop, $prop->readParamValue("account.number.label"));	
-	
+	return lookForPairKeyValue($prop, $prop->readParamValue("account.number.label"));
 }
 
 sub initBankName {
@@ -59,8 +60,8 @@ sub lookForPairKeyValue {
 	my $row;
 	for $row ( $row_min .. $row_max ) {
 		my $cell = $worksheet->get_cell( $row, 0 );
-		next unless $cell && uc $cell->value() eq $key;
-		$value = $worksheet->get_cell( $row, 1 )->value();
+		next unless $cell && uc $cell->unformatted() eq $key;
+		$value = $worksheet->get_cell( $row, 1 )->unformatted();
 		last;
 	}
 	return $value;	
@@ -134,28 +135,32 @@ sub trim {
 	return $str =~ s/^\s+|\s+$//gr;
 }
 
-sub parseCSVBankData {
-	my( $self, $csvBankData) = @_;
-	# The raw bank data should be a CSV string.
-	# Expected columns are: [0]Date d'opŽration;[1]Date de valeur;[2]DŽbit;[3]CrŽdit;[4]LibellŽ;[5]Solde
+sub parseBankStatement {
+	my( $self, $bankData) = @_;
+	# bankData is an array ref of hashes. Each hash is a transaction with the following info and format:
+	# [ 
+	#	{
+    #      'DATE' => 'DD/MM/YYYY',
+    #      'AMOUNT' => -NNNN.NN,
+   	#      'DETAILS' => 'A string describing the transaction',
+    #      'BALANCE' => -NNNN.NN,
+    #    },
+    #    {
+    #		...
+	#	 }
+    # ]
 	
+	my $logger = Helpers::Logger->new();
 	my $categories = $self->getCategories();
-	my @fields;
 	my @operations;
 
-	my @lines = map {   
-		s/\r|\n//g;
-		$_ 
-	} split '\n', $csvBankData;
-
-	foreach my $line (@lines) {
-		@fields = split(';', $line);
+	foreach my $line (@$bankData) {
 		my $default = 1;
 		my $i;
 		for ($i=2; $i<$#{$categories}+1; $i++) {
 			my $keywords = @$categories[$i]->{KEYWORDS};
 			foreach my $keyword (@$keywords) {
-				if ($keyword ne '' && $fields[4] =~ /$keyword/) {
+				if ($keyword ne '' && $line->{DETAILS} =~ /$keyword/) {
 					$default = 0;
 					last;
 				}
@@ -164,26 +169,21 @@ sub parseCSVBankData {
 		}
 		if (not $default) {
 			# Check the consistency of operation type and category family
-			if ( ($fields[2] =~ /\d+/ && @$categories[$i]->{TYPEOPE} == EXPENSE)
-			  || ($fields[3] =~ /\d+/ && @$categories[$i]->{TYPEOPE} == INCOME) ) {
-				push (@operations, buildExtendedRecord(\@fields, @$categories[$i]));
+			if ( ($line->{AMOUNT} < 0 && @$categories[$i]->{TYPEOPE} == EXPENSE)
+			  || ($line->{AMOUNT} >= 0 && @$categories[$i]->{TYPEOPE} == INCOME) ) {
+				push (@operations, buildExtendedRecord($line, @$categories[$i]));
 			}
 			else {
-				# TODO: log this unexpected case
-				# warn "Inconsistency: ", $fields[4], "-", $fields[2], "/", @$categories[$i]->{TYPEOPE}, "/", $fields[3], "/","\n";
+				$logger->print ( "Inconsistency: $line->{DETAILS} / $line->{AMOUNT} / @$categories[$i]->{TYPEOPE}", Helpers::Logger::INFO);
 				$default = 1; #for managing inconsistency, requalify the operation as a defaut one
 			}
 		}
 		if ($default) {
-			if ($fields[2] =~ /\d+/) { # It's an expense
-				push (@operations, buildExtendedRecord(\@fields, @$categories[1]));
+			if ($line->{AMOUNT} < 0) { # It's an expense
+				push (@operations, buildExtendedRecord($line, @$categories[1]));
 			}
-			elsif ($fields[3] =~ /\d+/) { # It's an income {
-				push (@operations, buildExtendedRecord(\@fields, @$categories[0]));
-			} else {
-				# TODO: log this unexpected case
-				# warn "Inconsistency: ", $fields[4], " is neither an income nor an expense\n";
-				next; #skip this line of CSV string which is neither an expense nor an income
+			else { # It's an income
+				push (@operations, buildExtendedRecord($line, @$categories[0]));
 			}
 		}
 	}
@@ -192,18 +192,17 @@ sub parseCSVBankData {
 }
 
 sub buildExtendedRecord {
-	my( $fields, $categoryRecord) = @_;
+	my( $line, $categoryRecord) = @_;
 	my %operationRecord;
 	
-	$operationRecord{DATEOPE}	= @$fields[0];
-	$operationRecord{DATEVALUE}	= @$fields[1];
-	$operationRecord{DEBIT}		= @$fields[2];
-	$operationRecord{CREDIT}	= @$fields[3];
-	$operationRecord{TYPEOP}	= $categoryRecord->{TYPEOPE};
+	$operationRecord{DATE}		= $line->{DATE};
+	$operationRecord{DEBIT}		= ( $line->{AMOUNT} < 0 ) ? $line->{AMOUNT} : undef;
+	$operationRecord{CREDIT}	= ( $line->{AMOUNT} >= 0 ) ? $line->{AMOUNT} : undef;
+	$operationRecord{TYPE}		= $categoryRecord->{TYPEOPE};
 	$operationRecord{FAMILY}	= $categoryRecord->{FAMILY};
 	$operationRecord{CATEGORY}	= $categoryRecord->{CATEGORY};
-	$operationRecord{LIBELLE}	= @$fields[4];		
-	$operationRecord{SOLDE}		= @$fields[5];	
+	$operationRecord{LIBELLE}	= $line->{DETAILS};		
+	$operationRecord{SOLDE}		= $line->{BALANCE};	
 	
 	return \%operationRecord
 }
@@ -227,8 +226,7 @@ sub generateDashBoard {
 	my( $self ) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	# TODO: gerer dynamiquement le annee/mois dans nom du fichier.	
-
-	my $wb_out = Spreadsheet::WriteExcel->new( $self->getAccountNumber().$prop->readParamValue('excel.report.basename').'1505'.'.xls' );
+	my $wb_out = Spreadsheet::WriteExcel->new( '1505_'.$self->getAccountNumber().$prop->readParamValue('excel.report.basename').'.xls' );
 	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
 	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
 	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));	
@@ -254,17 +252,17 @@ sub generateDashBoard {
 			my $shading = Helpers::ExcelWorkbook->cellFormatTranslator($fx_tpl);
 			my $fx_out = $wb_out->add_format( %$font, %$shading);
 
-			if ($value eq '<ACCOUNT_NUMBER>') { $ws_out->write( $row+$rshift, $col, $self->getAccountNumber, $fx_out ); next; }
+			if ($value eq '<ACCOUNT_NUMBER>') { $ws_out->write( $row+$rshift, $col, '\''.$self->getAccountNumber, $fx_out ); next; }
 			if ($value eq '<ACCOUNT_DESC>') { $ws_out->write( $row+$rshift, $col, $self->getAccountDesc, $fx_out); next; }
 			if ($value eq '<CURR_MONTH>') { $ws_out->write( $row+$rshift, $col, 'May 2015', $fx_out ); next; }
 			if ($value eq '<INIT_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[0]->{SOLDE}, $currency_format ); next; }
 			if ($value eq '<END_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[$#{$ops}]->{SOLDE}, $currency_format ); next; }
 			if ($value eq '<LOOP_EXPENSES>') {
-				my $rshift = $self->displayPivot($wb_out, $ws_out, $row+$rshift, $col, $currency_format, $fx_out, 'DEBIT');
+				my $rshift = $self->displayPivot($wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'DEBIT');
 				next;
 			}
 			if ($value eq '<LOOP_INCOMES>') { 
-				my $rshift = $self->displayPivot($wb_out, $ws_out, $row+$rshift, $col, $currency_format, $fx_out, 'CREDIT');
+				my $rshift = $self->displayPivot($wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'CREDIT');
 				next;
 			}
 			#else, copy the value and format from the template
@@ -275,11 +273,9 @@ sub generateDashBoard {
 	$ws_tpl = $wb_tpl->worksheet( 1 );		
 	$ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
 	my @dataRow = (	
-		'DATEOPE',
-		'DATEVALUE',
+		'DATE',
 		'DEBIT',
 		'CREDIT',
-		'TYPEOP',
 		'FAMILY',
 		'CATEGORY',
 		'LIBELLE',	
@@ -288,11 +284,9 @@ sub generateDashBoard {
 	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
 	foreach my $i (0 .. $#{$ops}) {
 		@dataRow = (
-			@$ops[$i]->{DATEOPE},
-			@$ops[$i]->{DATEVALUE},
+			@$ops[$i]->{DATE},
 			@$ops[$i]->{DEBIT},
 			@$ops[$i]->{CREDIT},
-			@$ops[$i]->{TYPEOP},
 			@$ops[$i]->{FAMILY},
 			@$ops[$i]->{CATEGORY},
 			@$ops[$i]->{LIBELLE},	
