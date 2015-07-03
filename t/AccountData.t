@@ -38,7 +38,7 @@ my $bankData = $parser->parseQIF ($qif, '([0-9]{2})-([0-9]{2})-([0-9]{4})', 1, '
 $parser->forwardBalanceCompute ( $bankData, $balance );
 
 my $operations = $data->parseBankStatement($bankData);
-print Dumper $operations, "\n";
+# print Dumper $operations, "\n";
 
 
 # CM testing
@@ -62,7 +62,7 @@ is(@$operations[29]->{FAMILY}, "EXCEPTIONAL INCOMES", 'Check whether the 30th op
 is(@$operations[52]->{DEBIT}, -17.51, 'Check whether the 51st operation expenses value');
 is(@$operations[$#{$operations}]->{SOLDE}, 7949.07, 'Check the solde of the last operation');
 
-print Dumper $operations, "\n";
+# print Dumper $operations, "\n";
 
 my $pivot1 = $data->groupBy ('CATEGORY', 'CREDIT');
 # print Dumper @$pivot1[0], "\n";

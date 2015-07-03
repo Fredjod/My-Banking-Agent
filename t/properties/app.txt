@@ -14,4 +14,4 @@ workbook.dashboard.template.path = properties/dashboard_template.xls
 workbook.dashboard.currency.format = '# ##0 [$'."\N{EURO SIGN}".']'
 workbook.dashboard.date.format = dd/mm/yyyy
 excel.report.dir = ./
-excel.report.basename = _dashboard_
+excel.report.basename = dashboard

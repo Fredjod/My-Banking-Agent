@@ -137,7 +137,7 @@ sub trim {
 
 sub parseBankStatement {
 	my( $self, $bankData) = @_;
-	# bankData is an array ref of hashes. Each hash is a transaction with the following info and format:
+	# bankData is an array of hashes. Each hash is a transaction with the following info and format:
 	# [ 
 	#	{
     #      'DATE' => 'DD/MM/YYYY',
@@ -194,8 +194,18 @@ sub parseBankStatement {
 sub buildExtendedRecord {
 	my( $line, $categoryRecord) = @_;
 	my %operationRecord;
-	
+
+	my ($d,$m,$y) = $line->{DATE} =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/;
+	my $date = DateTime->new(
+	   year      => $y,
+	   month     => $m,
+	   day       => $d,
+	   time_zone => 'local',
+	);
+
 	$operationRecord{DATE}		= $line->{DATE};
+	$operationRecord{DAY}		= $date->day();
+	$operationRecord{WDAY}		= int(($date->day()-1)/7).'.'.$date->wday();	
 	$operationRecord{DEBIT}		= ( $line->{AMOUNT} < 0 ) ? $line->{AMOUNT} : undef;
 	$operationRecord{CREDIT}	= ( $line->{AMOUNT} >= 0 ) ? $line->{AMOUNT} : undef;
 	$operationRecord{TYPE}		= $categoryRecord->{TYPEOPE};
@@ -222,11 +232,44 @@ sub groupBy {
 	return [\%pivot, $tot];
 }
 
+sub groupByWhere {
+	my( $self, $key, $value, $where ) = @_;
+	my $ope = $self->getOperations();
+	my %pivot;
+	my $tot = 0;
+	
+	for (my $i=0; $i<$#{$ope}+1; $i++) {
+		if (defined @$ope[$i]->{$value} && @$ope[$i]->{$value} ne '') {
+			my $boolWhere = 1;
+			for (my $w=0; $w<$#{$where}+1; $w=$w+2) { 
+				 if (@$ope[$i]->{@$where[$w]} ne @$where[$w+1]) { $boolWhere = 0 } }
+			if ($boolWhere) {
+				$pivot{@$ope[$i]->{$key}} += @$ope[$i]->{$value};
+				$tot += @$ope[$i]->{$value};
+			}
+		}
+	}
+	return [\%pivot, $tot];
+}
+
+
 sub generateDashBoard {
 	my( $self ) = @_;
+	my $dt_currmonth = DateTime->now(time_zone => 'local' );	
+	my $dt_prevmonth = DateTime->now(time_zone => 'local' );
+	my $month = $dt_currmonth->month();
+	my $year = $dt_currmonth->year();
+	# first day of last month
+	if ($month > 1) {
+		$dt_prevmonth->set_month($month-1);
+	} else { # shift to december of previous year
+		$dt_prevmonth->set_month(12);
+		$dt_prevmonth->set_year($year-1)
+	}
+	
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	# TODO: gerer dynamiquement le annee/mois dans nom du fichier.	
-	my $wb_out = Spreadsheet::WriteExcel->new( '1505_'.$self->getAccountNumber().$prop->readParamValue('excel.report.basename').'.xls' );
+	my $reportMonthStr = sprintf "%4d-%02d", $dt_prevmonth->year(), $dt_prevmonth->month();
+	my $wb_out = Spreadsheet::WriteExcel->new( $reportMonthStr.'_'.$self->getAccountNumber().'_'.$prop->readParamValue('excel.report.basename').'.xls' );
 	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
 	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
 	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));	
@@ -254,15 +297,15 @@ sub generateDashBoard {
 
 			if ($value eq '<ACCOUNT_NUMBER>') { $ws_out->write( $row+$rshift, $col, '\''.$self->getAccountNumber, $fx_out ); next; }
 			if ($value eq '<ACCOUNT_DESC>') { $ws_out->write( $row+$rshift, $col, $self->getAccountDesc, $fx_out); next; }
-			if ($value eq '<CURR_MONTH>') { $ws_out->write( $row+$rshift, $col, 'May 2015', $fx_out ); next; }
+			if ($value eq '<CURR_MONTH>') { $ws_out->write( $row+$rshift, $col, $dt_prevmonth->month_name().' '.$dt_prevmonth->year(), $fx_out ); next; }
 			if ($value eq '<INIT_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[0]->{SOLDE}, $currency_format ); next; }
 			if ($value eq '<END_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[$#{$ops}]->{SOLDE}, $currency_format ); next; }
 			if ($value eq '<LOOP_EXPENSES>') {
-				my $rshift = $self->displayPivot($wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'DEBIT');
+				my $rshift = $self->displayPivotSumup($wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'DEBIT');
 				next;
 			}
 			if ($value eq '<LOOP_INCOMES>') { 
-				my $rshift = $self->displayPivot($wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'CREDIT');
+				my $rshift = $self->displayPivotSumup($wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'CREDIT');
 				next;
 			}
 			#else, copy the value and format from the template
@@ -274,6 +317,7 @@ sub generateDashBoard {
 	$ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
 	my @dataRow = (	
 		'DATE',
+		'WDAY',
 		'DEBIT',
 		'CREDIT',
 		'FAMILY',
@@ -283,8 +327,9 @@ sub generateDashBoard {
 	);
 	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
 	foreach my $i (0 .. $#{$ops}) {
-		@dataRow = (
+		my @dataRow = (
 			@$ops[$i]->{DATE},
+			@$ops[$i]->{WDAY},
 			@$ops[$i]->{DEBIT},
 			@$ops[$i]->{CREDIT},
 			@$ops[$i]->{FAMILY},
@@ -295,9 +340,67 @@ sub generateDashBoard {
 		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
 	}
 	$ws_out->autofilter(0, 0, $#{$ops}, $#dataRow+1);
+	
+	### cashflow sheet
+	# init cashflow data
+	my $dt_lastday =  DateTime->last_day_of_month( year => $dt_currmonth->year(), month => $dt_currmonth->month() );
+	my @cashflow = ();
+	for (my $d=1; $d<=$dt_lastday->day(); $d++) {
+		my %record;
+		$dt_currmonth->set_day($d);
+		$record{DATE} = sprintf "%02d/%02d/%4d", $d, $dt_currmonth->month, $dt_currmonth->year();
+		$record{DAY} = $d;
+		$record{WDAY} = int(($d-1)/7).'.'.$dt_currmonth->wday();
+		$record{'MONTHLY EXPENSES'} = undef;
+		$record{'MONTHLY EXPENSES DETAILS'} = undef;
+		$record{'WEEKLY EXPENSES'} = undef;
+		$record{'WEEKLY EXPENSES DETAILS'} = undef;
+		$record{'MONTHLY INCOMES'} = undef;
+		$record{'MONTHLY INCOMES DETAILS'} = undef;
+		push (@cashflow, \%record);
+	}
+	my @where = ('FAMILY', 'MONTHLY EXPENSES');
+	my $pivotDay = $self->groupByWhere ('DAY', 'DEBIT', \@where);
+	$self->populateCashflowMonthlyTransactions ( \@cashflow, @$pivotDay[0], 'MONTHLY EXPENSES', 'DEBIT' );
+
+	@where = ('FAMILY', 'MONTHLY INCOMES');
+	$pivotDay = $self->groupByWhere ('DAY', 'CREDIT', \@where);
+	$self->populateCashflowMonthlyTransactions ( \@cashflow, @$pivotDay[0], 'MONTHLY INCOMES', 'CREDIT' );
+
+	@where = ('FAMILY', 'WEEKLY EXPENSES');
+	$pivotDay = $self->groupByWhere ('WDAY', 'DEBIT', \@where);
+	$self->populateCashflowWeeklyTransactions ( \@cashflow, @$pivotDay[0], 'WEEKLY EXPENSES', 'DEBIT' );
+	
+	$ws_tpl = $wb_tpl->worksheet( 2 );		
+	$ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
+	
+	@dataRow = (
+		'DATE',
+		'MONTHLY EXPENSES',
+		'MONTHLY INCOMES',
+		'WEEKLY EXPENSES',
+		'EXCEPTIONAL EXPENSES',
+		'EXCEPTIONAL INCOMES',
+		@$ops[$#{$ops}]->{SOLDE}
+	);
+	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
+	foreach my $i (0 .. $#cashflow) {
+		my @dataRow = (
+			$cashflow[$i]->{DATE},
+			$cashflow[$i]->{'MONTHLY EXPENSES'},
+			$cashflow[$i]->{'MONTHLY INCOMES'},
+			$cashflow[$i]->{'WEEKLY EXPENSES'},
+			'',
+			'',
+			'=G'.($i+1).'+SUM(B'.($i+2).':F'.($i+2).')'
+		);
+		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
+	}
+	
+	
 }
 
-sub displayPivot {
+sub displayPivotSumup {
 	my( $self, $wb_out, $ws_out, $row, $col, $currency_format, $fx_out, $type ) = @_;
 	my $categories = $self->getCategories();
 	my $rinit = $row;
@@ -327,10 +430,10 @@ sub displayPivot {
 sub displayDetailsDataRow {
 	my( $self, $ws_out, $row, $dataRow, $date_format, $currency_format) = @_;
 	foreach my $i (0 .. $#{$dataRow}) {
-		if (@$dataRow[$i]=~/\d/) { # currency column?
+		if (defined @$dataRow[$i] && @$dataRow[$i]=~/\d/) { # currency column?
 			$ws_out->write( $row, $i, @$dataRow[$i], $currency_format ); 
 		}
-		if (@$dataRow[$i] =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
+		if (defined @$dataRow[$i] && @$dataRow[$i] =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
 			my $date = sprintf "%4d-%02d-%02dT", $3, $2, $1;
 			$ws_out->write_date_time($row, $i, $date, $date_format);
 		}
@@ -338,6 +441,76 @@ sub displayDetailsDataRow {
 			$ws_out->write( $row, $i, @$dataRow[$i] );
 		}
 	}
+}
+
+sub populateCashflowMonthlyTransactions {
+	my( $self, $cashflow, $pivotDay, $family, $type ) = @_;
+	foreach my $day ( keys $pivotDay ) {
+		my $found = 0;
+		foreach my $i (0 .. $#{$cashflow}) {
+			if (@$cashflow[$i]->{DAY} == $day) {
+				@$cashflow[$i]->{$family} = $pivotDay->{$day};
+				my @where = ('DAY', $day, 'FAMILY', $family);
+				my $pivotCateg = $self->groupByWhere ('CATEGORY', $type, \@where);
+				@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
+				$found = 1;
+				last;
+			}
+		}
+		if (!$found) {
+			if (defined @$cashflow[$#{$cashflow}]->{$family} ) {
+				@$cashflow[$#{$cashflow}]->{$family} += $pivotDay->{$day};
+			} else {
+				@$cashflow[$#{$cashflow}]->{$family} = $pivotDay->{$day};
+			}
+			my @where = ('DAY', $day, 'FAMILY', $family);
+			my $pivotCateg = $self->groupByWhere ('CATEGORY', $type, \@where);
+			if (defined @$cashflow[$#{$cashflow}]->{$family.' DETAILS'} ) {
+				@$cashflow[$#{$cashflow}]->{$family.' DETAILS'} += $self->buildCategoryDetails ( @$pivotCateg[0] );
+			} else {
+				@$cashflow[$#{$cashflow}]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
+			}
+		}
+	}
+	
+}
+
+sub populateCashflowWeeklyTransactions {
+	my( $self, $cashflow, $pivotDay, $family, $type ) = @_;
+	foreach my $i (0 .. $#{$cashflow}) {
+		my $found = 0;
+		foreach my $wday ( keys $pivotDay ) {
+			if (@$cashflow[$i]->{WDAY} == $wday) {
+				@$cashflow[$i]->{$family} = $pivotDay->{$wday};
+				my @where = ('WDAY', $wday, 'FAMILY', $family);
+				my $pivotCateg = $self->groupByWhere ('CATEGORY', $type, \@where);
+				@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
+				$found = 1;
+				last;
+			}
+		}
+		if (!$found) {
+			my $wday = @$cashflow[$i]->{WDAY};
+			$wday =~ s/\d\.(\d)/0.$1/;
+			@$cashflow[$i]->{$family} = $pivotDay->{$wday};
+			my @where = ('WDAY', $wday, 'FAMILY', $family);
+			my $pivotCateg = $self->groupByWhere ('CATEGORY', $type, \@where);
+			@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
+
+		}
+	}
+	
+}
+
+sub buildCategoryDetails {
+	my( $self, $categHash ) = @_;
+	my $details = undef;
+	foreach my $categItem ( keys $categHash ) {
+		if ( defined $details ) { $details .= ', '; }
+		$details .= $categItem.'='.$categHash->{$categItem};
+	}
+	return $details;
+	
 }
 
 sub getAccountDesc {

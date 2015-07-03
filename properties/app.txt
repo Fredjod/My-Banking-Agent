@@ -1,8 +1,6 @@
-logs.output = logs/log.txt
-# Level 0: DEBUG
-# Level 1: INFO
-# Level 2: ERROR
-logs.level = 1
+logs.output = STDOUT
+# log level possible value: DEBUG, INFO or ERROR. Default is INFO.
+logs.level = DEBUG
 workbook.categories.path = categories.xls
 worksheet.categories.name = categories
 account.number.label = BANK ACCOUNT NUMBER
@@ -15,4 +13,5 @@ workbook.dashboard.template.path = properties/dashboard_template.xls
 # Euro format
 workbook.dashboard.currency.format = '# ##0 [$'."\N{EURO SIGN}".']'
 workbook.dashboard.date.format = dd/mm/yyyy
-excel.report.basename = _dashboard_
+excel.report.dir = ./
+excel.report.basename = dashboard

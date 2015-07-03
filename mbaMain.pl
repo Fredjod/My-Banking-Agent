@@ -4,6 +4,7 @@ use lib './lib';
 
 use strict;
 use warnings;
+use Helpers::Logger;
 use AccountStatement::AccountData;
 my $connectorClass = 'WebConnector::'.'CMWebConnector';
 eval "use $connectorClass";
@@ -13,6 +14,9 @@ if( $@ ){
 my $connector = $connectorClass->new( 'https://www.creditmutuel.fr/' );
 die $connectorClass.' is a wrong web connector class. Must inherite from WebConnector::GenericWebConnector' unless $connector->isa('WebConnector::GenericWebConnector');
 
+my $logger = Helpers::Logger->new();
+
+$logger->print ( "Start running...", Helpers::Logger::INFO);
 
 my $cvsFilePathOpt='';
 my $helpOpt=0;
@@ -41,6 +45,7 @@ if ($helpOpt) {
 # Define 1st and last day of the previous month
 my $dt_from = DateTime->now(time_zone => 'local' );
 my $month = $dt_from->month();
+# Todo: gerer le cas de janvier => decembre de l'annee precedente
 $dt_from->set_month($month-1);
 $dt_from->set_day(1);
 my $dt_to = DateTime->last_day_of_month( year => $dt_from->year(), month => $dt_from->month() );
@@ -49,17 +54,18 @@ my $dt_to = DateTime->last_day_of_month( year => $dt_from->year(), month => $dt_
 my $account = AccountStatement::AccountData->new ();
 
 # Get the operations
-my $csvData;
-if (length $cvsFilePathOpt != 0) {
-	open my $in, "<", $cvsFilePathOpt or die "Can't open file $cvsFilePathOpt file!\n";
-	read $in, $csvData, -s $in;
-	close $in;	
-} else {
-	$connector->logIn($loginOpt, $passwordOpt);
-	$csvData = $connector->downloadCSV($account->getAccountNumber(), $dt_from, $dt_to);
-	$connector->logOut();
-}
+my $bankData;
+$logger->print ( "Log in to ".$account->getBankName()." website", Helpers::Logger::INFO);
+$connector->logIn($loginOpt,$passwordOpt);
+$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()."...", Helpers::Logger::INFO);
+$bankData = $connector->downloadBankStatement ( $account->getAccountNumber(), $dt_from, $dt_to );
+$logger->print ( "Log out", Helpers::Logger::INFO);
+$connector->logOut();
+
 
 # Process the operations and generate the dashboard
-$account->parseCSVBankData($csvData);
+$logger->print ( "Parsing of bank data", Helpers::Logger::INFO);
+$account->parseBankStatement($bankData);
+$logger->print ( "Generate dashboard", Helpers::Logger::INFO);
 $account->generateDashBoard();
+$logger->print ( "End of running.", Helpers::Logger::INFO);
