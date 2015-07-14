@@ -12,7 +12,7 @@ package Spreadsheet::WriteExcel;
 #
 
 use Exporter;
-
+use lib "../../lib/";
 use strict;
 use Spreadsheet::WriteExcel::Workbook;
 

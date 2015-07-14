@@ -12,6 +12,7 @@ package Spreadsheet::WriteExcel::Workbook;
 # Documentation after __END__
 #
 use Exporter;
+use lib "../../../lib/";
 use strict;
 use Carp;
 use Spreadsheet::WriteExcel::BIFFwriter;

@@ -205,7 +205,8 @@ sub buildExtendedRecord {
 
 	$operationRecord{DATE}		= $line->{DATE};
 	$operationRecord{DAY}		= $date->day();
-	$operationRecord{WDAY}		= int(($date->day()-1)/7).'.'.$date->wday();	
+	$operationRecord{WDAY}		= int(($date->day()-1)/7).'.'.$date->wday();
+	$operationRecord{WDAYNAME}	=$date->day_name();		
 	$operationRecord{DEBIT}		= ( $line->{AMOUNT} < 0 ) ? $line->{AMOUNT} : undef;
 	$operationRecord{CREDIT}	= ( $line->{AMOUNT} >= 0 ) ? $line->{AMOUNT} : undef;
 	$operationRecord{TYPE}		= $categoryRecord->{TYPEOPE};
@@ -315,27 +316,29 @@ sub generateDashBoard {
 	### Details sheet
 	$ws_tpl = $wb_tpl->worksheet( 1 );		
 	$ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
-	my @dataRow = (	
+	my @dataRow = (
+	 [
 		'DATE',
-		'WDAY',
 		'DEBIT',
 		'CREDIT',
 		'FAMILY',
 		'CATEGORY',
 		'LIBELLE',	
 		'SOLDE',
+	 ]
 	);
 	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
 	foreach my $i (0 .. $#{$ops}) {
 		my @dataRow = (
+		 [
 			@$ops[$i]->{DATE},
-			@$ops[$i]->{WDAY},
 			@$ops[$i]->{DEBIT},
 			@$ops[$i]->{CREDIT},
 			@$ops[$i]->{FAMILY},
 			@$ops[$i]->{CATEGORY},
 			@$ops[$i]->{LIBELLE},	
 			@$ops[$i]->{SOLDE},
+		 ]
 		);
 		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
 	}
@@ -351,6 +354,7 @@ sub generateDashBoard {
 		$record{DATE} = sprintf "%02d/%02d/%4d", $d, $dt_currmonth->month, $dt_currmonth->year();
 		$record{DAY} = $d;
 		$record{WDAY} = int(($d-1)/7).'.'.$dt_currmonth->wday();
+		$record{WDAYNAME} = $dt_currmonth->day_name();
 		$record{'MONTHLY EXPENSES'} = undef;
 		$record{'MONTHLY EXPENSES DETAILS'} = undef;
 		$record{'WEEKLY EXPENSES'} = undef;
@@ -375,24 +379,39 @@ sub generateDashBoard {
 	$ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
 	
 	@dataRow = (
+	 [
 		'DATE',
+		'WDAY',
 		'MONTHLY EXPENSES',
 		'MONTHLY INCOMES',
 		'WEEKLY EXPENSES',
 		'EXCEPTIONAL EXPENSES',
 		'EXCEPTIONAL INCOMES',
 		@$ops[$#{$ops}]->{SOLDE}
+	 ]
 	);
 	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
 	foreach my $i (0 .. $#cashflow) {
-		my @dataRow = (
+		my @dataRow = ( 
+		 [
 			$cashflow[$i]->{DATE},
+			$cashflow[$i]->{WDAYNAME},
 			$cashflow[$i]->{'MONTHLY EXPENSES'},
 			$cashflow[$i]->{'MONTHLY INCOMES'},
 			$cashflow[$i]->{'WEEKLY EXPENSES'},
-			'',
-			'',
-			'=G'.($i+1).'+SUM(B'.($i+2).':F'.($i+2).')'
+			undef,
+			undef,
+			'=H'.($i+1).'+SUM(C'.($i+2).':G'.($i+2).')'
+		 ],
+		 [ undef,
+		   undef,
+		   $cashflow[$i]->{'MONTHLY EXPENSES DETAILS'},
+		   $cashflow[$i]->{'MONTHLY INCOMES DETAILS'},
+		   $cashflow[$i]->{'WEEKLY EXPENSES DETAILS'},
+		   undef,
+		   undef,
+		   undef,
+		 ]
 		);
 		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
 	}
@@ -429,16 +448,25 @@ sub displayPivotSumup {
 
 sub displayDetailsDataRow {
 	my( $self, $ws_out, $row, $dataRow, $date_format, $currency_format) = @_;
-	foreach my $i (0 .. $#{$dataRow}) {
-		if (defined @$dataRow[$i] && @$dataRow[$i]=~/\d/) { # currency column?
-			$ws_out->write( $row, $i, @$dataRow[$i], $currency_format ); 
+	my $columnValueArray = @$dataRow[0];
+	foreach my $i (0 .. $#{$columnValueArray}) {
+		if (defined @$columnValueArray[$i] && @$columnValueArray[$i]=~/\d/) { # currency column?
+			$ws_out->write( $row, $i, @$columnValueArray[$i], $currency_format ); 
 		}
-		if (defined @$dataRow[$i] && @$dataRow[$i] =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
+		if (defined @$columnValueArray[$i] && @$columnValueArray[$i] =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
 			my $date = sprintf "%4d-%02d-%02dT", $3, $2, $1;
 			$ws_out->write_date_time($row, $i, $date, $date_format);
 		}
 		else {
-			$ws_out->write( $row, $i, @$dataRow[$i] );
+			$ws_out->write( $row, $i, @$columnValueArray[$i] );
+		}
+	}
+	if ($#{$dataRow} == 1) { # Cell comment to be written
+		my $columnCommentArray = @$dataRow[1];
+		foreach my $i (0 .. $#{$columnCommentArray}) {
+			if (defined @$columnCommentArray[$i]) {
+				$ws_out->write_comment( $row, $i, @$columnCommentArray[$i] );
+			}
 		}
 	}
 }
@@ -506,7 +534,7 @@ sub buildCategoryDetails {
 	my( $self, $categHash ) = @_;
 	my $details = undef;
 	foreach my $categItem ( keys $categHash ) {
-		if ( defined $details ) { $details .= ', '; }
+		if ( defined $details ) { $details .= "\n\r"; }
 		$details .= $categItem.'='.$categHash->{$categItem};
 	}
 	return $details;

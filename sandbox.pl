@@ -15,6 +15,10 @@ use Data::Dumper;
 use Helpers::ExcelWorkbook;
 use Encode;
 
+my $str = "4.2";
+$str =~ s/\d\.(\d)/0.$1/;
+print $str,"\n";
+ 
 	
 =pod
 my $imagefile = "NSImgGrille.gif";
