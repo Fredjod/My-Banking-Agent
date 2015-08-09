@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.fred.mba.launchd</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>bash</string>
+        <string>/Users/homemini/Documents/compts/mba/control.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Minute</key>
+        <integer>00</integer>
+        <key>Hour</key>
+        <integer>7</integer>
+    </dict>
+</dict>
+</plist>

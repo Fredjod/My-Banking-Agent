@@ -1,6 +1,48 @@
+### Email properties
+# Email server. Must be the server of the ISP used by this computer for internet connection.
+# Uncomment (or add) according your ISP:
+# Free
+smtp.server = smtp.free.fr
+# Orange
+# smtp.server = smtp.orange.fr
+# 9 Telecom
+# smtp.server = smtp.neuf.fr
+# Bouygues Tel
+# smtp.server= smtp.bouygtel.fr
+# SFR
+# smtp.server = smtp.sfr.fr
+# La Poste
+# smtp.server = smtp.laposte.net
+# Numericable
+# smtp.server = smtp.numericable.fr
+# Gmail
+# smtp.server = smtp.gmail.com
+
+### Email recipients that receive the reports
+# mailing.list = frederic.jaudin@gmail.com; vlamblet@gmail.com
+mailing.list = frederic.jaudin@gmail.com
+####
+
+### Monthy report name and destination directoy 
+excel.report.dir = ./
+excel.report.basename = dashboard
+###
+
+### Logger properties
+# output can be STDOUT (for consol display) or a path file (like logs/output.txt)
 logs.output = STDOUT
 # log level possible value: DEBUG, INFO or ERROR. Default is INFO.
 logs.level = DEBUG
+###
+
+### Formating properties (in Excel)
+# Currency format
+workbook.dashboard.currency.format = '# ##0 [$'."\N{EURO SIGN}".']'
+# Date format
+workbook.dashboard.date.format = dd/mm/yyyy
+###
+
+### Internal Properties (shouldn't be updated by users)
 workbook.categories.path = t.categories.xls
 worksheet.categories.name = categories
 account.number.label = BANK ACCOUNT NUMBER
@@ -10,8 +52,5 @@ income.families = MONTHLY INCOMES; EXCEPTIONAL INCOMES
 expense.families = MONTHLY EXPENSES; WEEKLY EXPENSES; EXCEPTIONAL EXPENSES
 operation.keyword.default = DEFAULT
 workbook.dashboard.template.path = properties/dashboard_template.xls
-# Euro format
-workbook.dashboard.currency.format = '# ##0 [$'."\N{EURO SIGN}".']'
-workbook.dashboard.date.format = dd/mm/yyyy
-excel.report.dir = ./
-excel.report.basename = dashboard
+alert.body.template = properties/emailAlert_template.html
+###

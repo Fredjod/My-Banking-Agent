@@ -9,7 +9,8 @@ mkdir mba
 cp -R lib mba/
 cp -R properties mba/
 cp mbaMain.pl mba/
-cp mba.sh mba/
+cp closing.sh mba/
+cp control.sh mba/
 cp LICENSE mba/
 cp README.md mba/
 cd t/
@@ -24,5 +25,10 @@ rm -r ./mba
 mv mba_$VERSION.tar.gz /Users/home/Documents/
 cd /Users/home/Documents/
 gunzip -c mba_$VERSION.tar.gz | tar xopf -
-chmod +x mba/mba.sh
+mkdir mba/logs
+chmod +x mba/closing.sh
+chmod +x mba/control.sh
+chmod +x mba/properties/installDeamon.sh
+chmod +x mba/properties/uninstallDeamon.sh
+
 rm mba_$VERSION.tar.gz

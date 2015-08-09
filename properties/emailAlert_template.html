@@ -1,0 +1,87 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=utf-8">
+	<TITLE></TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice 4.1.1  (Unix)">
+	<META NAME="AUTHOR" CONTENT="Fred ">
+	<META NAME="CREATED" CONTENT="20150806;16255400">
+	<META NAME="CHANGEDBY" CONTENT="Fred ">
+	<META NAME="CHANGED" CONTENT="20150806;16592400">
+</HEAD>
+<BODY LANG="fr-FR" DIR="LTR">
+<P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3>This
+is an alert sent by 'My Banking Agent' service, because the actual balance and
+your forecasted casflow don't match.</FONT></FONT></P>
+<UL>
+	<LI><P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><FONT COLOR="<TMPL_VAR NAME=ACTUAL_COLOR>"><B>Actual
+	Balance: <TMPL_VAR NAME=ACTUAL></FONT></FONT></FONT></B></P>
+	
+	<LI><P><FONT FACE="Times New Roman, serif"><FONT SIZE=3><FONT COLOR="<TMPL_VAR NAME=FORECASTED_COLOR>">
+	<SPAN LANG="en-US">Forecasted balance: </SPAN> <TMPL_VAR NAME=FORECASTED></FONT></FONT></FONT></P>
+	
+	<LI><P LANG="en-US"><FONT COLOR="<TMPL_VAR NAME=VAR_COLOR>"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B>Variation:
+	<TMPL_VAR NAME=VAREURO> (<TMPL_VAR NAME=VARRATIO>)</B></FONT></FONT></FONT></P>
+</UL>
+<P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3>The
+details of the variation per Transaction Family:</FONT></FONT></P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#000000" CELLPADDING=5 CELLSPACING=0 STYLE="page-break-inside: avoid">
+	<COL WIDTH=64*>
+	<COL WIDTH=64*>
+	<COL WIDTH=64*>
+	<COL WIDTH=64*>
+	<TR VALIGN=TOP>
+		<TD WIDTH=25% BGCOLOR="#000080">
+			<P ALIGN=LEFT STYLE="font-style: normal; text-decoration: none"><FONT COLOR="#ffffff"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B><SPAN STYLE="text-decoration: none">Transaction
+			Family</SPAN></B></FONT></FONT></FONT></P>
+		</TD>
+		<TD WIDTH=25% BGCOLOR="#000080">
+			<P ALIGN=LEFT STYLE="font-style: normal; text-decoration: none"><FONT COLOR="#ffffff"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B><SPAN STYLE="text-decoration: none">Actual</SPAN></B></FONT></FONT></FONT></P>
+		</TD>
+		<TD WIDTH=25% BGCOLOR="#000080">
+			<P ALIGN=LEFT STYLE="font-style: normal; text-decoration: none"><FONT COLOR="#ffffff"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B><SPAN STYLE="text-decoration: none">Forecasted</SPAN></B></FONT></FONT></FONT></P>
+		</TD>
+		<TD WIDTH=25% BGCOLOR="#000080">
+			<P ALIGN=LEFT STYLE="font-style: normal; text-decoration: none"><FONT COLOR="#ffffff"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B><SPAN STYLE="text-decoration: none">Variation</SPAN></B></FONT></FONT></FONT></P>
+		</TD>
+	</TR>
+	
+	<TMPL_LOOP NAME="LOOP_LINE_DETAILS">
+
+		<TR VALIGN=TOP>
+			<TD WIDTH=25% BGCOLOR="#4d4d4d">
+				<P ALIGN=LEFT STYLE="font-style: normal; font-weight: normal; text-decoration: none"><FONT COLOR="#ffffff">
+				<TMPL_VAR NAME=FAMILY>
+				</FONT>
+				</P>
+			</TD>
+			<TD WIDTH=25% BGCOLOR="#ffffff">
+				<P ALIGN=LEFT STYLE="font-style: normal; font-weight: normal; text-decoration: none">
+				<TMPL_VAR NAME=F_ACTUAL>
+				</P>
+			</TD>
+			<TD WIDTH=25% BGCOLOR="#ffffff">
+				<P ALIGN=LEFT STYLE="font-style: normal; font-weight: normal; text-decoration: none">
+				<TMPL_VAR NAME=F_FORECASTED>
+				</P>
+			</TD>
+			<TD WIDTH=25% BGCOLOR="#ffffff">
+				<P ALIGN=LEFT STYLE="font-style: normal; font-weight: normal; text-decoration: none">
+				<FONT COLOR="<TMPL_VAR NAME=F_VAR_COLOR>"><TMPL_VAR NAME=F_VAREURO> (<TMPL_VAR NAME=F_VARRATIO>)</FONT>
+				</P>
+			</TD>
+		</TR>
+		
+	</TMPL_LOOP>
+
+</TABLE>
+<P><HR>
+<CENTER>
+<A HREF="https://github.com/Fredjod/My-Banking-Agent">MyBankingAgent</A> project &copy; 2015 FredJod <BR>
+    This program comes with ABSOLUTELY NO WARRANTY.<BR>
+    This is free software (GNU General Public License), and you are welcome to use the code, fork it and redistribute it.
+</CENTER>
+<BR>
+</P>
+</BODY>
+</HTML>

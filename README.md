@@ -7,7 +7,7 @@ The following external CPAN libraries are used by this program. No need to insta
 <ul>
 <li>Spreadsheet::ParseExcel v0.65 and Spreadsheet::XLSX v0.13 for reading any Excel format files</li>
 <li>Spreadsheet::WriteExcel v2.40 and Excel::Writer::XLSX v0.84 for writing in any Excel format files</lib>
-<li>MIME::Lite v3.01 - low-calorie MIME generator, use for sending email</li>
+<li>MIME::Lite v3.01 and HTML::Template v2.6, for sending email</li>
 </ul>
 
 <b>Motivations</b><P>

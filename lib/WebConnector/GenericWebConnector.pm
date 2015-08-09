@@ -83,6 +83,19 @@ sub downloadBankStatement {
 	return ();
 }
 
+sub loginLock {
+	my ($self) = @_;
+	my $now = DateTime->now(time_zone => 'local' );	
+	open LOCK, ">", "login.lock.txt" or die "Couldn't open file lock file\n";
+	print LOCK "Lock datetime: ".$now;
+	close LOCK;
+}
+
+sub isLoginLock {
+	my ($self) = @_;
+	return (-e "login.lock.txt");
+}
+
 sub parseOFXforBalance {
 	my ( $self, $OFXdata, $decimalSep ) = @_;
 	my $logger = Helpers::Logger->new();

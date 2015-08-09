@@ -20,6 +20,7 @@ sub new
 
 sub logIn
 {
+		
 	my ( $self, $login, $password ) = @_;
 	my $logger = Helpers::Logger->new();
 	my $ua = $self->{_ua};
@@ -27,6 +28,12 @@ sub logIn
 	my $url = $self->{_url};
 	my $request = HTTP::Request->new();
 	my $response;
+
+	# Check whether the login is locked due to a past login error
+	unless (! $self->isLoginLock() ) {
+		$logger->print ( "The website login is locked. Check the auth config and delelte the file lock.login.txt before retrying.", Helpers::Logger::ERROR);
+		die ("The website login is locked");				
+	}
 	
 	# Page acceuil
 	$request->method('GET');
@@ -52,6 +59,15 @@ sub logIn
 	$request->content('');
 	$response = $ua->request($request);
 	$cookie_jar->extract_cookies($response);
+
+	unless ($response->content() =~ /deconnexion\.cgi/m) {
+		$logger->print ( "Login to website failed!", Helpers::Logger::ERROR);
+		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
+		$self->loginLock();
+		$logger->print ( "HTML content: ".$response->content(), Helpers::Logger::DEBUG);
+		die ("Login to website failed!");				
+	}
+	$logger->print ( "Login to website succeed", Helpers::Logger::INFO);
 	
 	# Page Download
 	$ua->cookie_jar($cookie_jar);

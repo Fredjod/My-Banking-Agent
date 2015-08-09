@@ -8,29 +8,46 @@ use Helpers::ExcelWorkbook;
 use Spreadsheet::ParseExcel;
 use Spreadsheet::XLSX;
 use Spreadsheet::WriteExcel;
-#use Excel::Writer::XLSX;
 use Spreadsheet::WriteExcel::Utility;
 use Helpers::ConfReader;
 use utf8;
 use Data::Dumper;
 use Helpers::Logger;
+use Helpers::SendMail;
+
 
 use constant INCOME		=> 1;
 use constant EXPENSE	=> 2;
 
 sub new
 {
-    my ($class) = @_;
+    my ($class ) = @_;
     
     my $prop = Helpers::ConfReader->new("properties/app.txt");
+    my $logger = Helpers::Logger->new();
+ 
+	my $dt_currmonth = DateTime->now(time_zone => 'local' );	
+	my $dt_prevmonth = DateTime->now(time_zone => 'local' );
+	my $month = $dt_currmonth->month();
+	my $year = $dt_currmonth->year();
+	# first day of last month
+	if ($month > 1) {
+		$dt_prevmonth->set_month($month-1);
+	} else { # shift to december of previous year
+		$dt_prevmonth->set_month(12);
+		$dt_prevmonth->set_year($year-1)
+	}
+    
     my $self = {
     	_bankName => initBankName($prop),
     	_accountNumber =>	initAccountNumber($prop),
     	_accountDesc =>	initAccountDesc($prop),
     	_categories => 	initCategoriesDefinition($prop),
-    	_operations => undef
+    	_operations => undef,
+    	_dt_currmonth => $dt_currmonth,
+    	_dt_prevmonth => $dt_prevmonth,
     };
-    if ( !defined $self->{_accountNumber} ) { die "bank account number value not found!"; }
+    if ( !defined $self->{_accountNumber} ) { $logger->print (  "bank account number value not found!", Helpers::Logger::ERROR); die; }
     bless $self, $class;
     return $self;
 }
@@ -253,24 +270,20 @@ sub groupByWhere {
 	return [\%pivot, $tot];
 }
 
+sub buildDashboardFileName {
+	my( $self) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $dt_prevmonth = $self->getDtPrevMonth();
+	my $reportMonthStr = sprintf "%4d-%02d", $dt_prevmonth->year(), $dt_prevmonth->month();
+	return $reportMonthStr.'_'.$self->getAccountNumber().'_'.$prop->readParamValue('excel.report.basename').'.xls';
+}
 
 sub generateDashBoard {
-	my( $self ) = @_;
-	my $dt_currmonth = DateTime->now(time_zone => 'local' );	
-	my $dt_prevmonth = DateTime->now(time_zone => 'local' );
-	my $month = $dt_currmonth->month();
-	my $year = $dt_currmonth->year();
-	# first day of last month
-	if ($month > 1) {
-		$dt_prevmonth->set_month($month-1);
-	} else { # shift to december of previous year
-		$dt_prevmonth->set_month(12);
-		$dt_prevmonth->set_year($year-1)
-	}
-	
+	my( $self) = @_;
+	my $dt_currmonth = $self->getDtCurrentMonth()->clone();
+	my $dt_prevmonth = $self->getDtPrevMonth()->clone();
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $reportMonthStr = sprintf "%4d-%02d", $dt_prevmonth->year(), $dt_prevmonth->month();
-	my $wb_out = Spreadsheet::WriteExcel->new( $reportMonthStr.'_'.$self->getAccountNumber().'_'.$prop->readParamValue('excel.report.basename').'.xls' );
+	my $wb_out = Spreadsheet::WriteExcel->new( $self->buildDashboardFileName () );
 	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
 	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
 	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));	
@@ -419,6 +432,64 @@ sub generateDashBoard {
 	
 }
 
+sub controlBalance {
+	my( $self ) = @_;
+	my $dt_currmonth = $self->getDtCurrentMonth()->clone();
+
+	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook($self->buildDashboardFileName ());	
+	my $worksheet = $workbook->worksheet("Cashflow");
+	my $plannedBalance = $worksheet->get_cell( 0, 7 )->unformatted();
+	for (my $row=1; $row <= $dt_currmonth->day(); $row++) {
+		my $lineTot = 0;
+		for (my $col = 2; $col <=6; $col ++) {
+			my $cell = $worksheet->get_cell( $row, $col );
+			next unless $cell;
+			$lineTot += $worksheet->get_cell( $row, $col )->unformatted() ;
+		}
+		$plannedBalance += $lineTot;
+	}
+	my $operations = $self->getOperations();
+	my $currentBalance = @$operations[$#{$operations}]->{SOLDE};
+	my $alert = 0;
+	if ( abs( ($currentBalance-$plannedBalance)/$currentBalance ) > 0.05 ) {
+		my $mail = Helpers::SendMail->new(
+			"Balance Check Alert - ". sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
+			"alert.body.template"
+		);
+		$mail->buildAlertBody ($self, $currentBalance, $plannedBalance);
+		$mail->send();
+		$alert = 1;
+	}
+	return $alert;
+}
+
+sub sumForecastedOperationPerFamily {
+	my( $self, $family ) = @_;
+	my $dt_currmonth = $self->getDtCurrentMonth()->clone();
+	my $totFam = 0;
+	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook($self->buildDashboardFileName ());	
+	my $worksheet = $workbook->worksheet("Cashflow");
+	# Look for the family column (on the firs row)
+	my ( $col_min, $col_max ) = $worksheet->col_range();
+	my $colFam = -1;
+	for (my $col=$col_min; $col<=$col_max; $col++ ) {
+		my $cell = $worksheet->get_cell( 0, $col );
+		next unless $cell;
+		next unless (uc $cell->value eq uc $family);
+		$colFam = $col;
+	}
+	if ($colFam > -1) {
+		my $d = $dt_currmonth->day();
+		for (my $row=1; $row <= $dt_currmonth->day(); $row++) {
+			my $cell = $worksheet->get_cell( $row, $colFam );
+			next unless $cell;
+			next unless ($cell->unformatted() =~ /^-?\d/); #is numeric?
+			$totFam += $cell->unformatted();
+		}
+	}
+	return $totFam;
+}
+
 sub displayPivotSumup {
 	my( $self, $wb_out, $ws_out, $row, $col, $currency_format, $fx_out, $type ) = @_;
 	my $categories = $self->getCategories();
@@ -564,6 +635,16 @@ sub getCategories {
 sub getOperations {
 	my( $self) = @_;
 	return $self->{_operations};		
+}
+
+sub getDtCurrentMonth {
+	my( $self) = @_;
+	return $self->{_dt_currmonth};		
+}
+
+sub getDtPrevMonth {
+	my( $self) = @_;
+	return $self->{_dt_prevmonth};		
 }
 
 1;

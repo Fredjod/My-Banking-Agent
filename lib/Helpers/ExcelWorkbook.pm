@@ -10,6 +10,7 @@ use Spreadsheet::XLSX;
 use Spreadsheet::ParseExcel;
 use Excel::Writer::XLSX;
 use File::Basename;
+use Helpers::Logger;
 
 sub new
 {
@@ -20,10 +21,11 @@ sub new
 
 sub openExcelWorkbook {
 	my ($class, $filePath) = @_;
+	my $logger = Helpers::Logger->new();
 	
-	unless (-e $filePath) { die "File ".$filePath." can't be found"; }
+	unless (-e $filePath) { $logger->print ( "File ".$filePath." can't be found", Helpers::Logger::ERROR); die; }
 	my($filename, $dirs, $ext) = fileparse($filePath, qr/\.[^.]*/);
-	unless ($ext eq '.xls' or $ext eq '.xlsx') { die "File extension ".$ext." is not supported (only .xls or .xlsx are)"; }
+	unless ($ext eq '.xls' or $ext eq '.xlsx') { $logger->print ( "File extension ".$ext." is not supported (only .xls or .xlsx are)", Helpers::Logger::ERROR); die; }
 	
 	my $parser;
 	my $workbook;
