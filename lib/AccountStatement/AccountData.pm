@@ -444,6 +444,8 @@ sub controlBalance {
 		for (my $col = 2; $col <=6; $col ++) {
 			my $cell = $worksheet->get_cell( $row, $col );
 			next unless $cell;
+			next unless length($cell);
+			next unless $cell->unformatted() =~ /^[+-]?\d+(\.\d+)?$/;
 			$lineTot += $worksheet->get_cell( $row, $col )->unformatted() ;
 		}
 		$plannedBalance += $lineTot;
