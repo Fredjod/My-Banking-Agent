@@ -67,9 +67,10 @@ elsif ( ($OperationOpt eq "wcontrol") || ($OperationOpt eq "dcontrol") ) {
 	my $account = buildBankStatement ($dt_from, $dt_to);
 	$logger->print ( "Control the balance", Helpers::Logger::INFO);
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $thresold = ($OperationOpt eq "wcontrol") ? $prop->readParamValue('alert.weekly.threshold') : $prop->readParamValue('alert.daily.threshold');
-	my $negative = ( $prop->readParamValue('alert.weekly.threshold') eq 'on' );
-	$account->controlBalance($thresold, $negative);
+	my $threshold = 0.01;
+	$threshold = ($OperationOpt eq "wcontrol") ? $prop->readParamValue('alert.weekly.threshold') : $prop->readParamValue('alert.daily.threshold');
+	my $negative = ( $prop->readParamValue('alert.negative.balance') eq 'on' );
+	$account->controlBalance($threshold, $negative);
 }
 else {
 	$logger->print ( "No operation requested. Did nothing!", Helpers::Logger::ERROR);	

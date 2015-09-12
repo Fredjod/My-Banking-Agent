@@ -433,7 +433,7 @@ sub generateDashBoard {
 }
 
 sub controlBalance {
-	my( $self, $thresold, $negative ) = @_;
+	my( $self, $threshold, $negative ) = @_;
 	my $dt_currmonth = $self->getDtCurrentMonth()->clone();
 	my $log = Helpers::Logger->new();
 
@@ -455,7 +455,7 @@ sub controlBalance {
 	my $currentBalance = @$operations[$#{$operations}]->{SOLDE};
 	my $alert = 0;
 	my $var = abs( ($currentBalance-$plannedBalance)/$currentBalance );
-	if ( $var > $thresold || ($currentBalance <= 0 && $negative) ) { $alert = 1 }
+	if ( $var > $threshold || ($currentBalance <= 0 && $negative) ) { $alert = 1 }
 	my $subject = "Balance Variation Alert";
 	if (($currentBalance <= 0 && $negative)) { $subject = "Bank Overdraft Alert"; }
 	if ( $alert ) {

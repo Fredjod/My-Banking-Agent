@@ -81,4 +81,4 @@ is(@$pivot2[0]->{'Depenses courantes'}, -2233.18, 'Check Depenses courantes tota
 is(@$pivot2[1], -7870.73, 'Check total debits');
 
 $data->generateDashBoard();
-$data->controlBalance();
+$data->controlBalance(0.05, 1);
