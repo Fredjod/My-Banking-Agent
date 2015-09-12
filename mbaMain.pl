@@ -5,6 +5,7 @@ use lib './lib';
 use strict;
 use warnings;
 use Helpers::Logger;
+use Helpers::ConfReader;
 use AccountStatement::AccountData;
 my $connectorClass = 'WebConnector::'.'CMWebConnector';
 eval "use $connectorClass";
@@ -57,7 +58,7 @@ if ($OperationOpt eq "closing") {
 	$logger->print ( "Generate dashboard", Helpers::Logger::INFO);
 	$account->generateDashBoard();
 }
-elsif ($OperationOpt eq "control") {
+elsif ( ($OperationOpt eq "wcontrol") || ($OperationOpt eq "dcontrol") ) {
 	$logger->print ( "Controling the variation between current and planned balance", Helpers::Logger::INFO);
 	# Downloading the bankstatement from the 1st of the current month till now
 	my $dt_from = DateTime->now(time_zone => 'local' );
@@ -65,13 +66,10 @@ elsif ($OperationOpt eq "control") {
 	my $dt_to = DateTime->now(time_zone => 'local' );
 	my $account = buildBankStatement ($dt_from, $dt_to);
 	$logger->print ( "Control the balance", Helpers::Logger::INFO);
-	my $alert = $account->controlBalance();
-	if ($alert) {
-		$logger->print ( "Variation is too hight. Alert is sent by email!", Helpers::Logger::INFO);
-	}
-	else {
-		$logger->print ( "Control balance is OK", Helpers::Logger::INFO);
-	}
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $thresold = ($OperationOpt eq "wcontrol") ? $prop->readParamValue('alert.weekly.threshold') : $prop->readParamValue('alert.daily.threshold');
+	my $negative = ( $prop->readParamValue('alert.weekly.threshold') eq 'on' );
+	$account->controlBalance($thresold, $negative);
 }
 else {
 	$logger->print ( "No operation requested. Did nothing!", Helpers::Logger::ERROR);	

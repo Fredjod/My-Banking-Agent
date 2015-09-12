@@ -16,12 +16,21 @@ smtp.server=smtp.free.fr
 # Numericable
 # smtp.server=smtp.numericable.fr
 
-### Email recipients that receive the reports
-# mailing.list = frederic.jaudin@gmail.com; vlamblet@gmail.com
-mailing.list = frederic.jaudin@gmail.com
+### Email recipients that receive the reports (list of emails can be entered, separated per semi colon)
+# mailing.list = myemail@server.com, myemail2@server2.com
+mailing.list = myemail@server.com
 ####
 
-### Monthy report name and destination directoy 
+### Alert thresholds that trigger email to the bank account owners
+# The threshold is a ratio (%) of the variation between planed and actual account balance
+# 2 thresholds are managed by MBA, one for a daily check and one for a weekly check
+alert.weekly.threshold = 0.05
+alert.daily.threshold = 0.5
+### Triggering of an alert when the balance is < 0 (on or off param)
+alert.negative.balance = on
+###
+
+### Monthly report name and destination directory 
 excel.report.dir = ./
 excel.report.basename = dashboard
 ###
@@ -29,7 +38,7 @@ excel.report.basename = dashboard
 ### Logger properties
 # output can be STDOUT (for consol display) or a path file (like logs/output.txt)
 logs.output = logs/output.txt
-# log level possible value: DEBUG, INFO or ERROR. Default is INFO.
+# log level possible values: DEBUG, INFO or ERROR. Default is INFO.
 logs.level = INFO
 ###
 

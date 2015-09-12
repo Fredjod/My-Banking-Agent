@@ -19,7 +19,7 @@ smtp.server = smtp.free.fr
 # smtp.server = smtp.gmail.com
 
 ### Email recipients that receive the reports
-# mailing.list = frederic.jaudin@gmail.com; vlamblet@gmail.com
+# mailing.list = frederic.jaudin@gmail.com, vlamblet@gmail.com
 mailing.list = frederic.jaudin@gmail.com
 ####
 

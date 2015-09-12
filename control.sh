@@ -1,23 +1,16 @@
 #!/bin/bash
 
-### PARAMS ###
-# Web Account login for MacOS X using Keychains
-KEYCHAIN_SERVICE='Online Bank Account info'
+source $(dirname $0)/auth.sh
 
-# The user and password values have to be saved in the MacOS X keychains
-# The user and password should be stored in the "login" keychain.
-# The Name of the keychain item should be 'Online Bank Account info'
-### END PARAMS ####
-
-LOGIN=$(security find-generic-password -s "$KEYCHAIN_SERVICE" | perl -lne 'print $1 if /\"acct\"<blob>=\"(.*)\"/')
-PASSWORD=$(security find-generic-password -a $LOGIN -w)
-### For debug needs
-# echo Username: $USER >> logs/out.txt
-# security find-generic-password -a $LOGIN -w >>logs/out.txt 2>&1
-if [ -n "$PASSWORD" ]
+if [ -n "$LOGIN" ] && [ -n "$PASSWORD" ]
 then
+	CMD=dcontrol
+	if [ $1 = "weekly" ]
+	then
+		CMD=wcontrol
+	fi
 	cd $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-	perl mbaMain.pl -cmd control -login $LOGIN -password $PASSWORD
+	perl mbaMain.pl -cmd $CMD -login $LOGIN -password $PASSWORD
 else
 	echo "ERR: Website user and password can't be read from Mac OS X keychain. Not found Service is: '$KEYCHAIN_SERVICE'." 
 fi

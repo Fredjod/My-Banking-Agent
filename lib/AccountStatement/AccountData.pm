@@ -275,7 +275,7 @@ sub buildDashboardFileName {
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $dt_prevmonth = $self->getDtPrevMonth();
 	my $reportMonthStr = sprintf "%4d-%02d", $dt_prevmonth->year(), $dt_prevmonth->month();
-	return $reportMonthStr.'_'.$self->getAccountNumber().'_'.$prop->readParamValue('excel.report.basename').'.xls';
+	return $prop->readParamValue('excel.report.dir').$reportMonthStr.'_'.$self->getAccountNumber().'_'.$prop->readParamValue('excel.report.basename').'.xls';
 }
 
 sub generateDashBoard {
@@ -433,8 +433,9 @@ sub generateDashBoard {
 }
 
 sub controlBalance {
-	my( $self ) = @_;
+	my( $self, $thresold, $negative ) = @_;
 	my $dt_currmonth = $self->getDtCurrentMonth()->clone();
+	my $log = Helpers::Logger->new();
 
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook($self->buildDashboardFileName ());	
 	my $worksheet = $workbook->worksheet("Cashflow");
@@ -453,16 +454,19 @@ sub controlBalance {
 	my $operations = $self->getOperations();
 	my $currentBalance = @$operations[$#{$operations}]->{SOLDE};
 	my $alert = 0;
-	if ( abs( ($currentBalance-$plannedBalance)/$currentBalance ) > 0.05 ) {
+	my $var = abs( ($currentBalance-$plannedBalance)/$currentBalance );
+	if ( $var > $thresold || ($currentBalance <= 0 && $negative) ) { $alert = 1 }
+	my $subject = "Balance Variation Alert";
+	if (($currentBalance <= 0 && $negative)) { $subject = "Bank Overdraft Alert"; }
+	if ( $alert ) {
+		$log->print ( "$subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
 		my $mail = Helpers::SendMail->new(
-			"Balance Check Alert - ". sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
+			$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
 			"alert.body.template"
 		);
 		$mail->buildAlertBody ($self, $currentBalance, $plannedBalance);
 		$mail->send();
-		$alert = 1;
 	}
-	return $alert;
 }
 
 sub sumForecastedOperationPerFamily {
