@@ -355,8 +355,8 @@ sub generateDashBoard {
 		);
 		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
 	}
-	$ws_out->autofilter(0, 0, $#{$ops}, $#dataRow+1);
-	
+	$ws_out->autofilter(0, 0, $#{$ops}+1, $#{@dataRow[0]});
+		
 	### cashflow sheet
 	# init cashflow data
 	my $dt_lastday =  DateTime->last_day_of_month( year => $dt_currmonth->year(), month => $dt_currmonth->month() );
@@ -437,6 +437,7 @@ sub controlBalance {
 	my $dt_currmonth = $self->getDtCurrentMonth()->clone();
 	my $log = Helpers::Logger->new();
 
+	# Compute the forecasted balance recorded in the cashflow sheet
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook($self->buildDashboardFileName ());	
 	my $worksheet = $workbook->worksheet("Cashflow");
 	my $plannedBalance = $worksheet->get_cell( 0, 7 )->unformatted();
@@ -451,8 +452,12 @@ sub controlBalance {
 		}
 		$plannedBalance += $lineTot;
 	}
-	my $operations = $self->getOperations();
-	my $currentBalance = @$operations[$#{$operations}]->{SOLDE};
+	
+	# Get the actuals balance (read from bank website)
+	my $ops = $self->getOperations();
+	my $currentBalance = @$ops[$#{$ops}]->{SOLDE};
+	
+	# Check whether an alert is needed. If yes, an email is sent
 	my $alert = 0;
 	my $var = abs( ($currentBalance-$plannedBalance)/$currentBalance );
 	if ( $var > $threshold || ($currentBalance <= 0 && $negative) ) { $alert = 1 }
@@ -467,6 +472,46 @@ sub controlBalance {
 		$mail->buildAlertBody ($self, $currentBalance, $plannedBalance);
 		$mail->send();
 	}
+	else {
+		$log->print ( "Account balance OK", Helpers::Logger::INFO);
+	}
+	$log->print ( "Generate current month transaction report", Helpers::Logger::INFO);
+	# Generate a report with the transaction details
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $wb_out = Spreadsheet::WriteExcel->new( $prop->readParamValue('excel.report.dir').'current_month_transactions.xls' );
+	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
+	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
+	
+	my $ws_out = $wb_out->add_worksheet( 'operations-'.sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()) );
+	my @dataRow = (
+	 [
+		'DATE',
+		'DEBIT',
+		'CREDIT',
+		'FAMILY',
+		'CATEGORY',
+		'LIBELLE',	
+		'SOLDE',
+	 ]
+	);
+	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
+	foreach my $i (0 .. $#{$ops}) {
+		@dataRow = (
+		 [
+			@$ops[$i]->{DATE},
+			@$ops[$i]->{DEBIT},
+			@$ops[$i]->{CREDIT},
+			@$ops[$i]->{FAMILY},
+			@$ops[$i]->{CATEGORY},
+			@$ops[$i]->{LIBELLE},	
+			@$ops[$i]->{SOLDE},
+		 ]
+		);
+		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
+	}
+	$log->print ( "Autofilter: X:$#{$ops}, Y:$#{@dataRow[0]}", Helpers::Logger::DEBUG);
+	$ws_out->autofilter(0, 0, $#{$ops}+1, $#{@dataRow[0]});
+
 }
 
 sub sumForecastedOperationPerFamily {
