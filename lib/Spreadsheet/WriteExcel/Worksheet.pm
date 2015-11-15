@@ -12,6 +12,8 @@ package Spreadsheet::WriteExcel::Worksheet;
 # Documentation after __END__
 #
 
+use lib "../../../lib/";
+
 use Exporter;
 use strict;
 use Carp;

@@ -11,6 +11,8 @@ package Spreadsheet::WriteExcel::Big;
 #
 #
 
+use lib "../../../lib/";
+
 require Exporter;
 
 use strict;

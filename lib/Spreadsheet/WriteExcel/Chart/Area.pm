@@ -13,6 +13,8 @@ package Spreadsheet::WriteExcel::Chart::Area;
 # Documentation after __END__
 #
 
+use lib "../../../../lib/";
+
 require Exporter;
 
 use strict;

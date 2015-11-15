@@ -15,6 +15,8 @@ package Spreadsheet::WriteExcel::Chart::Bar;
 
 require Exporter;
 
+use lib "../../../../lib/";
+
 use strict;
 use Spreadsheet::WriteExcel::Chart;
 

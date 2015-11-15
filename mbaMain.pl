@@ -6,94 +6,89 @@ use strict;
 use warnings;
 use Helpers::Logger;
 use Helpers::ConfReader;
+use Helpers::Date;
+use Helpers::MbaFiles;
 use AccountStatement::AccountData;
-my $connectorClass = 'WebConnector::'.'CMWebConnector';
-eval "use $connectorClass";
-if( $@ ){
-	die("Cannot load $connectorClass: $@");
-}
-my $connector = $connectorClass->new( 'https://www.creditmutuel.fr/' );
-die $connectorClass.' is a wrong web connector class. Must inherite from WebConnector::GenericWebConnector' unless $connector->isa('WebConnector::GenericWebConnector');
+use AccountStatement::Reporting;
 
 my $logger = Helpers::Logger->new();
+my $prop = Helpers::ConfReader->new("properties/app.txt");
+
 $logger->print ( "Start running...", Helpers::Logger::INFO);
 
-my $helpOpt=0;
-my $OperationOpt='';
-my $loginOpt;
-my $passwordOpt;
+my @accountConfigFiles = Helpers::MbaFiles->getAccountConfigFilesName();
+my $dth = Helpers::Date->new ();
+my $dtPrevMonth = $dth->rollPreviousMonth();
+my $dtToday = $dth->getDate();
 
-for (my $i=0; $i<=$#ARGV;$i++) {
-	if ($ARGV[$i] eq '-h' or $ARGV[$i] eq '-help') {$helpOpt = 1; }
-	if ($ARGV[$i] eq '-cmd') {$OperationOpt = $ARGV[$i+1]; }
-	if ($ARGV[$i] eq '-login') {$loginOpt = $ARGV[$i+1]; }
-	if ($ARGV[$i] eq '-password') {$passwordOpt = $ARGV[$i+1]; }
-}
+foreach my $accountConfigFilePath (@accountConfigFiles) {
+	my $accountPRM = AccountStatement::AccountData->new ($accountConfigFilePath, $dtPrevMonth);
+	my $accountMTD = AccountStatement::AccountData->new ($accountConfigFilePath, $dtToday);
+	$logger->print ( 'Processing account '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
+	my $reportingProcessor = AccountStatement::Reporting->new();
+	$reportingProcessor->setAccDataMTD($accountMTD);
+	$reportingProcessor->setAccDataPRM($accountPRM);
 
-if ($helpOpt) {
-	print "Usage: ./mbaMain.pl options\n";
-	print "Options are:\n";
-	print "\t-h or -help: print this help.\n";
-	print "\t-cmd { closing, control }: for closing the past month or for controling the balance of current month is as planned.\n";
-	print "End of execution.\n";
-	exit 0;
-}
-
-if ($OperationOpt eq "closing") {
-	$logger->print ( "Closing the previous month", Helpers::Logger::INFO);
-	# Build 2 date: 1st and last day of the previous month
-	my $dt_from = DateTime->now(time_zone => 'local' );
-	my $month = $dt_from->month();
-	my $year = $dt_from->year();
-	# first day of last month
-	if ($month > 1) {
-		$dt_from->set_month($month-1);
-	} else { # shift to december of previous year
-		$dt_from->set_month(12);
-		$dt_from->set_year($year-1)
+	# Download actuals
+	my $dt_to = $dth->getDate();
+	my $dt_from = $dth->getDate();	
+	$dt_from->set_day(1);
+	downloadBankStatementBetweenTwoDate ($accountMTD, $dt_from, $dt_to);
+	
+	# Check if the closing report processing is needed
+	if (! -e Helpers::MbaFiles->getClosingFilePath($accountPRM) ) {
+		$logger->print ( "Closing the previous month", Helpers::Logger::INFO);
+		# Build 2 date: 1st and last day of the previous month
+		my $dt_from_prm = $dth->rollPreviousMonth();	
+		$dt_from_prm->set_day(1);
+		my $dt_to_prm = DateTime->last_day_of_month( year => $dt_from_prm->year(), month => $dt_from_prm->month() );
+		downloadBankStatementBetweenTwoDate ($accountPRM, $dt_from_prm, $dt_to_prm);
+		$logger->print ( "Processing of the previous month closing report", Helpers::Logger::INFO);
+		$reportingProcessor->createPreviousMonthClosingReport();
 	}
-	$dt_from->set_day(1);
-	my $dt_to = DateTime->last_day_of_month( year => $dt_from->year(), month => $dt_from->month() );
-	my $account = buildBankStatement ($dt_from, $dt_to);
-	$logger->print ( "Generate dashboard", Helpers::Logger::INFO);
-	$account->generateDashBoard();
-}
-elsif ( ($OperationOpt eq "wcontrol") || ($OperationOpt eq "dcontrol") ) {
-	$logger->print ( "Controling the variation between current and planned balance", Helpers::Logger::INFO);
-	# Downloading the bankstatement from the 1st of the current month till now
-	my $dt_from = DateTime->now(time_zone => 'local' );
-	$dt_from->set_day(1);
-	my $dt_to = DateTime->now(time_zone => 'local' );
-	my $account = buildBankStatement ($dt_from, $dt_to);
-	$logger->print ( "Control the balance", Helpers::Logger::INFO);
-	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $threshold = 0.01;
-	$threshold = ($OperationOpt eq "wcontrol") ? $prop->readParamValue('alert.weekly.threshold') : $prop->readParamValue('alert.daily.threshold');
+	
+	# Generate the actuals reporting
+	$logger->print ( "Processing of the actuals report", Helpers::Logger::INFO);
+	$reportingProcessor->createActualsReport();
+	
+	# Run the balance control
+	$logger->print ( "Run the balance control", Helpers::Logger::INFO);
+	my $threshold = 0.05;
+	$threshold = ( $dt_to->wday() == 1 ) ? $prop->readParamValue('alert.weekly.threshold') : $prop->readParamValue('alert.daily.threshold');
 	my $negative = ( $prop->readParamValue('alert.negative.balance') eq 'on' );
-	$account->controlBalance($threshold, $negative);
-}
-else {
-	$logger->print ( "No operation requested. Did nothing!", Helpers::Logger::ERROR);	
+	$reportingProcessor->controlBalance ($threshold, $negative);
+	
+	$logger->print ( 'End of the account processing '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
 }
 $logger->print ( "End of running.", Helpers::Logger::INFO);
 
-sub buildBankStatement {
-	my( $dt_from, $dt_to ) = @_;
-	# Init the Account Data object.
-	my $account = AccountStatement::AccountData->new ();
-	
-	# Get the operations of previous month
+sub downloadBankStatementBetweenTwoDate {
+	my( $account, $dt_from, $dt_to ) = @_;
+	# Use the Web connector of the account bank
+	my $connectorClass = 'WebConnector::'.$prop->readParamValue( 'connector.'.$account->getBankName() );
+	eval "use $connectorClass";
+	if( $@ ){
+		$logger->print ( "Cannot load $connectorClass: $@", Helpers::Logger::ERROR);
+		die("Cannot load $connectorClass: $@");
+	}
+	my $connector = $connectorClass->new( $prop->readParamValue( 'website.'.$account->getBankName() ));
+	die $connectorClass.' is a wrong web connector class. Must inherite from WebConnector::GenericWebConnector'
+		unless $connector->isa('WebConnector::GenericWebConnector');
+
+	# Get the auth info from a separated file
+	require "auth.pl";
+	our %auth;
+
+	# Get the operations from website
 	my $bankData;
 	$logger->print ( "Log in to ".$account->getBankName()." website", Helpers::Logger::INFO);
-	$connector->logIn($loginOpt,$passwordOpt);
-	$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()."...", Helpers::Logger::INFO);
+	$connector->logIn( $auth{$account->getAccountAuth}[0], $auth{$account->getAccountAuth}[1] );
+	$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()." for month ".$account->getMonth->month()."...", Helpers::Logger::INFO);
 	$bankData = $connector->downloadBankStatement ( $account->getAccountNumber(), $dt_from, $dt_to );
 	$logger->print ( "Log out", Helpers::Logger::INFO);
 	$connector->logOut();
 	
-	
-	# Process the operations and generate the dashboard
+	# Process the operations into the accountData object
 	$logger->print ( "Parsing of bank data", Helpers::Logger::INFO);
 	$account->parseBankStatement($bankData);
-	return $account;
 }

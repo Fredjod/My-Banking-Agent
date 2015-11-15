@@ -15,6 +15,8 @@ package Spreadsheet::WriteExcel::Chart::Stock;
 
 require Exporter;
 
+use lib "../../../../lib/";
+
 use strict;
 use Spreadsheet::WriteExcel::Chart;
 

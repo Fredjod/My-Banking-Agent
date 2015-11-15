@@ -32,10 +32,14 @@ alert.daily.threshold = 0.5
 alert.negative.balance = on
 ###
 
-### Monthy report name and destination directoy 
-excel.report.dir = ./
-excel.report.basename = dashboard
+### Excel files path
+root.account.config = ./accounts
+account.config.pattern = ^config\..+\.xls$
+root.account.reporting = ./reporting
+account.reporting.closing.prefix = _closing.xls
+account.reporting.actuals.prefix = _actuals.xls
 ###
+
 
 ### Logger properties
 # output can be STDOUT (for consol display) or a path file (like logs/output.txt)
@@ -46,14 +50,17 @@ logs.level = DEBUG
 
 ### Formating properties (in Excel)
 # Currency format
-workbook.dashboard.currency.format = '# ##0 [$'."\N{EURO SIGN}".']'
+# workbook.dashboard.currency.format = '# ##0.00 [$'."\N{EURO SIGN}".']'
+workbook.dashboard.currency.format = '# ##0.00 [$'."\N{EURO SIGN}".'];[RED]-# ##0.00 [$'."\N{EURO SIGN}".']'
 # Date format
 workbook.dashboard.date.format = dd/mm/yyyy
 ###
 
 ### Internal Properties (shouldn't be updated by users)
-workbook.categories.path = t.categories.xls
+connector.CREDITMUTUEL = CMWebConnector
+website.CREDITMUTUEL = https://www.creditmutuel.fr/
 worksheet.categories.name = categories
+account.user.auth = BANK ACCOUNT AUTH
 account.number.label = BANK ACCOUNT NUMBER
 account.desc.label = BANK ACCOUNT DESC
 bank.name.label = BANK NAME

@@ -1,4 +1,4 @@
-use Test::More tests => 23;
+use Test::More tests => 24;
 # use Test::More qw( no_plan );
 use lib '../lib';
 use Data::Dumper;
@@ -6,11 +6,16 @@ use diagnostics;
 use warnings;
 use strict;
 use WebConnector::GenericWebConnector;
+use Helpers::MbaFiles;
+use Helpers::Date;
 
 #do 'Helpers/ConfReader.pm';
 require_ok "AccountStatement::AccountData";
-my $data = AccountStatement::AccountData->new ();
-is($data->getBankName(), 'CREDIT MUTUEL', 'Get bank name from t.categrories.xls');
+my @config = Helpers::MbaFiles->getAccountConfigFilesName();
+my $dth = Helpers::Date->new ();
+my $data = AccountStatement::AccountData->new( $config[0], $dth->getDate() );
+
+is($data->getBankName(), 'CREDITMUTUEL', 'Get bank name from t.categrories.xls');
 is($data->getAccountNumber(), '033033050050029', 'Get Account number from t.categrories.xls');
 is($data->getAccountDesc(), 'Marc & Sophie joint account', 'Get Account description from t.categrories.xls');
 my $categories = $data->getCategories();
@@ -80,5 +85,8 @@ is(@$pivot2[0]->{'Assurance'}, -127.3, 'Check Assurance total category');
 is(@$pivot2[0]->{'Depenses courantes'}, -2233.18, 'Check Depenses courantes total category');
 is(@$pivot2[1], -7870.73, 'Check total debits');
 
-$data->generateDashBoard();
-$data->controlBalance(0.05, 1);
+my $date = $data->getMonth();
+is($date->month(), 5, 'Month of the statement is May');
+
+#$data->eneratePreviousMonthClosingReport();
+#$data->controlBalance(0.05, 1);

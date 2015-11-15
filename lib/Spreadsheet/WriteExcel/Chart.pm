@@ -10,6 +10,7 @@ package Spreadsheet::WriteExcel::Chart;
 #
 # Documentation after __END__
 #
+use lib "../../../lib/";
 
 use Exporter;
 use strict;

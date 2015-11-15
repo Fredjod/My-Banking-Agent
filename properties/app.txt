@@ -2,19 +2,21 @@
 # Email server. Must be the server of the ISP used by this computer for internet connection.
 # Uncomment (or add) according your ISP:
 # Free
-smtp.server=smtp.free.fr
+smtp.server = smtp.free.fr
 # Orange
-# smtp.server=smtp.orange.fr
+# smtp.server = smtp.orange.fr
 # 9 Telecom
-# smtp.server=smtp.neuf.fr
+# smtp.server = smtp.neuf.fr
 # Bouygues Tel
-# smtp.server=smtp.bouygtel.fr
+# smtp.server= smtp.bouygtel.fr
 # SFR
-# smtp.server=smtp.sfr.fr
+# smtp.server = smtp.sfr.fr
 # La Poste
-# smtp.server=smtp.laposte.net
+# smtp.server = smtp.laposte.net
 # Numericable
-# smtp.server=smtp.numericable.fr
+# smtp.server = smtp.numericable.fr
+# Gmail
+# smtp.server = smtp.gmail.com
 
 ### Email recipients that receive the reports (list of emails can be entered, separated per semi colon)
 # mailing.list = myemail@server.com, myemail2@server2.com
@@ -30,28 +32,35 @@ alert.daily.threshold = 0.5
 alert.negative.balance = on
 ###
 
-### Monthly report name and destination directory 
-excel.report.dir = ./
-excel.report.basename = dashboard
+### Excel files path
+root.account.config = ./accounts
+account.config.pattern = ^config\..+\.xls$
+root.account.reporting = ./reporting
+account.reporting.closing.prefix = _closing.xls
+account.reporting.actuals.prefix = _actuals.xls
 ###
+
 
 ### Logger properties
 # output can be STDOUT (for consol display) or a path file (like logs/output.txt)
-logs.output = logs/output.txt
-# log level possible values: DEBUG, INFO or ERROR. Default is INFO.
+logs.output = STDOUT
+# log level possible value: DEBUG, INFO or ERROR. Default is INFO.
 logs.level = INFO
 ###
 
 ### Formating properties (in Excel)
 # Currency format
-workbook.dashboard.currency.format = '# ##0 [$'."\N{EURO SIGN}".']'
+# workbook.dashboard.currency.format = '# ##0.00 [$'."\N{EURO SIGN}".']'
+workbook.dashboard.currency.format = '# ##0.00 [$'."\N{EURO SIGN}".'];[RED]-# ##0.00 [$'."\N{EURO SIGN}".']'
 # Date format
 workbook.dashboard.date.format = dd/mm/yyyy
 ###
 
 ### Internal Properties (shouldn't be updated by users)
-workbook.categories.path = t.categories.xls
+connector.CREDITMUTUEL = CMWebConnector
+website.CREDITMUTUEL = https://www.creditmutuel.fr/
 worksheet.categories.name = categories
+account.user.auth = BANK ACCOUNT AUTH
 account.number.label = BANK ACCOUNT NUMBER
 account.desc.label = BANK ACCOUNT DESC
 bank.name.label = BANK NAME

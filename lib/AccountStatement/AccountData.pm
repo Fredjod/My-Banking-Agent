@@ -4,16 +4,12 @@ use lib '../../lib';
 use strict;
 use warnings;
 use DateTime;
-use Helpers::ExcelWorkbook;
-use Spreadsheet::ParseExcel;
-use Spreadsheet::XLSX;
-use Spreadsheet::WriteExcel;
-use Spreadsheet::WriteExcel::Utility;
 use Helpers::ConfReader;
 use utf8;
-use Data::Dumper;
 use Helpers::Logger;
-use Helpers::SendMail;
+use Helpers::Date;
+use Helpers::ExcelWorkbook;
+use Spreadsheet::ParseExcel;
 
 
 use constant INCOME		=> 1;
@@ -21,31 +17,20 @@ use constant EXPENSE	=> 2;
 
 sub new
 {
-    my ($class ) = @_;
+    my ($class, $configFilePath, $dtMonth) = @_;
     
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
  
-	my $dt_currmonth = DateTime->now(time_zone => 'local' );	
-	my $dt_prevmonth = DateTime->now(time_zone => 'local' );
-	my $month = $dt_currmonth->month();
-	my $year = $dt_currmonth->year();
-	# first day of last month
-	if ($month > 1) {
-		$dt_prevmonth->set_month($month-1);
-	} else { # shift to december of previous year
-		$dt_prevmonth->set_month(12);
-		$dt_prevmonth->set_year($year-1)
-	}
     
     my $self = {
-    	_bankName => initBankName($prop),
-    	_accountNumber =>	initAccountNumber($prop),
-    	_accountDesc =>	initAccountDesc($prop),
-    	_categories => 	initCategoriesDefinition($prop),
+    	_bankName => initBankName($prop, $configFilePath),
+    	_accountNumber =>	initAccountNumber($prop, $configFilePath),
+    	_accountDesc =>	initAccountDesc($prop, $configFilePath),
+    	_accountAuth => initAccountAuth ($prop, $configFilePath),
+    	_categories => 	initCategoriesDefinition($prop, $configFilePath),
     	_operations => undef,
-    	_dt_currmonth => $dt_currmonth,
-    	_dt_prevmonth => $dt_prevmonth,
+    	_month => $dtMonth,
     };
     if ( !defined $self->{_accountNumber} ) { $logger->print (  "bank account number value not found!", Helpers::Logger::ERROR); die; }
     bless $self, $class;
@@ -53,24 +38,29 @@ sub new
 }
 
 sub initAccountDesc {
-	my ($prop) = @_;
-	return lookForPairKeyValue($prop, $prop->readParamValue("account.desc.label"));	
+	my ($prop, $configFilePath) = @_;
+	return lookForPairKeyValue($prop, $prop->readParamValue("account.desc.label"), $configFilePath);	
 }
 
 sub initAccountNumber {
-	my ($prop) = @_;
-	return lookForPairKeyValue($prop, $prop->readParamValue("account.number.label"));
+	my ($prop, $configFilePath) = @_;
+	return lookForPairKeyValue($prop, $prop->readParamValue("account.number.label"), $configFilePath);
 }
 
 sub initBankName {
-	my ($prop) = @_;
-	return lookForPairKeyValue($prop, $prop->readParamValue("bank.name.label"));	
+	my ($prop, $configFilePath) = @_;
+	return lookForPairKeyValue($prop, $prop->readParamValue("bank.name.label"), $configFilePath);	
 	
 }
 
+sub initAccountAuth {
+	my ($prop, $configFilePath) = @_;
+	return lookForPairKeyValue($prop, $prop->readParamValue("account.user.auth"), $configFilePath);	
+}
+
 sub lookForPairKeyValue {
-	my ($prop, $key) = @_;
-	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.categories.path"));	
+	my ($prop, $key, $configFilePath) = @_;
+	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( $configFilePath );	
 	my $worksheet = $workbook->worksheet($prop->readParamValue("worksheet.categories.name"));		
 	my ( $row_min, $row_max ) = $worksheet->row_range();
 	my $value;
@@ -85,8 +75,8 @@ sub lookForPairKeyValue {
 }
 
 sub initCategoriesDefinition {
-	my ($prop) = @_;
-	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.categories.path"));	
+	my ($prop, $configFilePath) = @_;
+	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( $configFilePath );	
 	my $worksheet = $workbook->worksheet($prop->readParamValue("worksheet.categories.name"));		
 	my ( $row_min, $row_max ) = $worksheet->row_range();
 	my @categories;
@@ -153,7 +143,7 @@ sub trim {
 }
 
 sub parseBankStatement {
-	my( $self, $bankData) = @_;
+	my( $self, $bankData ) = @_;
 	# bankData is an array of hashes. Each hash is a transaction with the following info and format:
 	# [ 
 	#	{
@@ -166,7 +156,8 @@ sub parseBankStatement {
     #		...
 	#	 }
     # ]
-	
+    #
+
 	my $logger = Helpers::Logger->new();
 	my $categories = $self->getCategories();
 	my @operations;
@@ -205,6 +196,16 @@ sub parseBankStatement {
 		}
 	}
 	$self->{_operations} = \@operations;
+	
+	my ($d,$m,$y) = $operations[$#operations]->{DATE} =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/;
+	my $date = DateTime->new(
+	   year      => $y,
+	   month     => $m,
+	   day       => $d,
+	   time_zone => 'local',
+	);	
+	
+	$self->{_month} = $date;
 	return \@operations;
 }
 
@@ -270,399 +271,6 @@ sub groupByWhere {
 	return [\%pivot, $tot];
 }
 
-sub buildDashboardFileName {
-	my( $self) = @_;
-	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $dt_prevmonth = $self->getDtPrevMonth();
-	my $reportMonthStr = sprintf "%4d-%02d", $dt_prevmonth->year(), $dt_prevmonth->month();
-	return $prop->readParamValue('excel.report.dir').$reportMonthStr.'_'.$self->getAccountNumber().'_'.$prop->readParamValue('excel.report.basename').'.xls';
-}
-
-sub generateDashBoard {
-	my( $self) = @_;
-	my $dt_currmonth = $self->getDtCurrentMonth()->clone();
-	my $dt_prevmonth = $self->getDtPrevMonth()->clone();
-	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $wb_out = Spreadsheet::WriteExcel->new( $self->buildDashboardFileName () );
-	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
-	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
-	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));	
-
-	
-	### Summary sheet
-	my $ws_tpl = $wb_tpl->worksheet( 0 );		
-	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
-
-	my ( $row_min, $row_max ) = $ws_tpl->row_range();
-	my ( $col_min, $col_max ) = $ws_tpl->col_range();
-	
-	my $ops = $self->getOperations();
-	my $rshift = 0;
-
-	for my $row ( 0 .. $row_max ) {
-		for my $col ( 0 .. $col_max ) {
-			my $cell = $ws_tpl->get_cell( $row, $col );
-			next unless $cell;			
-			my $value = $cell->value();
-			my $fx_tpl = $cell->get_format();
-			my $font = Helpers::ExcelWorkbook->fontTranslator($fx_tpl->{Font});
-			my $shading = Helpers::ExcelWorkbook->cellFormatTranslator($fx_tpl);
-			my $fx_out = $wb_out->add_format( %$font, %$shading);
-
-			if ($value eq '<ACCOUNT_NUMBER>') { $ws_out->write( $row+$rshift, $col, '\''.$self->getAccountNumber, $fx_out ); next; }
-			if ($value eq '<ACCOUNT_DESC>') { $ws_out->write( $row+$rshift, $col, $self->getAccountDesc, $fx_out); next; }
-			if ($value eq '<CURR_MONTH>') { $ws_out->write( $row+$rshift, $col, $dt_prevmonth->month_name().' '.$dt_prevmonth->year(), $fx_out ); next; }
-			if ($value eq '<INIT_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[0]->{SOLDE}, $currency_format ); next; }
-			if ($value eq '<END_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[$#{$ops}]->{SOLDE}, $currency_format ); next; }
-			if ($value eq '<LOOP_EXPENSES>') {
-				my $rshift = $self->displayPivotSumup($wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'DEBIT');
-				next;
-			}
-			if ($value eq '<LOOP_INCOMES>') { 
-				my $rshift = $self->displayPivotSumup($wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'CREDIT');
-				next;
-			}
-			#else, copy the value and format from the template
-			$ws_out->write( $row, $col, $value, $fx_out );
-		}
-	}
-	### Details sheet
-	$ws_tpl = $wb_tpl->worksheet( 1 );		
-	$ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
-	my @dataRow = (
-	 [
-		'DATE',
-		'DEBIT',
-		'CREDIT',
-		'FAMILY',
-		'CATEGORY',
-		'LIBELLE',	
-		'SOLDE',
-	 ]
-	);
-	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
-	foreach my $i (0 .. $#{$ops}) {
-		my @dataRow = (
-		 [
-			@$ops[$i]->{DATE},
-			@$ops[$i]->{DEBIT},
-			@$ops[$i]->{CREDIT},
-			@$ops[$i]->{FAMILY},
-			@$ops[$i]->{CATEGORY},
-			@$ops[$i]->{LIBELLE},	
-			@$ops[$i]->{SOLDE},
-		 ]
-		);
-		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
-	}
-	$ws_out->autofilter(0, 0, $#{$ops}+1, $#{@dataRow[0]});
-		
-	### cashflow sheet
-	# init cashflow data
-	my $dt_lastday =  DateTime->last_day_of_month( year => $dt_currmonth->year(), month => $dt_currmonth->month() );
-	my @cashflow = ();
-	for (my $d=1; $d<=$dt_lastday->day(); $d++) {
-		my %record;
-		$dt_currmonth->set_day($d);
-		$record{DATE} = sprintf "%02d/%02d/%4d", $d, $dt_currmonth->month, $dt_currmonth->year();
-		$record{DAY} = $d;
-		$record{WDAY} = int(($d-1)/7).'.'.$dt_currmonth->wday();
-		$record{WDAYNAME} = $dt_currmonth->day_name();
-		$record{'MONTHLY EXPENSES'} = undef;
-		$record{'MONTHLY EXPENSES DETAILS'} = undef;
-		$record{'WEEKLY EXPENSES'} = undef;
-		$record{'WEEKLY EXPENSES DETAILS'} = undef;
-		$record{'MONTHLY INCOMES'} = undef;
-		$record{'MONTHLY INCOMES DETAILS'} = undef;
-		push (@cashflow, \%record);
-	}
-	my @where = ('FAMILY', 'MONTHLY EXPENSES');
-	my $pivotDay = $self->groupByWhere ('DAY', 'DEBIT', \@where);
-	$self->populateCashflowMonthlyTransactions ( \@cashflow, @$pivotDay[0], 'MONTHLY EXPENSES', 'DEBIT' );
-
-	@where = ('FAMILY', 'MONTHLY INCOMES');
-	$pivotDay = $self->groupByWhere ('DAY', 'CREDIT', \@where);
-	$self->populateCashflowMonthlyTransactions ( \@cashflow, @$pivotDay[0], 'MONTHLY INCOMES', 'CREDIT' );
-
-	@where = ('FAMILY', 'WEEKLY EXPENSES');
-	$pivotDay = $self->groupByWhere ('WDAY', 'DEBIT', \@where);
-	$self->populateCashflowWeeklyTransactions ( \@cashflow, @$pivotDay[0], 'WEEKLY EXPENSES', 'DEBIT' );
-	
-	$ws_tpl = $wb_tpl->worksheet( 2 );		
-	$ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
-	
-	@dataRow = (
-	 [
-		'DATE',
-		'WDAY',
-		'MONTHLY EXPENSES',
-		'MONTHLY INCOMES',
-		'WEEKLY EXPENSES',
-		'EXCEPTIONAL EXPENSES',
-		'EXCEPTIONAL INCOMES',
-		@$ops[$#{$ops}]->{SOLDE}
-	 ]
-	);
-	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
-	foreach my $i (0 .. $#cashflow) {
-		my @dataRow = ( 
-		 [
-			$cashflow[$i]->{DATE},
-			$cashflow[$i]->{WDAYNAME},
-			$cashflow[$i]->{'MONTHLY EXPENSES'},
-			$cashflow[$i]->{'MONTHLY INCOMES'},
-			$cashflow[$i]->{'WEEKLY EXPENSES'},
-			undef,
-			undef,
-			'=H'.($i+1).'+SUM(C'.($i+2).':G'.($i+2).')'
-		 ],
-		 [ undef,
-		   undef,
-		   $cashflow[$i]->{'MONTHLY EXPENSES DETAILS'},
-		   $cashflow[$i]->{'MONTHLY INCOMES DETAILS'},
-		   $cashflow[$i]->{'WEEKLY EXPENSES DETAILS'},
-		   undef,
-		   undef,
-		   undef,
-		 ]
-		);
-		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
-	}
-	
-	
-}
-
-sub controlBalance {
-	my( $self, $threshold, $negative ) = @_;
-	my $dt_currmonth = $self->getDtCurrentMonth()->clone();
-	my $log = Helpers::Logger->new();
-
-	# Compute the forecasted balance recorded in the cashflow sheet
-	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook($self->buildDashboardFileName ());	
-	my $worksheet = $workbook->worksheet("Cashflow");
-	my $plannedBalance = $worksheet->get_cell( 0, 7 )->unformatted();
-	for (my $row=1; $row <= $dt_currmonth->day(); $row++) {
-		my $lineTot = 0;
-		for (my $col = 2; $col <=6; $col ++) {
-			my $cell = $worksheet->get_cell( $row, $col );
-			next unless $cell;
-			next unless length($cell);
-			next unless $cell->unformatted() =~ /^[+-]?\d+(\.\d+)?$/;
-			$lineTot += $worksheet->get_cell( $row, $col )->unformatted() ;
-		}
-		$plannedBalance += $lineTot;
-	}
-	
-	# Get the actuals balance (read from bank website)
-	my $ops = $self->getOperations();
-	my $currentBalance = @$ops[$#{$ops}]->{SOLDE};
-	
-	# Check whether an alert is needed. If yes, an email is sent
-	my $alert = 0;
-	my $var = abs( ($currentBalance-$plannedBalance)/$currentBalance );
-	if ( $var > $threshold || ($currentBalance <= 0 && $negative) ) { $alert = 1 }
-	my $subject = "Balance Variation Alert";
-	if (($currentBalance <= 0 && $negative)) { $subject = "Bank Overdraft Alert"; }
-	if ( $alert ) {
-		$log->print ( "$subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
-		my $mail = Helpers::SendMail->new(
-			$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
-			"alert.body.template"
-		);
-		$mail->buildAlertBody ($self, $currentBalance, $plannedBalance);
-		$mail->send();
-	}
-	else {
-		$log->print ( "Account balance OK", Helpers::Logger::INFO);
-	}
-	$log->print ( "Generate current month transaction report", Helpers::Logger::INFO);
-	# Generate a report with the transaction details
-	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $wb_out = Spreadsheet::WriteExcel->new( $prop->readParamValue('excel.report.dir').'current_month_transactions.xls' );
-	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
-	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
-	
-	my $ws_out = $wb_out->add_worksheet( 'operations-'.sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()) );
-	my @dataRow = (
-	 [
-		'DATE',
-		'DEBIT',
-		'CREDIT',
-		'FAMILY',
-		'CATEGORY',
-		'LIBELLE',	
-		'SOLDE',
-	 ]
-	);
-	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
-	foreach my $i (0 .. $#{$ops}) {
-		@dataRow = (
-		 [
-			@$ops[$i]->{DATE},
-			@$ops[$i]->{DEBIT},
-			@$ops[$i]->{CREDIT},
-			@$ops[$i]->{FAMILY},
-			@$ops[$i]->{CATEGORY},
-			@$ops[$i]->{LIBELLE},	
-			@$ops[$i]->{SOLDE},
-		 ]
-		);
-		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
-	}
-	$log->print ( "Autofilter: X:$#{$ops}, Y:$#{@dataRow[0]}", Helpers::Logger::DEBUG);
-	$ws_out->autofilter(0, 0, $#{$ops}+1, $#{@dataRow[0]});
-
-}
-
-sub sumForecastedOperationPerFamily {
-	my( $self, $family ) = @_;
-	my $dt_currmonth = $self->getDtCurrentMonth()->clone();
-	my $totFam = 0;
-	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook($self->buildDashboardFileName ());	
-	my $worksheet = $workbook->worksheet("Cashflow");
-	# Look for the family column (on the firs row)
-	my ( $col_min, $col_max ) = $worksheet->col_range();
-	my $colFam = -1;
-	for (my $col=$col_min; $col<=$col_max; $col++ ) {
-		my $cell = $worksheet->get_cell( 0, $col );
-		next unless $cell;
-		next unless (uc $cell->value eq uc $family);
-		$colFam = $col;
-	}
-	if ($colFam > -1) {
-		my $d = $dt_currmonth->day();
-		for (my $row=1; $row <= $dt_currmonth->day(); $row++) {
-			my $cell = $worksheet->get_cell( $row, $colFam );
-			next unless $cell;
-			next unless ($cell->unformatted() =~ /^-?\d/); #is numeric?
-			$totFam += $cell->unformatted();
-		}
-	}
-	return $totFam;
-}
-
-sub displayPivotSumup {
-	my( $self, $wb_out, $ws_out, $row, $col, $currency_format, $fx_out, $type ) = @_;
-	my $categories = $self->getCategories();
-	my $rinit = $row;
-	my $pivot = $self->groupBy ('CATEGORY', $type);
-	foreach my $i (0 .. $#{$categories}) {
-		if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? INCOME : EXPENSE) ) {
-			$ws_out->write( $row, $col, @$categories[$i]->{'CATEGORY'}, $fx_out );
-			foreach my $key ( keys @$pivot[0] ) {
-				if ( $key eq @$categories[$i]->{'CATEGORY'} && @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? INCOME : EXPENSE) ) {
-					$ws_out->write( $row, $col+1, @$pivot[0]->{$key}, $currency_format );	
-				}
-			}
-			$row++;
-		}
-	}
-	my $fx_tot = $wb_out->add_format();
-	my $fx_sum = $wb_out->add_format();
-    $fx_tot->copy($fx_out);
-    $fx_tot->set_bold();
-   	$fx_sum->copy($currency_format);
-   	$fx_sum->set_bold();
-	$ws_out->write( $row, $col, 'Total', $fx_tot ); 	
-	$ws_out->write( $row, $col+1, '=SUM('.xl_rowcol_to_cell( $rinit, $col+1 ).':'.xl_rowcol_to_cell( $row-1, $col+1 ).')', $fx_sum ); 
-	return $row - $rinit;		
-}
-
-sub displayDetailsDataRow {
-	my( $self, $ws_out, $row, $dataRow, $date_format, $currency_format) = @_;
-	my $columnValueArray = @$dataRow[0];
-	foreach my $i (0 .. $#{$columnValueArray}) {
-		if (defined @$columnValueArray[$i] && @$columnValueArray[$i]=~/\d/) { # currency column?
-			$ws_out->write( $row, $i, @$columnValueArray[$i], $currency_format ); 
-		}
-		if (defined @$columnValueArray[$i] && @$columnValueArray[$i] =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
-			my $date = sprintf "%4d-%02d-%02dT", $3, $2, $1;
-			$ws_out->write_date_time($row, $i, $date, $date_format);
-		}
-		else {
-			$ws_out->write( $row, $i, @$columnValueArray[$i] );
-		}
-	}
-	if ($#{$dataRow} == 1) { # Cell comment to be written
-		my $columnCommentArray = @$dataRow[1];
-		foreach my $i (0 .. $#{$columnCommentArray}) {
-			if (defined @$columnCommentArray[$i]) {
-				$ws_out->write_comment( $row, $i, @$columnCommentArray[$i] );
-			}
-		}
-	}
-}
-
-sub populateCashflowMonthlyTransactions {
-	my( $self, $cashflow, $pivotDay, $family, $type ) = @_;
-	foreach my $day ( keys $pivotDay ) {
-		my $found = 0;
-		foreach my $i (0 .. $#{$cashflow}) {
-			if (@$cashflow[$i]->{DAY} == $day) {
-				@$cashflow[$i]->{$family} = $pivotDay->{$day};
-				my @where = ('DAY', $day, 'FAMILY', $family);
-				my $pivotCateg = $self->groupByWhere ('CATEGORY', $type, \@where);
-				@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
-				$found = 1;
-				last;
-			}
-		}
-		if (!$found) {
-			if (defined @$cashflow[$#{$cashflow}]->{$family} ) {
-				@$cashflow[$#{$cashflow}]->{$family} += $pivotDay->{$day};
-			} else {
-				@$cashflow[$#{$cashflow}]->{$family} = $pivotDay->{$day};
-			}
-			my @where = ('DAY', $day, 'FAMILY', $family);
-			my $pivotCateg = $self->groupByWhere ('CATEGORY', $type, \@where);
-			if (defined @$cashflow[$#{$cashflow}]->{$family.' DETAILS'} ) {
-				@$cashflow[$#{$cashflow}]->{$family.' DETAILS'} += $self->buildCategoryDetails ( @$pivotCateg[0] );
-			} else {
-				@$cashflow[$#{$cashflow}]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
-			}
-		}
-	}
-	
-}
-
-sub populateCashflowWeeklyTransactions {
-	my( $self, $cashflow, $pivotDay, $family, $type ) = @_;
-	foreach my $i (0 .. $#{$cashflow}) {
-		my $found = 0;
-		foreach my $wday ( keys $pivotDay ) {
-			if (@$cashflow[$i]->{WDAY} == $wday) {
-				@$cashflow[$i]->{$family} = $pivotDay->{$wday};
-				my @where = ('WDAY', $wday, 'FAMILY', $family);
-				my $pivotCateg = $self->groupByWhere ('CATEGORY', $type, \@where);
-				@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
-				$found = 1;
-				last;
-			}
-		}
-		if (!$found) {
-			my $wday = @$cashflow[$i]->{WDAY};
-			$wday =~ s/\d\.(\d)/0.$1/;
-			@$cashflow[$i]->{$family} = $pivotDay->{$wday};
-			my @where = ('WDAY', $wday, 'FAMILY', $family);
-			my $pivotCateg = $self->groupByWhere ('CATEGORY', $type, \@where);
-			@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
-
-		}
-	}
-	
-}
-
-sub buildCategoryDetails {
-	my( $self, $categHash ) = @_;
-	my $details = undef;
-	foreach my $categItem ( keys $categHash ) {
-		if ( defined $details ) { $details .= "\n\r"; }
-		$details .= $categItem.'='.$categHash->{$categItem};
-	}
-	return $details;
-	
-}
-
 sub getAccountDesc {
 	 my( $self ) = @_;
 	return $self->{_accountDesc};
@@ -678,6 +286,11 @@ sub getBankName {
 	return $self->{_bankName};
 }
 
+sub getAccountAuth {
+	 my( $self ) = @_;
+	return $self->{_accountAuth};
+}
+
 sub getCategories {
 	my( $self) = @_;
 	return $self->{_categories};	
@@ -688,14 +301,9 @@ sub getOperations {
 	return $self->{_operations};		
 }
 
-sub getDtCurrentMonth {
+sub getMonth {
 	my( $self) = @_;
-	return $self->{_dt_currmonth};		
-}
-
-sub getDtPrevMonth {
-	my( $self) = @_;
-	return $self->{_dt_prevmonth};		
+	return $self->{_month};		
 }
 
 1;

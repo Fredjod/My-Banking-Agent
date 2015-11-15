@@ -66,7 +66,7 @@ sub send {
 }
 
 sub buildAlertBody {
-	my ($self, $accountData, $currentBalance, $plannedBalance) = @_;
+	my ($self, $report, $accountData, $currentBalance, $plannedBalance) = @_;
 	my $template = $self->{_template};
 	
 	# Total value block
@@ -90,11 +90,11 @@ sub buildAlertBody {
 	my $pivotDebit = $accountData->groupBy ('FAMILY', 'DEBIT');
 	
 	foreach my $fam ('MONTHLY INCOMES', 'EXCEPTIONAL INCOMES') {
-		push ( @loopLineDetails, buildDetailsLine ($fam, @$pivotCredit[0]->{$fam}, $accountData->sumForecastedOperationPerFamily($fam) ));
+		push ( @loopLineDetails, buildDetailsLine ($fam, @$pivotCredit[0]->{$fam}, $report->sumForecastedOperationPerFamily($fam) ));
 	}
 	
 	foreach my $fam ('MONTHLY EXPENSES', 'WEEKLY EXPENSES', 'EXCEPTIONAL EXPENSES') {
-		push (@loopLineDetails, buildDetailsLine ($fam, @$pivotDebit[0]->{$fam}, $accountData->sumForecastedOperationPerFamily($fam) ));
+		push (@loopLineDetails, buildDetailsLine ($fam, @$pivotDebit[0]->{$fam}, $report->sumForecastedOperationPerFamily($fam) ));
 	}	
 	$template->param(LOOP_LINE_DETAILS => \@loopLineDetails);
 	
@@ -104,6 +104,8 @@ sub buildAlertBody {
 sub buildDetailsLine {
 	my ($family, $actual, $forecasted) = @_;
 	my %line;
+	$actual = (!defined $actual ? 0 : $actual);
+	$forecasted = (!defined $forecasted ? 0 : $forecasted);
 	$line{FAMILY} = $family;
 	$line{F_ACTUAL} = euroFormating($actual);
 	$line{F_FORECASTED} = euroFormating($forecasted);

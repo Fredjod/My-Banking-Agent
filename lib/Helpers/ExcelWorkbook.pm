@@ -10,6 +10,7 @@ use Spreadsheet::XLSX;
 use Spreadsheet::ParseExcel;
 use Excel::Writer::XLSX;
 use File::Basename;
+use Spreadsheet::WriteExcel;
 use Helpers::Logger;
 
 sub new
@@ -61,5 +62,13 @@ sub cellFormatTranslator {
         pattern  => @$colorFill[0],
     );
     return \%shading;
+}
+
+sub createWorkbook {
+	my ($class, $filePath) = @_;
+	my $wb_out = Spreadsheet::WriteExcel->new( $filePath );
+	chmod 0664, $filePath; # allow read/write to the user and group. Needed for Owncloud sharing.
+	# Pre-requisite: the mba user and www-data should be both in the same unix group.
+	return $wb_out;
 }
 1;

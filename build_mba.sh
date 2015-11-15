@@ -1,26 +1,34 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=1.1
+VERSION=2.0
 
-# Packaging
-mkdir mba
-mkdir mba/logs
-cp -R lib mba/
-cp -R properties mba/
-cp mbaMain.pl mba/
-cp t/t.categories.xls mba/categories.dist.xls
-cp auth.sh mba/auth.dist.sh
-cp closing.sh mba/
-cp control.sh mba/
-cp LICENSE mba/
-cp README.md mba/
+# Run unit testing
+echo '--- Unit testing... ---'
 cd t/
 perl -w ConfReader.t
+perl -w DateHelper.t
 perl -w AccountData.t
+perl -w AccountReporting.t
+perl -w MbaFiles.t
 cd ..
-chmod +x mba/closing.sh
-chmod +x mba/control.sh
+
+# Packaging
+echo '--- Packaging... ---'
+mkdir mba
+mkdir mba/logs
+mkdir mba/accounts
+cp -R lib mba/
+cp -R properties mba/
+mv mba/properties/app.txt mba/properties/app.dist.txt 
+cp mbaMain.pl mba/
+cp mba.sh mba/
+cp t/accounts/config.033033050050029.xls mba/accounts/dist.config.033033050050029.xls
+cp auth.pl mba/auth.dist.pl
+cp LICENSE mba/
+cp README.md mba/
+chmod +x mba/mbaMain.pl
+chmod +x mba/mba.sh
 chmod +x mba/properties/installDeamon.sh
 chmod +x mba/properties/uninstallDeamon.sh
 #zip -yqr mba_$VERSION.zip mba
@@ -29,4 +37,5 @@ then
 	rm mba_$VERSION.tar.gz
 fi
 tar -zcf mba_$VERSION.tar.gz mba
+echo '--- Package mba_'$VERSION'.tar.gz ready --- '
 rm -r ./mba
