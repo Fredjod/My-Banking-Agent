@@ -33,29 +33,36 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 	my $dt_to = $dth->getDate();
 	my $dt_from = $dth->getDate();	
 	$dt_from->set_day(1);
-	downloadBankStatementBetweenTwoDate ($accountMTD, $dt_from, $dt_to);
-	
-	# Check if the closing report processing is needed
-	if (! -e Helpers::MbaFiles->getClosingFilePath($accountPRM) ) {
-		$logger->print ( "Closing the previous month", Helpers::Logger::INFO);
-		# Build 2 date: 1st and last day of the previous month
-		my $dt_from_prm = $dth->rollPreviousMonth();	
-		$dt_from_prm->set_day(1);
-		my $dt_to_prm = DateTime->last_day_of_month( year => $dt_from_prm->year(), month => $dt_from_prm->month() );
-		downloadBankStatementBetweenTwoDate ($accountPRM, $dt_from_prm, $dt_to_prm);
-		$logger->print ( "Processing of the previous month closing report", Helpers::Logger::INFO);
-		$reportingProcessor->createPreviousMonthClosingReport();
+	if ( ! downloadBankStatementBetweenTwoDate ($accountMTD, $dt_from, $dt_to) ) {
+		$logger->print ( $accountMTD->getAccountNumber." can not be loaded", Helpers::Logger::ERROR);
 	}
+	else {
 	
-	# Generate the actuals reporting
-	$logger->print ( "Processing of the actuals report", Helpers::Logger::INFO);
-	$reportingProcessor->createActualsReport();
+		# Check if the closing report processing is needed
+		if (! -e Helpers::MbaFiles->getClosingFilePath($accountPRM) ) {
+			$logger->print ( "Closing the previous month", Helpers::Logger::INFO);
+			# Build 2 date: 1st and last day of the previous month
+			my $dt_from_prm = $dth->rollPreviousMonth();	
+			$dt_from_prm->set_day(1);
+			my $dt_to_prm = DateTime->last_day_of_month( year => $dt_from_prm->year(), month => $dt_from_prm->month() );
+			if ( ! downloadBankStatementBetweenTwoDate ($accountPRM, $dt_from_prm, $dt_to_prm) ) {
+				$logger->print ( $accountPRM->getAccountNumber." can not be loaded", Helpers::Logger::ERROR);
+			} else {
+				$logger->print ( "Processing of the previous month closing report", Helpers::Logger::INFO);
+				$reportingProcessor->createPreviousMonthClosingReport();
+			}
+		}
+		
+		# Generate the actuals reporting
+		$logger->print ( "Processing of the actuals report", Helpers::Logger::INFO);
+		$reportingProcessor->createActualsReport();
 	
-	# Run the balance control
-	$logger->print ( "Run the balance control", Helpers::Logger::INFO);
-	my $threshold = 0.05;
-	$threshold = ( $dt_to->wday() == 1 ) ? $prop->readParamValue('alert.weekly.threshold') : $prop->readParamValue('alert.daily.threshold');
-	$reportingProcessor->controlBalance ($threshold);
+		# Run the balance control
+		$logger->print ( "Run the balance control", Helpers::Logger::INFO);
+		my $threshold = 0.05;
+		$threshold = ( $dt_to->wday() == 1 ) ? $prop->readParamValue('alert.weekly.threshold') : $prop->readParamValue('alert.daily.threshold');
+		$reportingProcessor->controlBalance ($threshold);
+	}
 	
 	$logger->print ( 'End of the account processing '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
 }
@@ -81,13 +88,19 @@ sub downloadBankStatementBetweenTwoDate {
 	# Get the operations from website
 	my $bankData;
 	$logger->print ( "Log in to ".$account->getBankName()." website", Helpers::Logger::INFO);
-	$connector->logIn( $auth{$account->getAccountAuth}[0], $auth{$account->getAccountAuth}[1] );
-	$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()." for month ".$account->getMonth->month()."...", Helpers::Logger::INFO);
-	$bankData = $connector->downloadBankStatement ( $account->getAccountNumber(), $dt_from, $dt_to );
+	if ( $connector->logIn( $auth{$account->getAccountAuth}[0], $auth{$account->getAccountAuth}[1] ) ) {
+		$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()." for month ".$account->getMonth->month()."...", Helpers::Logger::INFO);
+		$bankData = $connector->downloadBankStatement ( $account->getAccountNumber(), $dt_from, $dt_to );
+	}
 	$logger->print ( "Log out", Helpers::Logger::INFO);
 	$connector->logOut();
 	
 	# Process the operations into the accountData object
 	$logger->print ( "Parsing of bank data", Helpers::Logger::INFO);
-	$account->parseBankStatement($bankData);
+	if (defined $bankData) {
+		$account->parseBankStatement($bankData);
+		return 1;
+	} else {
+		return 0;
+	}
 }

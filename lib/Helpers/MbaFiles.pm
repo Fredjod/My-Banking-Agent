@@ -72,9 +72,12 @@ sub getReportingDirname {
 	my $rootReporting = $prop->readParamValue('root.account.reporting');
 	if (! -d $rootReporting)	{
 		mkdir $rootReporting;
+		chmod 0771, $rootReporting;
 	}
 	if (! -d $rootReporting.'/'.$accountNumber) {
 		mkdir $rootReporting.'/'.$accountNumber;
+		chmod 0771, $rootReporting.'/'.$accountNumber;
+		
 	}
 	return $rootReporting.'/'.$accountNumber.'/';
 }

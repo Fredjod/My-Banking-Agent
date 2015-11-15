@@ -32,7 +32,7 @@ sub logIn
 	# Check whether the login is locked due to a past login error
 	unless (! $self->isLoginLock() ) {
 		$logger->print ( "The website login is locked. Check the auth config and delelte the file lock.login.txt before retrying.", Helpers::Logger::ERROR);
-		die ("The website login is locked");				
+		return 1;				
 	}
 	
 	# Page acceuil
@@ -65,7 +65,7 @@ sub logIn
 		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
 		$self->loginLock();
 		$logger->print ( "HTML content: ".$response->content(), Helpers::Logger::DEBUG);
-		die ("Login to website failed!");				
+		return 0;				
 	}
 	$logger->print ( "Login to website succeed", Helpers::Logger::INFO);
 	
@@ -81,12 +81,13 @@ sub logIn
 	unless (${$response->content_ref} =~ /form id="P:F" action="(.+)"\smethod/) {
 		$logger->print ( "Can't read URL download", Helpers::Logger::ERROR);
 		$logger->print ( "HTML content: ".${$response->content_ref}, Helpers::Logger::DEBUG);
-		die ("Can't read URL download");				
+		return 0;				
 	}
 	$url .= $1;
 	$url =~ s/&amp;/&/g;
 	$self->{_url} = $url;
 	$self->{_response} = $response;
+	return 1;
 }
 
 sub logOut
@@ -126,12 +127,12 @@ sub download
 	my @arrayDateTo = 	(sprintf("%02d", $dateTo->day()), sprintf("%02d", $dateTo->month()), $dateTo->year());
 	unless ( $accountNumber =~ s/^(\d{5})(\d{9})(\d{2})$/$1 $2 $3/ ) {
 		$logger->print ( "Wrong account number format: $accountNumber", Helpers::Logger::ERROR);
-		die ("Wrong account number format");
+		return undef;
 	}
 	unless ( $response->content() =~ /CB:data_accounts_account_(.*)ischecked.+$accountNumber/m ) {
-		$logger->print ( "Can't insert account number in the POST param", Helpers::Logger::ERROR);
+		$logger->print ( "Account number: $accountNumber can not be found", Helpers::Logger::ERROR);
 		$logger->print ( "HTML content: ".$response->content(), Helpers::Logger::DEBUG);
-		die ("Can't insert account number in the POST param");		
+		return undef;	
 	}
 	my $checkedAccount = "CB%3Adata_accounts_account_$1ischecked=on";
 	

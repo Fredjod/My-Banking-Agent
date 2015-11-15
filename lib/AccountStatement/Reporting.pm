@@ -477,7 +477,7 @@ sub controlBalance {
 	my( $self, $threshold ) = @_;
 	
 	my $statMTD = $self->getAccDataMTD;
-	my $dt_currmonth =  getAccDataMTD->getDate();
+	my $dt_currmonth =  $statMTD->getMonth();
 	my $log = Helpers::Logger->new();
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 
@@ -507,7 +507,7 @@ sub controlBalance {
 	$worksheet = $workbook->worksheet( 1 ); # cashflow sheet
 	my ( $row_min, $row_max ) = $worksheet->row_range();
 	my $balanceRisk = $worksheet->get_cell( 0, 7 )->unformatted();
-	for (my $row=$dt_currmonth->day(); $row <= $row_max; $row++) {
+	for (my $row=1; $row <= $row_max; $row++) {
 		my $lineTot = 0;
 		for (my $col = 2; $col <=6; $col ++) {
 			my $cell = $worksheet->get_cell( $row, $col );
@@ -517,7 +517,7 @@ sub controlBalance {
 			$lineTot += $worksheet->get_cell( $row, $col )->unformatted() ;
 		}
 		$balanceRisk  += $lineTot;
-		if ( $balanceRisk  < 0 ) {# risk of bank overdraft
+		if ( $balanceRisk  < 0 and $row > $dt_currmonth->day() ) { # risk of bank overdraft in the future
 			$risk = $row;
 			last;
 		}
@@ -545,7 +545,7 @@ sub controlBalance {
 			$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
 			"alert.overdraft.body.template"
 		);
-		$mail->buildOverdraftAlertBody ($self, $statMTD, $currentBalance, $dt_currmonth, 'ACTUAL');
+		$mail->buildOverdraftAlertBody ($self, $statMTD, $currentBalance, $dt_currmonth );
 		$mail->send();
 	} else {
 		if ($risk > 0 ) { # Found a risk if bank overdraft before the end of the month
@@ -555,7 +555,7 @@ sub controlBalance {
 				$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
 				"alert.risk.overdraft.body.template"
 			);
-			$mail->buildOverdraftAlertBody ($self, $statMTD, $balanceRisk, $dt_currmonth->set_day($risk), 'RISK');
+			$mail->buildOverdraftAlertBody ($self, $statMTD, $balanceRisk, $dt_currmonth->set_day($risk) );
 			$mail->send();
 		}
 	}

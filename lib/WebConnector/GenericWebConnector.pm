@@ -57,7 +57,8 @@ sub download {
 	# Parameters: Accountnumber, dateFrom, dateTo, $format
 	# Need to be implelented per bank website
 	# return the dowloaded file with the given format (ofx, qif)
-	return "";
+	# or return undef in case of any issue happened.
+	return undef;
 }
 
 sub downloadBankStatement {

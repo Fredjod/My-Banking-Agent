@@ -104,7 +104,7 @@ sub buildBalanceAlertBody {
 }
 
 sub buildOverdraftAlertBody {
-	my ($self, $report, $accountData, $balance, $dt, $type) = @_;
+	my ($self, $report, $accountData, $balance, $dt ) = @_;
 	my $template = $self->{_template};
 	
 	$template->param( ACCOUNT_DESC => $accountData->getAccountDesc() );
