@@ -3,25 +3,27 @@
 use lib "../lib/";
 
 use warnings;
+use strict;
 use DateTime;
 use Helpers::Logger;
 use Data::Dumper;
 
 my $logger = Helpers::Logger->new();
+my $prop = Helpers::ConfReader->new("properties/app.txt");
 
-my $connectorClass = 'WebConnector::'.'CMWebConnector';
+# Use the Web connector of the account bank
+my $connectorClass = 'WebConnector::'.$prop->readParamValue( 'connector.CREDITMUTUEL');
 eval "use $connectorClass";
 if( $@ ){
 	$logger->print ( "Cannot load $connectorClass: $@", Helpers::Logger::ERROR);
 	die("Cannot load $connectorClass: $@");
 }
-my $connector = $connectorClass->new( 'https://www.creditmutuel.fr/' );
-unless ( $connector->isa('WebConnector::GenericWebConnector') ) {
-	$logger->print ( "$connectorClass is a wrong web connector class. Must inherite from WebConnector::GenericWebConnector", Helpers::Logger::ERROR);
-	die "$connectorClass is a wrong web connector class. Must inherite from WebConnector::GenericWebConnector";
-}
+my $connector = $connectorClass->new( $prop->readParamValue( 'website.CREDITMUTUEL') );
+die $connectorClass.' is a wrong web connector class. Must inherite from WebConnector::GenericWebConnector'
+	unless $connector->isa('WebConnector::GenericWebConnector');
 
-my ($d,$m,$y) = '01/08/2015' =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/
+
+my ($d,$m,$y) = '01/11/2015' =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/
    or die;
 my $dt_from = DateTime->new(
    year      => $y,
@@ -30,7 +32,7 @@ my $dt_from = DateTime->new(
    time_zone => 'local',
 );
 
-($d,$m,$y) = '05/08/2015' =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/
+($d,$m,$y) = '15/11/2015' =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/
    or die;
 my $dt_to = DateTime->new(
    year      => $y,
@@ -42,7 +44,7 @@ my $dt_to = DateTime->new(
 $logger->print ( "Log in to CM website", Helpers::Logger::INFO);
 $connector->logIn('login','password');
 $logger->print ( "Download and parse bank statement...", Helpers::Logger::INFO);
-my $bankData = $connector->downloadBankStatement ( 'accountnumber', $dt_from, $dt_to );
+my $bankData = $connector->downloadBankStatement ( 'account_number', $dt_from, $dt_to );
 $logger->print ( "Log out to CM website", Helpers::Logger::INFO);
 $connector->logOut();
 print Dumper $bankData;

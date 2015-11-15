@@ -1,4 +1,4 @@
-package WebConnector::CMWebConnector;
+package WebConnector::CMWebConnector2;
 
 use lib '../../lib';
 use parent 'WebConnector::GenericWebConnector';
@@ -37,24 +37,23 @@ sub logIn
 	
 	# Page acceuil
 	$request->method('GET');
-	$request->url('https://www.creditmutuel.fr/cmidf/fr/banques/accueil/services-banque-a-distance.html');
+	$request->url('https://www.creditmutuel.fr/fr/authentification.html');
 	$response = $ua->request($request);
 	$cookie_jar->extract_cookies($response);
 	
 	# Login
 	$ua->cookie_jar($cookie_jar);
 	$request->method('POST');
-	$request->url('https://www.creditmutuel.fr/cmidf/fr/identification/default.cgi');
-	$request->header('Referer' => 'https://www.creditmutuel.fr/cmidf/fr/banques/accueil/services-banque-a-distance.html');
+	$request->url('https://www.creditmutuel.fr/fr/authentification.html');
 	$request->header('Content-Type' => 'application/x-www-form-urlencoded');
-	$request->content('_cm_app=SITFIN&_cm_langue=fr&_cm_user='.$login.'&_cm_pwd='.$password.'&input_label_pwd=Mot%20de%20passe&x=0&y=0');
+	$request->content('_cm_user='.$login.'&flag=password&_cm_pwd='.$password.'&submit.x=35&submit.y=15');
 	$response = $ua->request($request);
 	$cookie_jar->extract_cookies($response);
 	
 	# Page perso
 	$ua->cookie_jar($cookie_jar);
 	$request->method('GET');
-	$request->url('https://www.creditmutuel.fr/cmidf/fr/banque/espace_personnel.aspx');
+	$request->url('https://www.creditmutuel.fr/fr/banque/pageaccueil.html');
 	$request->header('Content-Type' => 'text/plain');
 	$request->content('');
 	$response = $ua->request($request);
@@ -67,12 +66,12 @@ sub logIn
 		$logger->print ( "HTML content: ".$response->content(), Helpers::Logger::DEBUG);
 		return 0;				
 	}
-	$logger->print ( "Login to website succeed", Helpers::Logger::INFO);
+	$logger->print ( "Login to website v2 succeed", Helpers::Logger::INFO);
 	
 	# Page Download
 	$ua->cookie_jar($cookie_jar);
 	$request->method('GET');
-	$request->url('https://www.creditmutuel.fr/cmidf/fr/banque/compte/telechargement.cgi');
+	$request->url('https://www.creditmutuel.fr/fr/banque/compte/telechargement.cgi');
 	$request->header('Content-Type' => 'text/plain');
 	$request->content('');
 	$response = $ua->request($request);
@@ -93,6 +92,7 @@ sub logIn
 sub logOut
 {
 	my ( $self ) = @_;
+	my $logger = Helpers::Logger->new();
 	my $ua = $self->{_ua};
 	my $cookie_jar = $self->{_cookie_jar};
 	my $request = HTTP::Request->new();
@@ -101,15 +101,24 @@ sub logOut
 	# Deconnexion
 	$ua->cookie_jar($cookie_jar);
 	$request->method('GET');
-	$request->url('https://www.creditmutuel.fr/cmidf/fr/identification/deconnexion/deconnexion.cgi');
+	$request->url('https://www.creditmutuel.fr/fr/deconnexion/deconnexion.cgi');
 	$request->header('Content-Type' => 'text/plain');
 	$request->content('');
 	$response = $ua->request($request);
 	$cookie_jar->extract_cookies($response);
 	$ua->cookie_jar($cookie_jar);
 	$request->method('GET');
-	$request->url('https://www.creditmutuel.fr/cmidf/fr/identification/msg_deconnexion.html');
+	$request->url('https://www.creditmutuel.fr/fr/identification/msg_deconnexion.html');
 	$response = $ua->request($request);
+	unless ($response->content() =~ /msg_deconnexion\.html/m) {
+		$logger->print ( "Logout to website failed!", Helpers::Logger::ERROR);
+		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
+		$self->loginLock();
+		$logger->print ( "HTML content: ".$response->content(), Helpers::Logger::DEBUG);
+		return 0;				
+	}
+	return 1;
+
 }
 
 sub download
@@ -140,10 +149,10 @@ sub download
 	$ua->cookie_jar($cookie_jar);
 	$request->method('POST');
 	$request->url($url);
-	$request->header('Referer' => 'https://www.creditmutuel.fr/cmidf/fr/banque/compte/telechargement.cgi');
+	$request->header('Referer' => 'https://www.creditmutuel.fr/fr/banque/compte/telechargement.cgi');
 	$request->header('Host' => 'www.creditmutuel.fr');
 	$request->header('Content-Type' => 'application/x-www-form-urlencoded');
-	$request->content('data_formats_selected='.$format.'&data_formats_options_cmi_download=0&data_formats_options_ofx_format=7&Bool%3Adata_formats_options_ofx_zonetiers=false&CB%3Adata_formats_options_ofx_zonetiers=on&data_formats_options_qif_fileformat=6&data_formats_options_qif_dateformat=0&data_formats_options_qif_amountformat=0&data_formats_options_qif_headerformat=0&Bool%3Adata_formats_options_qif_zonetiers=false&CB%3Adata_formats_options_qif_zonetiers=on&data_formats_options_csv_fileformat=2&data_formats_options_csv_dateformat=0&data_formats_options_csv_fieldseparator=0&data_formats_options_csv_amountcolnumber=1&data_formats_options_csv_decimalseparator=1&'.$checkedAccount.'&data_daterange_value=range&%5Bt%3Adbt%253adate%3B%5Ddata_daterange_startdate_value='.$arrayDateFrom[0].'%2F'.$arrayDateFrom[1].'%2F'.$arrayDateFrom[2].'&%5Bt%3Adbt%253adate%3B%5Ddata_daterange_enddate_value='.$arrayDateTo[0].'%2F'.$arrayDateTo[1].'%2F'.$arrayDateTo[2].'&_FID_DoDownload.x=37&_FID_DoDownload.y=10&data_accounts_selection=10000000&data_formats_options_cmi_show=True&data_formats_options_qif_show=True&data_formats_options_excel_show=True&data_formats_options_csv_show=True');
+	$request->content('data_formats_selected='.$format.'&data_formats_options_cmi_download=0&data_formats_options_ofx_format=7&Bool%3Adata_formats_options_ofx_zonetiers=false&CB%3Adata_formats_options_ofx_zonetiers=on&data_formats_options_qif_fileformat=6&data_formats_options_qif_dateformat=0&data_formats_options_qif_amountformat=0&data_formats_options_qif_headerformat=0&Bool%3Adata_formats_options_qif_zonetiers=false&CB%3Adata_formats_options_qif_zonetiers=on&data_formats_options_csv_fileformat=2&data_formats_options_csv_dateformat=0&data_formats_options_csv_fieldseparator=0&data_formats_options_csv_amountcolnumber=1&data_formats_options_csv_decimalseparator=1&'.$checkedAccount.'&data_daterange_value=range&%5Bt%3Adbt%253adate%3B%5Ddata_daterange_startdate_value='.$arrayDateFrom[0].'%2F'.$arrayDateFrom[1].'%2F'.$arrayDateFrom[2].'&%5Bt%3Adbt%253adate%3B%5Ddata_daterange_enddate_value='.$arrayDateTo[0].'%2F'.$arrayDateTo[1].'%2F'.$arrayDateTo[2].'&_FID_DoDownload.x=37&_FID_DoDownload.y=10&data_accounts_selection=10000000&data_formats_options_cmi_show=True&data_formats_options_qif_show=True&data_formats_options_excel_show=True&data_formats_options_excel_selected%255fformat=xl-2007&data_formats_options_csv_show=True');
 	$response = $ua->request($request);
 	$cookie_jar->extract_cookies($response);		
 	return $response->content;

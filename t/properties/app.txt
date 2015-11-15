@@ -55,7 +55,7 @@ workbook.dashboard.date.format = dd/mm/yyyy
 ###
 
 ### Internal Properties (shouldn't be updated by users)
-connector.CREDITMUTUEL = CMWebConnector
+connector.CREDITMUTUEL = CMWebConnector2
 website.CREDITMUTUEL = https://www.creditmutuel.fr/
 worksheet.categories.name = categories
 account.user.auth = BANK ACCOUNT AUTH
