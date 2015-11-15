@@ -55,8 +55,7 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 	$logger->print ( "Run the balance control", Helpers::Logger::INFO);
 	my $threshold = 0.05;
 	$threshold = ( $dt_to->wday() == 1 ) ? $prop->readParamValue('alert.weekly.threshold') : $prop->readParamValue('alert.daily.threshold');
-	my $negative = ( $prop->readParamValue('alert.negative.balance') eq 'on' );
-	$reportingProcessor->controlBalance ($threshold, $negative);
+	$reportingProcessor->controlBalance ($threshold);
 	
 	$logger->print ( 'End of the account processing '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
 }

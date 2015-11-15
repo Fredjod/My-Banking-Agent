@@ -28,8 +28,6 @@ mailing.list = myemail@server.com
 # 2 thresholds are managed by MBA, one for a daily check and one for a weekly check
 alert.weekly.threshold = 0.05
 alert.daily.threshold = 0.5
-### Triggering of an alert when the balance is < 0 (on or off param)
-alert.negative.balance = on
 ###
 
 ### Excel files path
@@ -69,4 +67,6 @@ expense.families = MONTHLY EXPENSES; WEEKLY EXPENSES; EXCEPTIONAL EXPENSES
 operation.keyword.default = DEFAULT
 workbook.dashboard.template.path = properties/dashboard_template.xls
 alert.body.template = properties/emailAlert_template.html
+alert.overdraft.body.template = properties/emailOverdraft_template.html
+alert.risk.overdraft.body.template = properties/emailOverdraftRisk_template.html
 ###

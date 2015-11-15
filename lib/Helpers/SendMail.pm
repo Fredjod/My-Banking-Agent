@@ -65,9 +65,11 @@ sub send {
 	$msg->send;
 }
 
-sub buildAlertBody {
+sub buildBalanceAlertBody {
 	my ($self, $report, $accountData, $currentBalance, $plannedBalance) = @_;
 	my $template = $self->{_template};
+	
+	$template->param( ACCOUNT_DESC => $accountData->getAccountDesc() );
 	
 	# Total value block
 	$template->param(ACTUAL => euroFormating($currentBalance));
@@ -97,6 +99,17 @@ sub buildAlertBody {
 		push (@loopLineDetails, buildDetailsLine ($fam, @$pivotDebit[0]->{$fam}, $report->sumForecastedOperationPerFamily($fam) ));
 	}	
 	$template->param(LOOP_LINE_DETAILS => \@loopLineDetails);
+	
+	$self->{_template} = $template;
+}
+
+sub buildOverdraftAlertBody {
+	my ($self, $report, $accountData, $balance, $dt, $type) = @_;
+	my $template = $self->{_template};
+	
+	$template->param( ACCOUNT_DESC => $accountData->getAccountDesc() );
+	$template->param( DATE => sprintf ("%02d/%02d/%04d", $dt->day(), $dt->month(), $dt->year()) );
+	$template->param( BALANCE => euroFormating($balance) );
 	
 	$self->{_template} = $template;
 }

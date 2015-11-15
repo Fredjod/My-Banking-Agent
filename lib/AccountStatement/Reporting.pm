@@ -474,11 +474,10 @@ sub buildCategoryDetails {
 }
 
 sub controlBalance {
-	my( $self, $threshold, $negative ) = @_;
+	my( $self, $threshold ) = @_;
 	
 	my $statMTD = $self->getAccDataMTD;
-	my $dh = Helpers::Date->new ();
-	my $dt_currmonth =  $dh->getDate();
+	my $dt_currmonth =  getAccDataMTD->getDate();
 	my $log = Helpers::Logger->new();
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 
@@ -501,24 +500,64 @@ sub controlBalance {
 	# Get the actuals balance (read from bank website)
 	my $ops = $statMTD->getOperations();
 	my $currentBalance = @$ops[$#{$ops}]->{SOLDE};
-	
-	# Check whether an alert is needed. If yes, an email is sent
-	my $alert = 0;
+
+	# Check whether a risk of bank overdraft is known from the actuals cashflow report
+	my $risk = 0;
+	$workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getActualsFilePath ( $self->getAccDataMTD ));	
+	$worksheet = $workbook->worksheet( 1 ); # cashflow sheet
+	my ( $row_min, $row_max ) = $worksheet->row_range();
+	my $balanceRisk = $worksheet->get_cell( 0, 7 )->unformatted();
+	for (my $row=$dt_currmonth->day(); $row <= $row_max; $row++) {
+		my $lineTot = 0;
+		for (my $col = 2; $col <=6; $col ++) {
+			my $cell = $worksheet->get_cell( $row, $col );
+			next unless $cell;
+			next unless length($cell);
+			next unless $cell->unformatted() =~ /^[+-]?\d+(\.\d+)?$/; # is a amount?
+			$lineTot += $worksheet->get_cell( $row, $col )->unformatted() ;
+		}
+		$balanceRisk  += $lineTot;
+		if ( $balanceRisk  < 0 ) {# risk of bank overdraft
+			$risk = $row;
+			last;
+		}
+	}
+
+	# Check whether an alert is needed due to a too hight variation between actual and forecasted balance.
 	my $var = abs( ($currentBalance-$plannedBalance)/$currentBalance );
-	if ( $var > $threshold || ($currentBalance <= 0 && $negative) ) { $alert = 1 }
-	my $subject = "Balance Variation Alert";
-	if (($currentBalance <= 0 && $negative)) { $subject = "!!! Bank Overdraft Alert !!!"; }
-	if ( $alert ) {
-		$log->print ( "$subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
+	if ( $var > $threshold ) { 
+		my $subject = "Balance Variation Alert";
+		$log->print ( "Email sending: $subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
 		my $mail = Helpers::SendMail->new(
 			$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
 			"alert.body.template"
 		);
-		$mail->buildAlertBody ($self, $statMTD, $currentBalance, $plannedBalance);
+		$mail->buildBalanceAlertBody ($self, $statMTD, $currentBalance, $plannedBalance);
 		$mail->send();
 	}
 	else {
-		$log->print ( "Account balance OK", Helpers::Logger::INFO);
+		$log->print ( "Account balance variation OK", Helpers::Logger::INFO);
+	}
+	if ($currentBalance < 0 ) { # Send an alert in case of actual bank overdraft.
+		my $subject = "!!! Bank Overdraft Alert !!!";
+		$log->print ( "Email sending: $subject: Actuals:$currentBalance", Helpers::Logger::INFO);
+		my $mail = Helpers::SendMail->new(
+			$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
+			"alert.overdraft.body.template"
+		);
+		$mail->buildOverdraftAlertBody ($self, $statMTD, $currentBalance, $dt_currmonth, 'ACTUAL');
+		$mail->send();
+	} else {
+		if ($risk > 0 ) { # Found a risk if bank overdraft before the end of the month
+			my $subject = "Bank Overdraft Risk";
+			$log->print ( "Email sending: $subject: forecasted:$balanceRisk on the $risk", Helpers::Logger::INFO);
+			my $mail = Helpers::SendMail->new(
+				$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
+				"alert.risk.overdraft.body.template"
+			);
+			$mail->buildOverdraftAlertBody ($self, $statMTD, $balanceRisk, $dt_currmonth->set_day($risk), 'RISK');
+			$mail->send();
+		}
 	}
 }
 

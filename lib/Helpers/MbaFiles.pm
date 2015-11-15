@@ -53,15 +53,15 @@ sub getActualsFilePath {
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $reportingDir = getReportingDirname ($accountData->getAccountNumber () );
 	my $dt = $accountData->getMonth();
-	my $dth = Helpers::Date->new ();
-	my $dtToday = $dth->getDate();
-	if ($dt->month() != $dtToday->month() && $dt->day() != $dtToday->day()) {
+
+	my $filePath =  $reportingDir.
+					sprintf("%02d-%02d", $dt->month(), $dt->day()).
+					$prop->readParamValue('account.reporting.actuals.prefix');	
+	
+	if (! -e $filePath ) {
 		unlink glob $reportingDir.'*'.$prop->readParamValue('account.reporting.actuals.prefix');
 	}
-	return  $reportingDir.
-			sprintf("%02d-%02d", $dt->month(), $dt->day()).
-			$prop->readParamValue('account.reporting.actuals.prefix')
-		;
+	return $filePath;
 }
 
 sub getReportingDirname {
