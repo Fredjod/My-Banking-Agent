@@ -503,6 +503,7 @@ sub controlBalance {
 
 	# Check whether a risk of bank overdraft is known from the actuals cashflow report
 	my $risk = 0;
+	my $overdraft = $prop->readParamValue('alert.overdraft.threshold');
 	$workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getActualsFilePath ( $self->getAccDataMTD ));	
 	$worksheet = $workbook->worksheet( 1 ); # cashflow sheet
 	my ( $row_min, $row_max ) = $worksheet->row_range();
@@ -517,14 +518,14 @@ sub controlBalance {
 			$lineTot += $worksheet->get_cell( $row, $col )->unformatted() ;
 		}
 		$balanceRisk  += $lineTot;
-		if ( $balanceRisk  < 0 and $row > $dt_currmonth->day() ) { # risk of bank overdraft in the future
+		if ( $balanceRisk  < $overdraft and $row > $dt_currmonth->day() ) { # risk of bank overdraft in the future
 			$risk = $row;
 			last;
 		}
 	}
 
 	# Check whether an alert is needed due to a too hight variation between actual and forecasted balance.
-	my $var = abs( ($currentBalance-$plannedBalance)/$currentBalance );
+	my $var = abs ($currentBalance-$plannedBalance);
 	if ( $var > $threshold ) { 
 		my $subject = "Balance Variation Alert";
 		$log->print ( "Email sending: $subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
@@ -538,7 +539,7 @@ sub controlBalance {
 	else {
 		$log->print ( "Account balance variation OK", Helpers::Logger::INFO);
 	}
-	if ($currentBalance < 0 ) { # Send an alert in case of actual bank overdraft.
+	if ($currentBalance < $overdraft ) { # Send an alert in case of actual bank overdraft.
 		my $subject = "!!! Bank Overdraft Alert !!!";
 		$log->print ( "Email sending: $subject: Actuals:$currentBalance", Helpers::Logger::INFO);
 		my $mail = Helpers::SendMail->new(

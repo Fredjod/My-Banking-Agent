@@ -24,10 +24,15 @@ mailing.list = myemail@server.com
 ####
 
 ### Alert thresholds that trigger email to the bank account owners
-# The threshold is a ratio (%) of the variation between planed and actual account balance
-# 2 thresholds are managed by MBA, one for a daily check and one for a weekly check
-alert.weekly.threshold = 0.05
-alert.daily.threshold = 0.5
+# The threshold is the absolute value (in euros) of the difference between forecasted and actual account balance
+# 2 thresholds are handled by MBA, one for a daily check and one used on Mondays, corresponding to the difference
+# at the end of previous week, normally more restrictive.
+# Mondays threshold
+alert.mondays.threshold = 300
+# Other days threshold
+alert.daily.threshold = 600
+# Minimum balance corresponding to a bank overdraft for you (0 or any positive or negative value).
+alert.overdraft.threshold = 0
 ###
 
 ### Excel files path
@@ -55,7 +60,7 @@ workbook.dashboard.date.format = dd/mm/yyyy
 ###
 
 ### Internal Properties (shouldn't be updated by users)
-connector.CREDITMUTUEL = CMWebConnector
+connector.CREDITMUTUEL = CMWebConnector2
 website.CREDITMUTUEL = https://www.creditmutuel.fr/
 worksheet.categories.name = categories
 account.user.auth = BANK ACCOUNT AUTH

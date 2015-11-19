@@ -59,8 +59,8 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 	
 		# Run the balance control
 		$logger->print ( "Run the balance control", Helpers::Logger::INFO);
-		my $threshold = 0.05;
-		$threshold = ( $dt_to->wday() == 1 ) ? $prop->readParamValue('alert.weekly.threshold') : $prop->readParamValue('alert.daily.threshold');
+		my $threshold = 100;
+		$threshold = ( $dt_to->wday() == 1 ) ? $prop->readParamValue('alert.mondays.threshold') : $prop->readParamValue('alert.daily.threshold');
 		$reportingProcessor->controlBalance ($threshold);
 	}
 	
