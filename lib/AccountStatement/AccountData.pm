@@ -12,8 +12,9 @@ use Helpers::ExcelWorkbook;
 use Spreadsheet::ParseExcel;
 
 
-use constant INCOME		=> 1;
-use constant EXPENSE	=> 2;
+use constant INCOME		=> 2;
+use constant EXPENSE	=> 1;
+
 
 sub new
 {
@@ -21,19 +22,20 @@ sub new
     
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
- 
-    
+     
     my $self = {
     	_bankName => initBankName($prop, $configFilePath),
     	_accountNumber =>	initAccountNumber($prop, $configFilePath),
     	_accountDesc =>	initAccountDesc($prop, $configFilePath),
     	_accountAuth => initAccountAuth ($prop, $configFilePath),
-    	_categories => 	initCategoriesDefinition($prop, $configFilePath),
+    	_categories => 	undef,
+    	_default => undef,
     	_operations => undef,
     	_month => $dtMonth,
     };
     if ( !defined $self->{_accountNumber} ) { $logger->print (  "bank account number value not found!", Helpers::Logger::ERROR); die; }
     bless $self, $class;
+    initCategoriesAndDefault($self, $prop, $configFilePath);
     return $self;
 }
 
@@ -74,15 +76,15 @@ sub lookForPairKeyValue {
 	return $value;	
 }
 
-sub initCategoriesDefinition {
-	my ($prop, $configFilePath) = @_;
+sub initCategoriesAndDefault {
+	my ($self, $prop, $configFilePath) = @_;
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( $configFilePath );	
 	my $worksheet = $workbook->worksheet($prop->readParamValue("worksheet.categories.name"));		
 	my ( $row_min, $row_max ) = $worksheet->row_range();
 	my @categories;
-	push (@categories, undef); # The index 0 is used to store the incomes default caterory
-	push (@categories, undef); # The index 1 is used to store the expenses default caterory
+	my @default;
 	
+	my $id = 0;
 	for my $row ( $row_min .. $row_max ) {
 		next unless ($worksheet->get_cell( $row, 0 ) && $worksheet->get_cell( $row, 1 ));
 		my $operationType = validateFamily($prop, $worksheet->get_cell( $row, 0 )->value());
@@ -97,22 +99,19 @@ sub initCategoriesDefinition {
 			my @list = map { trim($_) } split(',', $worksheet->get_cell( $row, 2 )->value());
 			$record{KEYWORDS} = \@list;
 		}
-		if ($#{$record{KEYWORDS}} == -1) {
-			push (@categories, \%record);
+		if ($#{$record{KEYWORDS}} == -1) { # no keyword defiened for this category.
+			$categories[$id++] = \%record;
 		} else {
-			if (uc ${$record{KEYWORDS}}[0] eq uc $prop->readParamValue("operation.keyword.default")) {
-				if ($record{TYPEOPE} eq INCOME ) {
-					$categories[0] = \%record;
-				}
-				else {
-					$categories[1] = \%record;
-				}
-			} else {
-				push (@categories, \%record);
+			my $defaultKey = ($prop->readParamValue("operation.keyword.default"));
+			if ( ${$record{KEYWORDS}}[0] =~ m/$defaultKey/i ) {
+				addDefault (\@default, $1, $record{TYPEOPE}, $id);
 			}
+			$categories[$id++] = \%record;
 		}
 	}
-	return \@categories;	
+	$self->{_categories} = \@categories;
+	@default = sort { $a->{LIMIT} <=> $b->{LIMIT} || $a->{TYPE} <=> $b->{TYPE} } @default;
+	$self->{_default} = \@default;
 }
 
 sub validateFamily {
@@ -142,6 +141,71 @@ sub trim {
 	return $str =~ s/^\s+|\s+$//gr;
 }
 
+sub addDefault {
+	my( $default, $limit, $type, $index ) = @_;
+	
+ 	# Default data structure (_default):
+	# [ 
+	#	{
+    #      'TYPE' => 'INCOME / EXPENSE',  # Is this a default for income or expense
+    #      'INDEX' => 0...N,		  # This is the category index in the arry _categories
+   	#      'LIMIT' => 'NNN',			  # Allow several default category for income or expense. 
+   	# 										Assign an operation to this category if its amount is >= NNN   
+    #    },
+    #    {
+    #		...
+	#	 }
+    # ]
+		
+	my %record;
+	$record{TYPE} = $type;
+	$record{INDEX} = $index;
+	if ($type == EXPENSE) {$limit = -$limit; }
+	$record{LIMIT} = $limit;
+	push ($default, \%record);	
+}
+
+sub isCategDefault {
+	my ($self,  $id ) = @_;
+	my $default = $self->{_default};
+	for (my $i=0; $i<$#{$default}+1; $i++) {
+		if (@$default[$i]->{INDEX} == $id) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+sub findDefaultCategId {
+	my( $self, $amount, $type ) = @_;
+	my $default = $self->{_default};
+	my $id0;
+	# Find the index of DEFAULT-O for EXPENSE or for INCOME in the default array
+	if ($type == EXPENSE ) {
+		$id0 = 0;
+		while (@$default[$id0]->{TYPE} == $type ) { $id0++; }
+	}
+	else {
+		$id0 = $#{$default};
+		while (@$default[$id0]->{TYPE} == $type ) { $id0--; }		
+	}
+	# Find the index for which the 
+	my $id;
+	if ( $type == EXPENSE ) {
+		$id = 0;
+		while ( $id < $id0 && $amount > @$default[$id]->{LIMIT} ) {
+			$id++;
+		}
+	} else {
+		$id = $#{$default};
+		while ( $id > $id0 && $amount < @$default[$id]->{LIMIT} ) {
+			$id--;
+		}		
+	}
+	return @$default[$id]->{INDEX};
+
+}
+
 sub parseBankStatement {
 	my( $self, $bankData ) = @_;
 	# bankData is an array of hashes. Each hash is a transaction with the following info and format:
@@ -165,15 +229,17 @@ sub parseBankStatement {
 	foreach my $line (@$bankData) {
 		my $default = 1;
 		my $i;
-		for ($i=2; $i<$#{$categories}+1; $i++) {
-			my $keywords = @$categories[$i]->{KEYWORDS};
-			foreach my $keyword (@$keywords) {
-				if ($keyword ne '' && $line->{DETAILS} =~ /$keyword/) {
-					$default = 0;
-					last;
+		for ($i=0; $i<$#{$categories}+1; $i++) {
+			if ( not isCategDefault( $self, $i ) ) {
+				my $keywords = @$categories[$i]->{KEYWORDS};
+				foreach my $keyword (@$keywords) {
+					if ($keyword ne '' && $line->{DETAILS} =~ /$keyword/) {
+						$default = 0;
+						last;
+					}
 				}
+				if (not $default) { last; }
 			}
-			if (not $default) { last; }
 		}
 		if (not $default) {
 			# Check the consistency of operation type and category family
@@ -188,10 +254,10 @@ sub parseBankStatement {
 		}
 		if ($default) {
 			if ($line->{AMOUNT} < 0) { # It's an expense
-				push (@operations, buildExtendedRecord($line, @$categories[1]));
+				push (@operations, buildExtendedRecord($line, @$categories[ findDefaultCategId ($self, $line->{AMOUNT}, EXPENSE) ]));
 			}
 			else { # It's an income
-				push (@operations, buildExtendedRecord($line, @$categories[0]));
+				push (@operations, buildExtendedRecord($line, @$categories[ findDefaultCategId ($self, $line->{AMOUNT}, INCOME) ]));
 			}
 		}
 	}
@@ -224,7 +290,7 @@ sub buildExtendedRecord {
 	$operationRecord{DATE}		= $line->{DATE};
 	$operationRecord{DAY}		= $date->day();
 	$operationRecord{WDAY}		= int(($date->day()-1)/7).'.'.$date->wday();
-	$operationRecord{WDAYNAME}	=$date->day_name();		
+	$operationRecord{WDAYNAME}	= $date->day_name();		
 	$operationRecord{DEBIT}		= ( $line->{AMOUNT} < 0 ) ? $line->{AMOUNT} : undef;
 	$operationRecord{CREDIT}	= ( $line->{AMOUNT} >= 0 ) ? $line->{AMOUNT} : undef;
 	$operationRecord{TYPE}		= $categoryRecord->{TYPEOPE};
@@ -304,6 +370,11 @@ sub getOperations {
 sub getMonth {
 	my( $self) = @_;
 	return $self->{_month};		
+}
+
+sub getDefault {
+	my( $self) = @_;
+	return $self->{_default};		
 }
 
 1;

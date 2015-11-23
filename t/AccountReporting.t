@@ -1,4 +1,4 @@
-use Test::More tests => 16;
+use Test::More tests => 12;
 # use Test::More qw( no_plan );
 use lib '../lib';
 use Data::Dumper;
@@ -40,9 +40,9 @@ $report->createPreviousMonthClosingReport();
 my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $data );
 my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 my $ws = $wb->worksheet( 0 );
-is( $ws->get_cell( 9, 1 )->unformatted(), -1186.82, 'Cell B10 value?');
-is( $ws->get_cell( 16, 1 )->unformatted(), -102.74, 'Cell B17 value?');
-is( $ws->get_cell( 11, 4 )->unformatted(), 223.1, 'Cell E12 value?');
+is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'Cell B10 value?');
+is( $ws->get_cell( 16, 1 )->unformatted(), -1006.82, 'Cell B17 value?');
+is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'Cell E12 value?');
 $ws = $wb->worksheet( 1 );
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Cell E4 value?');
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Cell C9 value?');
@@ -71,7 +71,7 @@ $ws = $wb->worksheet( 1 );
 is( $ws->get_cell( 5, 2 )->unformatted() + 
 	$ws->get_cell( 5, 3 )->unformatted() +
 	$ws->get_cell( 5, 4 )->unformatted(),
-	-1523.7, 'Sum of C6:E6?');
+	-1324.75, 'Sum of C6:E6?');
 #is( $ws->get_cell( 19, 4 )->unformatted() +
 #	$ws->get_cell( 19, 5 )->unformatted(),
 #	-495, 'Sum of E20:F20?');	
