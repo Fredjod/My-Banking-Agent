@@ -11,4 +11,9 @@ make install
 ./localperl/bin/cpanm LWP::UserAgent
 ./localperl/bin/cpanm LWP::Protocol::https
 ./localperl/bin/cpanm Parse::Decrescent
-94Mo
+./localperl/bin/cpanm Spreadsheet::ParseExcel
+./localperl/bin/cpanm Spreadsheet::XLSX
+./localperl/bin/cpanm Spreadsheet::WriteExcel
+./localperl/bin/cpanm MIME::Lite
+du ./localperl
+98 Mo
