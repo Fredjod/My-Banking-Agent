@@ -34,34 +34,30 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 	my $dt_from = $dth->getDate();	
 	$dt_from->set_day(1);
 	if ( ! downloadBankStatementBetweenTwoDate ($accountMTD, $dt_from, $dt_to) ) {
-		$logger->print ( $accountMTD->getAccountNumber." can not be loaded", Helpers::Logger::ERROR);
+		$logger->print ( $accountMTD->getAccountNumber." can not be loaded", Helpers::Logger::INFO);
 	}
-	else {
-	
-		# Check if the closing report processing is needed
-		if (! -e Helpers::MbaFiles->getClosingFilePath($accountPRM) ) {
-			$logger->print ( "Closing the previous month", Helpers::Logger::INFO);
-			# Build 2 date: 1st and last day of the previous month
-			my $dt_from_prm = $dth->rollPreviousMonth();	
-			$dt_from_prm->set_day(1);
-			my $dt_to_prm = DateTime->last_day_of_month( year => $dt_from_prm->year(), month => $dt_from_prm->month() );
-			if ( ! downloadBankStatementBetweenTwoDate ($accountPRM, $dt_from_prm, $dt_to_prm) ) {
-				$logger->print ( $accountPRM->getAccountNumber." can not be loaded", Helpers::Logger::ERROR);
-			} else {
-				$logger->print ( "Processing of the previous month closing report", Helpers::Logger::INFO);
-				$reportingProcessor->createPreviousMonthClosingReport();
-			}
+	# Check if the closing report processing is needed
+	if (! -e Helpers::MbaFiles->getClosingFilePath($accountPRM) ) {
+		$logger->print ( "Closing the previous month", Helpers::Logger::INFO);
+		# Build 2 date: 1st and last day of the previous month
+		my $dt_from_prm = $dth->rollPreviousMonth();	
+		$dt_from_prm->set_day(1);
+		my $dt_to_prm = DateTime->last_day_of_month( year => $dt_from_prm->year(), month => $dt_from_prm->month() );
+		if ( ! downloadBankStatementBetweenTwoDate ($accountPRM, $dt_from_prm, $dt_to_prm) ) {
+			$logger->print ( $accountPRM->getAccountNumber." can not be loaded", Helpers::Logger::INFO);
+		} else {
+			$logger->print ( "Processing of the previous month closing report", Helpers::Logger::INFO);
+			$reportingProcessor->createPreviousMonthClosingReport();
 		}
-		
+	}
+	if (defined $accountMTD->getOperations()) {
 		# Generate the actuals reporting
 		$logger->print ( "Processing of the actuals report", Helpers::Logger::INFO);
 		$reportingProcessor->createActualsReport();
 	
 		# Run the balance control
 		$logger->print ( "Run the balance control", Helpers::Logger::INFO);
-		my $threshold = 100;
-		$threshold = ( $dt_to->wday() == 1 ) ? $prop->readParamValue('alert.mondays.threshold') : $prop->readParamValue('alert.daily.threshold');
-		$reportingProcessor->controlBalance ($threshold);
+		$reportingProcessor->controlBalance ( $dt_to->wday() );
 	}
 	
 	$logger->print ( 'End of the account processing '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
@@ -97,7 +93,7 @@ sub downloadBankStatementBetweenTwoDate {
 	
 	# Process the operations into the accountData object
 	$logger->print ( "Parsing of bank data", Helpers::Logger::INFO);
-	if (defined $bankData) {
+	if (defined $bankData && $#{$bankData} > 0) {
 		$account->parseBankStatement($bankData);
 		return 1;
 	} else {

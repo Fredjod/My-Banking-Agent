@@ -61,6 +61,7 @@ sub createActualsReport {
 	
 	$self->generateDetailsSheet($self->getAccDataMTD(), $wb_out, $currency_format, $date_format);
 	$self->generateActualsCashflowSheet( $self->getAccDataMTD(), $wb_out, $currency_format, $date_format, $current_format_actuals);
+	$self->generateVariationSheet ( $self->getAccDataMTD(), $wb_out, $currency_format, $date_format );
 }
 
 sub generateSummarySheet
@@ -70,7 +71,8 @@ sub generateSummarySheet
 	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));
 	my $dt_prevmonth = $statement->getMonth()->clone();
 		
-
+	# TODO: Gérer le cas ou il n'y a pas d'opérations disponible
+	
 	my $ws_tpl = $wb_tpl->worksheet( 0 );		
 	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
 
@@ -89,11 +91,14 @@ sub generateSummarySheet
 			my $font = Helpers::ExcelWorkbook->fontTranslator($fx_tpl->{Font});
 			my $shading = Helpers::ExcelWorkbook->cellFormatTranslator($fx_tpl);
 			my $fx_out = $wb_out->add_format( %$font, %$shading);
+			my $balance = 	@$ops[0]->{SOLDE} - ( (! defined @$ops[0]->{DEBIT} ? 0 : @$ops[0]->{DEBIT} )
+							+ (! defined @$ops[0]->{CREDIT} ? 0 : @$ops[0]->{CREDIT} ) 
+							 );		
 
 			if ($value eq '<ACCOUNT_NUMBER>') { $ws_out->write( $row+$rshift, $col, '\''.$statement->getAccountNumber, $fx_out ); next; }
 			if ($value eq '<ACCOUNT_DESC>') { $ws_out->write( $row+$rshift, $col, $statement->getAccountDesc, $fx_out); next; }
 			if ($value eq '<CURR_MONTH>') { $ws_out->write( $row+$rshift, $col, $dt_prevmonth->month_name().' '.$dt_prevmonth->year(), $fx_out ); next; }
-			if ($value eq '<INIT_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[0]->{SOLDE}, $currency_format ); next; }
+			if ($value eq '<INIT_BALANCE>') { $ws_out->write( $row+$rshift, $col, $balance, $currency_format ); next; }
 			if ($value eq '<END_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[$#{$ops}]->{SOLDE}, $currency_format ); next; }
 			if ($value eq '<LOOP_EXPENSES>') {
 				my $rshift = $self->displayPivotSumup($statement, $wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'DEBIT');
@@ -169,7 +174,18 @@ sub generateCashflowSheet
 	my @cashflow = ();
 	my $ws_tpl = $wb_tpl->worksheet( 2 );		
 	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name().'-'.sprintf ("%4d-%02d-%02d", $dt_currmonth->year, $dt_currmonth->month, $dt_currmonth->day ) );
+	my $balance = 0;
 	my $ops = $statMTD->getOperations();
+	if (defined $ops) {
+		$balance = @$ops[0]->{SOLDE} - ( (! defined @$ops[0]->{DEBIT} ? 0 : @$ops[0]->{DEBIT} )
+							+ (! defined @$ops[0]->{CREDIT} ? 0 : @$ops[0]->{CREDIT} ) 
+							 );		
+	} else {
+		$ops = $statPRM->getOperations();
+		if (defined $ops) {
+			$balance = @$ops[$#{$ops}]->{SOLDE};
+		}
+	}
 	
 	### cashflow sheet
 	# init cashflow data
@@ -179,19 +195,17 @@ sub generateCashflowSheet
 	 [
 		'DATE',
 		'WDAY',
-		'MONTHLY EXPENSES',
 		'MONTHLY INCOMES',
+		'EXCEPTIONAL INCOMES',
+		'MONTHLY EXPENSES',
 		'WEEKLY EXPENSES',
 		'EXCEPTIONAL EXPENSES',
-		'EXCEPTIONAL INCOMES',
-		@$ops[0]->{SOLDE} - ( (! defined @$ops[0]->{DEBIT} ? 0 : @$ops[0]->{DEBIT} )
-							+ (! defined @$ops[0]->{CREDIT} ? 0 : @$ops[0]->{CREDIT} ) 
-							 )
+		$balance
 	 ]
 	);
 	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
 	
-	if ($dt_currmonth->day > 1) { # We are NOT at the begining of the month 
+	if ( defined $statMTD->getOperations() ) { # We are NOT at the begining of the month 
 		$self->populateCashflowSheet (\@cashflow, $statMTD, 1, $dt_currmonth->day(), 'ACTUALS', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
 		if ($dt_currmonth->day() < $dt_lastday->day() ) {
 			$self->populateCashflowSheet (\@cashflow, $statPRM, $dt_currmonth->day()+1, $dt_lastday->day(), 'FORECASTED', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
@@ -200,9 +214,11 @@ sub generateCashflowSheet
 	else {
 			$self->populateCashflowSheet (\@cashflow, $statPRM, 1, $dt_lastday->day(), 'FORECASTED', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);	
 	}
-	$ws_out->set_column(0, 1,  10);
-	$ws_out->set_column(2, 4,  19);
-	$ws_out->set_column(5, 6,  22);	
+	$ws_out->set_column(0, 1,  10);	
+	$ws_out->set_column(2, 2,  19);
+	$ws_out->set_column(3, 3,  23);
+	$ws_out->set_column(4, 5,  19);
+	$ws_out->set_column(6, 6,  23);	
 	$ws_out->set_column(7, 7,  10);	
 	$ws_out->set_zoom(95);
 }
@@ -229,11 +245,11 @@ sub generateActualsCashflowSheet
 	 [
 		'DATE',
 		'WDAY',
-		'MONTHLY EXPENSES',
 		'MONTHLY INCOMES',
+		'EXCEPTIONAL INCOMES',
+		'MONTHLY EXPENSES',
 		'WEEKLY EXPENSES',
 		'EXCEPTIONAL EXPENSES',
-		'EXCEPTIONAL INCOMES',
 		@$ops[0]->{SOLDE} - ( (! defined @$ops[0]->{DEBIT} ? 0 : @$ops[0]->{DEBIT} )
 							+ (! defined @$ops[0]->{CREDIT} ? 0 : @$ops[0]->{CREDIT} ) 
 							 )
@@ -245,11 +261,80 @@ sub generateActualsCashflowSheet
 	if ($dt_currmonth->day() < $dt_lastday->day() ) {
 		$self->pastExcelSheet ( $wb_out, $ws_out, $dt_currmonth->day()+1 );
 	}
-	$ws_out->set_column(0, 1,  10);
-	$ws_out->set_column(2, 4,  19);
-	$ws_out->set_column(5, 6,  22);	
+	$ws_out->set_column(0, 1,  10);	
+	$ws_out->set_column(2, 2,  19);
+	$ws_out->set_column(3, 3,  23);
+	$ws_out->set_column(4, 5,  19);
+	$ws_out->set_column(6, 6,  23);	
 	$ws_out->set_column(7, 7,  10);	
 	$ws_out->set_zoom(95);
+}
+
+sub generateVariationSheet {
+	my ( $self, $statMTD, $wb_out, $currency_format, $date_format ) = @_;
+	my $dt_currmonth =  $statMTD->getMonth();
+	my $sheetName = 'Variation'.'-'.sprintf ("%4d-%02d-%02d", $dt_currmonth ->year, $dt_currmonth ->month, $dt_currmonth ->day );
+	my $ws_out = $wb_out->add_worksheet( $sheetName );
+
+	# Write header line
+	my @dataRow = (
+	 [
+		'',
+		'Actuals MTD',
+		'Forecasted MTD',
+		'Variation'
+	 ]
+	);
+	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
+	
+	# Compute the planned balance at the current date in the cashflow forecast sheet
+	my $plannedBalance = $self->computeForecastedBalancePRM ();
+	
+	# Get the actuals balance (read from bank website)
+	my $ops = $statMTD->getOperations();
+	my $currentBalance = @$ops[$#{$ops}]->{SOLDE};
+	
+	my $row = 1;
+	@dataRow = (
+	 [
+		'BALANCE',
+		$currentBalance,
+		$plannedBalance,
+		'=B'.($row+1).'-C'.($row+1)
+	 ]
+	);
+	$self->displayDetailsDataRow ( $ws_out, $row, \@dataRow, $date_format, $currency_format ) ;
+	
+	my $pivotCredit = $statMTD->groupBy ('FAMILY', 'CREDIT');
+	$row = 3;
+	foreach my $fam ('MONTHLY INCOMES', 'EXCEPTIONAL INCOMES' ) {
+		@dataRow = (
+		 [
+			$fam,
+			@$pivotCredit[0]->{$fam},
+			$self->sumForecastedOperationPerFamily($fam),
+			'=B'.($row+1).'-C'.($row+1)
+		 ]
+		);
+		$self->displayDetailsDataRow ( $ws_out, $row, \@dataRow, $date_format, $currency_format ) ;
+		$row++;
+	}
+	my $pivotDebit = $statMTD->groupBy ('FAMILY', 'DEBIT');	
+	$row++;
+	foreach my $fam ('MONTHLY EXPENSES', 'WEEKLY EXPENSES', 'EXCEPTIONAL EXPENSES') {
+		@dataRow = (
+		 [
+			$fam,
+			@$pivotDebit[0]->{$fam},
+			$self->sumForecastedOperationPerFamily($fam),
+			'=B'.($row+1).'-C'.($row+1)
+		 ]
+		);
+		$self->displayDetailsDataRow ( $ws_out, $row, \@dataRow, $date_format, $currency_format ) ;
+		$row++;
+	}
+	$ws_out->set_column(0, 0,  23);	
+	$ws_out->set_column(1, 3,  15);
 }
 
 sub populateCashflowSheet {
@@ -300,20 +385,20 @@ sub populateCashflowSheet {
 		 [
 			@$cashflow[$i]->{DATE},
 			@$cashflow[$i]->{WDAYNAME},
-			@$cashflow[$i]->{'MONTHLY EXPENSES'},
 			@$cashflow[$i]->{'MONTHLY INCOMES'},
+			@$cashflow[$i]->{'EXCEPTIONAL INCOMES'},
+			@$cashflow[$i]->{'MONTHLY EXPENSES'},
 			@$cashflow[$i]->{'WEEKLY EXPENSES'},
 			@$cashflow[$i]->{'EXCEPTIONAL EXPENSES'},
-			@$cashflow[$i]->{'EXCEPTIONAL INCOMES'},
 			'=H'.($i+1).'+SUM(C'.($i+2).':G'.($i+2).')'
 		 ],
 		 [ undef,
 		   undef,
-		   @$cashflow[$i]->{'MONTHLY EXPENSES DETAILS'},
 		   @$cashflow[$i]->{'MONTHLY INCOMES DETAILS'},
+		   @$cashflow[$i]->{'EXCEPTIONAL INCOMES DETAILS'},
+		   @$cashflow[$i]->{'MONTHLY EXPENSES DETAILS'},
 		   @$cashflow[$i]->{'WEEKLY EXPENSES DETAILS'},
 		   @$cashflow[$i]->{'EXCEPTIONAL EXPENSES DETAILS'},
-		   @$cashflow[$i]->{'EXCEPTIONAL INCOMES DETAILS'},
 		   undef,
 		 ]
 		);
@@ -473,14 +558,12 @@ sub buildCategoryDetails {
 	
 }
 
-sub controlBalance {
-	my( $self, $threshold ) = @_;
+sub computeForecastedBalancePRM {
+	my( $self ) = @_;
 	
 	my $statMTD = $self->getAccDataMTD;
 	my $dt_currmonth =  $statMTD->getMonth();
-	my $log = Helpers::Logger->new();
-	my $prop = Helpers::ConfReader->new("properties/app.txt");
-
+	
 	# Compute the forecasted balance recorded in the cashflow sheet
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getClosingFilePath ( $self->getAccDataPRM ));	
 	my $worksheet = $workbook->worksheet( 2 ); # cashflow sheet
@@ -496,6 +579,20 @@ sub controlBalance {
 		}
 		$plannedBalance += $lineTot;
 	}
+	return $plannedBalance;
+}
+
+sub controlBalance {
+	my( $self, $wkday ) = @_;
+	
+	my $statMTD = $self->getAccDataMTD;
+	my $dt_currmonth =  $statMTD->getMonth();
+
+	my $log = Helpers::Logger->new();
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+
+	# Compute the planned balance at the current date in the cashflow forecast sheet
+	my $plannedBalance = $self->computeForecastedBalancePRM ();
 	
 	# Get the actuals balance (read from bank website)
 	my $ops = $statMTD->getOperations();
@@ -504,8 +601,8 @@ sub controlBalance {
 	# Check whether a risk of bank overdraft is known from the actuals cashflow report
 	my $risk = 0;
 	my $overdraft = $prop->readParamValue('alert.overdraft.threshold');
-	$workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getActualsFilePath ( $self->getAccDataMTD ));	
-	$worksheet = $workbook->worksheet( 1 ); # cashflow sheet
+	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getActualsFilePath ( $self->getAccDataMTD ));	
+	my $worksheet = $workbook->worksheet( 1 ); # cashflow sheet
 	my ( $row_min, $row_max ) = $worksheet->row_range();
 	my $balanceRisk = $worksheet->get_cell( 0, 7 )->unformatted();
 	for (my $row=1; $row <= $row_max; $row++) {
@@ -525,8 +622,9 @@ sub controlBalance {
 	}
 
 	# Check whether an alert is needed due to a too hight variation between actual and forecasted balance.
+	my $threshold = $prop->readParamValue('alert.mondays.variation.threshold');
 	my $var = abs ($currentBalance-$plannedBalance);
-	if ( $var > $threshold ) { 
+	if ( $var > $threshold && $wkday == 1) { 
 		my $subject = "Balance Variation Alert";
 		$log->print ( "Email sending: $subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
 		my $mail = Helpers::SendMail->new(
@@ -564,8 +662,8 @@ sub controlBalance {
 
 sub sumForecastedOperationPerFamily {
 	my( $self, $family ) = @_;
-	my $dh = Helpers::Date->new ();
-	my $dt_currmonth =  $dh->getDate();
+	my $statMTD = $self->getAccDataMTD;
+	my $dt_currmonth =  $statMTD->getMonth();
 	my $totFam = 0;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getClosingFilePath ( $self->getAccDataPRM ) );	

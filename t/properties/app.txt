@@ -25,12 +25,8 @@ mailing.list = myemail@server.com
 
 ### Alert thresholds that trigger email to the bank account owners
 # The threshold is the absolute value (in euros) of the difference between forecasted and actual account balance
-# 2 thresholds are handled by MBA, one for a daily check and one used on Mondays, corresponding to the difference
-# at the end of previous week, normally more restrictive.
 # Mondays threshold
-alert.mondays.threshold = 300
-# Other days threshold
-alert.daily.threshold = 600
+alert.mondays.variation.threshold = 300
 # Minimum balance corresponding to a bank overdraft for you (0 or any positive or negative value).
 alert.overdraft.threshold = 0
 ###

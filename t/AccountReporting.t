@@ -69,9 +69,10 @@ $ws = $wb->worksheet( 1 );
 #	$ws->get_cell( 4, 5 )->unformatted(),
 #	982.27, 'Sum of C5:F5?');
 is( $ws->get_cell( 5, 2 )->unformatted() + 
-	$ws->get_cell( 5, 3 )->unformatted() +
-	$ws->get_cell( 5, 4 )->unformatted(),
-	-1324.75, 'Sum of C6:E6?');
+	$ws->get_cell( 5, 4 )->unformatted() +
+	$ws->get_cell( 5, 5 )->unformatted() +
+	$ws->get_cell( 5, 6 )->unformatted(),
+	-1523.70, 'Sum of C6:E6?');
 #is( $ws->get_cell( 19, 4 )->unformatted() +
 #	$ws->get_cell( 19, 5 )->unformatted(),
 #	-495, 'Sum of E20:F20?');	
