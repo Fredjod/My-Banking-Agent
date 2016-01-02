@@ -22,7 +22,8 @@ sub new
     
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
-     
+    $logger->print ( "Opening account config file: $configFilePath", Helpers::Logger::DEBUG);
+    
     my $self = {
     	_bankName => initBankName($prop, $configFilePath),
     	_accountNumber =>	initAccountNumber($prop, $configFilePath),
@@ -31,6 +32,7 @@ sub new
     	_categories => 	undef,
     	_default => undef,
     	_operations => undef,
+    	_balance => 0,
     	_month => $dtMonth,
     };
     if ( !defined $self->{_accountNumber} ) { $logger->print (  "bank account number value not found!", Helpers::Logger::ERROR); die; }
@@ -305,13 +307,14 @@ sub buildExtendedRecord {
 sub groupBy {
 	my( $self, $key, $value ) = @_;
 	my $ope = $self->getOperations();
-	my %pivot;
+	my %pivot = ();
 	my $tot = 0;
-	
-	for (my $i=0; $i<$#{$ope}+1; $i++) {
-		if (defined @$ope[$i]->{$value} && @$ope[$i]->{$value} ne '') {
-			$pivot{@$ope[$i]->{$key}} += @$ope[$i]->{$value};
-			$tot += @$ope[$i]->{$value};
+	if (defined $ope) {
+		for (my $i=0; $i<$#{$ope}+1; $i++) {
+			if (defined @$ope[$i]->{$value} && @$ope[$i]->{$value} ne '') {
+				$pivot{@$ope[$i]->{$key}} += @$ope[$i]->{$value};
+				$tot += @$ope[$i]->{$value};
+			}
 		}
 	}
 	return [\%pivot, $tot];
@@ -320,17 +323,19 @@ sub groupBy {
 sub groupByWhere {
 	my( $self, $key, $value, $where ) = @_;
 	my $ope = $self->getOperations();
-	my %pivot;
+	my %pivot = ();
 	my $tot = 0;
 	
-	for (my $i=0; $i<$#{$ope}+1; $i++) {
-		if (defined @$ope[$i]->{$value} && @$ope[$i]->{$value} ne '') {
-			my $boolWhere = 1;
-			for (my $w=0; $w<$#{$where}+1; $w=$w+2) { 
-				 if (@$ope[$i]->{@$where[$w]} ne @$where[$w+1]) { $boolWhere = 0 } }
-			if ($boolWhere) {
-				$pivot{@$ope[$i]->{$key}} += @$ope[$i]->{$value};
-				$tot += @$ope[$i]->{$value};
+	if (defined $ope) {
+		for (my $i=0; $i<$#{$ope}+1; $i++) {
+			if (defined @$ope[$i]->{$value} && @$ope[$i]->{$value} ne '') {
+				my $boolWhere = 1;
+				for (my $w=0; $w<$#{$where}+1; $w=$w+2) { 
+					 if (@$ope[$i]->{@$where[$w]} ne @$where[$w+1]) { $boolWhere = 0 } }
+				if ($boolWhere) {
+					$pivot{@$ope[$i]->{$key}} += @$ope[$i]->{$value};
+					$tot += @$ope[$i]->{$value};
+				}
 			}
 		}
 	}
@@ -375,6 +380,16 @@ sub getMonth {
 sub getDefault {
 	my( $self) = @_;
 	return $self->{_default};		
+}
+
+sub getBalance {
+	my( $self) = @_;
+	return $self->{_balance};		
+}
+
+sub setBalance {
+	my( $self, $balance) = @_;
+	$self->{_balance} = $balance;		
 }
 
 1;

@@ -29,14 +29,18 @@ close $in;
 my $parser = WebConnector::GenericWebConnector->new();
 my $balance = $parser->parseOFXforBalance($ofx, '.');
 my $bankData = $parser->parseQIF ($qif, '([0-9]{2})\/([0-9]{2})\/([0-9]{2})', 0, ',', '.');
-$parser->backwardBalanceCompute ( $bankData, $balance );
 
-$data->parseBankStatement($bankData);
+$data->setBalance($balance);
+if ($#{$bankData} > 0) {
+	$parser->backwardBalanceCompute ( $bankData, $balance );
+	$data->parseBankStatement($bankData);
+}
 
 $report->setAccDataMTD($data);
 $report->setAccDataPRM($data);
 
 $report->createPreviousMonthClosingReport();
+
 my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $data );
 my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 my $ws = $wb->worksheet( 0 );
@@ -70,9 +74,8 @@ $ws = $wb->worksheet( 1 );
 #	982.27, 'Sum of C5:F5?');
 is( $ws->get_cell( 5, 2 )->unformatted() + 
 	$ws->get_cell( 5, 4 )->unformatted() +
-	$ws->get_cell( 5, 5 )->unformatted() +
 	$ws->get_cell( 5, 6 )->unformatted(),
-	-1523.70, 'Sum of C6:E6?');
+	-1240.62, 'Sum of C6:E6?');
 #is( $ws->get_cell( 19, 4 )->unformatted() +
 #	$ws->get_cell( 19, 5 )->unformatted(),
 #	-495, 'Sum of E20:F20?');	

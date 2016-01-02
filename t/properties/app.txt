@@ -33,7 +33,7 @@ alert.overdraft.threshold = 0
 
 ### Excel files path
 root.account.config = ./accounts
-account.config.pattern = ^config\..+\.xls$
+account.config.pattern = ^config\.\d+\.xls$
 root.account.reporting = ./reporting
 account.reporting.closing.prefix = _closing.xls
 account.reporting.actuals.prefix = _actuals.xls

@@ -70,8 +70,6 @@ sub generateSummarySheet
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));
 	my $dt_prevmonth = $statement->getMonth()->clone();
-		
-	# TODO: Gérer le cas ou il n'y a pas d'opérations disponible
 	
 	my $ws_tpl = $wb_tpl->worksheet( 0 );		
 	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
@@ -91,15 +89,20 @@ sub generateSummarySheet
 			my $font = Helpers::ExcelWorkbook->fontTranslator($fx_tpl->{Font});
 			my $shading = Helpers::ExcelWorkbook->cellFormatTranslator($fx_tpl);
 			my $fx_out = $wb_out->add_format( %$font, %$shading);
-			my $balance = 	@$ops[0]->{SOLDE} - ( (! defined @$ops[0]->{DEBIT} ? 0 : @$ops[0]->{DEBIT} )
-							+ (! defined @$ops[0]->{CREDIT} ? 0 : @$ops[0]->{CREDIT} ) 
-							 );		
+			
+			# By default, balance = end of month balance
+			my $balance = $statement->getBalance();
+			if (defined $ops) {
+				$balance = 	@$ops[0]->{SOLDE} - ( (! defined @$ops[0]->{DEBIT} ? 0 : @$ops[0]->{DEBIT} )
+								+ (! defined @$ops[0]->{CREDIT} ? 0 : @$ops[0]->{CREDIT} ) 
+								 );		
+			}
 
 			if ($value eq '<ACCOUNT_NUMBER>') { $ws_out->write( $row+$rshift, $col, '\''.$statement->getAccountNumber, $fx_out ); next; }
 			if ($value eq '<ACCOUNT_DESC>') { $ws_out->write( $row+$rshift, $col, $statement->getAccountDesc, $fx_out); next; }
 			if ($value eq '<CURR_MONTH>') { $ws_out->write( $row+$rshift, $col, $dt_prevmonth->month_name().' '.$dt_prevmonth->year(), $fx_out ); next; }
 			if ($value eq '<INIT_BALANCE>') { $ws_out->write( $row+$rshift, $col, $balance, $currency_format ); next; }
-			if ($value eq '<END_BALANCE>') { $ws_out->write( $row+$rshift, $col, @$ops[$#{$ops}]->{SOLDE}, $currency_format ); next; }
+			if ($value eq '<END_BALANCE>') { $ws_out->write( $row+$rshift, $col, $statement->getBalance(), $currency_format ); next; }
 			if ($value eq '<LOOP_EXPENSES>') {
 				my $rshift = $self->displayPivotSumup($statement, $wb_out, $ws_out, $row, $col, $currency_format, $fx_out, 'DEBIT');
 				next;
@@ -141,25 +144,27 @@ sub generateDetailsSheet
 	);
 	
 	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
-	foreach my $i (0 .. $#{$ops}) {
-		my @dataRow = (
-		 [
-			@$ops[$i]->{DATE},
-			@$ops[$i]->{DEBIT},
-			@$ops[$i]->{CREDIT},
-			@$ops[$i]->{FAMILY},
-			@$ops[$i]->{CATEGORY},
-			@$ops[$i]->{LIBELLE},	
-			@$ops[$i]->{SOLDE},
-		 ]
-		);
-		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
+	if ( defined $ops ) {
+		foreach my $i (0 .. $#{$ops}) {
+			my @dataRow = (
+			 [
+				@$ops[$i]->{DATE},
+				@$ops[$i]->{DEBIT},
+				@$ops[$i]->{CREDIT},
+				@$ops[$i]->{FAMILY},
+				@$ops[$i]->{CATEGORY},
+				@$ops[$i]->{LIBELLE},	
+				@$ops[$i]->{SOLDE},
+			 ]
+			);
+			$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format ) ;
+		}
+		$ws_out->autofilter(0, 0, $#{$ops}+1, $#{$dataRow[0]});
 	}
 	$ws_out->set_column(0, 2,  10);
 	$ws_out->set_column(3, 4,  20);
 	$ws_out->set_column(5, 5,  40);
 	$ws_out->set_column(6, 6,  10);	
-	$ws_out->autofilter(0, 0, $#{$ops}+1, $#{$dataRow[0]});
 }
 
 sub generateCashflowSheet
@@ -174,7 +179,7 @@ sub generateCashflowSheet
 	my @cashflow = ();
 	my $ws_tpl = $wb_tpl->worksheet( 2 );		
 	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name().'-'.sprintf ("%4d-%02d-%02d", $dt_currmonth->year, $dt_currmonth->month, $dt_currmonth->day ) );
-	my $balance = 0;
+	my $balance = $statMTD->getBalance();
 	my $ops = $statMTD->getOperations();
 	if (defined $ops) {
 		$balance = @$ops[0]->{SOLDE} - ( (! defined @$ops[0]->{DEBIT} ? 0 : @$ops[0]->{DEBIT} )
@@ -257,10 +262,27 @@ sub generateActualsCashflowSheet
 	);
 	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
 	
+	my $row = $dt_currmonth->day();
 	$self->populateCashflowSheet (\@cashflow, $statMTD, 1, $dt_currmonth->day(), 'ACTUALS', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
 	if ($dt_currmonth->day() < $dt_lastday->day() ) {
-		$self->pastExcelSheet ( $wb_out, $ws_out, $dt_currmonth->day()+1 );
+		$row = $self->pastExcelSheet ( $wb_out, $ws_out, $dt_currmonth->day()+1 );
 	}
+	
+	# Write footer line
+	@dataRow = (
+	 [
+		'',
+		'',
+		'',
+		'',
+		'',
+		'',
+		'Month bottom line:',
+		'=SUM(C2:G'.($row+1).')'
+	 ]
+	);
+	$self->displayDetailsDataRow ( $ws_out, $row+2, \@dataRow, $date_format, $currency_format ) ;
+	
 	$ws_out->set_column(0, 1,  10);	
 	$ws_out->set_column(2, 2,  19);
 	$ws_out->set_column(3, 3,  23);
@@ -360,24 +382,24 @@ sub populateCashflowSheet {
 	}
 	my @where = ('FAMILY', 'MONTHLY EXPENSES');
 	my $pivotDay = $stat->groupByWhere ('DAY', 'DEBIT', \@where);
-	$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'MONTHLY EXPENSES', 'DEBIT');
+	$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'MONTHLY EXPENSES', 'DEBIT', $type);
 
 	@where = ('FAMILY', 'MONTHLY INCOMES');
 	$pivotDay = $stat->groupByWhere ('DAY', 'CREDIT', \@where);
-	$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'MONTHLY INCOMES', 'CREDIT' );
+	$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'MONTHLY INCOMES', 'CREDIT', $type );
 
 	@where = ('FAMILY', 'WEEKLY EXPENSES');
 	$pivotDay = $stat->groupByWhere ('WDAY', 'DEBIT', \@where);
-	$self->populateCashflowWeeklyTransactions ( $stat, $cashflow, @$pivotDay[0], 'WEEKLY EXPENSES', 'DEBIT' );
+	$self->populateCashflowWeeklyTransactions ( $stat, $cashflow, @$pivotDay[0], 'WEEKLY EXPENSES', 'DEBIT', $type );
 
 	if ($type eq 'ACTUALS') { # the EXCEPTIONAL expenses or incomes are displayed only for actuals, not for forecasted
 		@where = ('FAMILY', 'EXCEPTIONAL EXPENSES');
 		$pivotDay = $stat->groupByWhere ('DAY', 'DEBIT', \@where);
-		$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'EXCEPTIONAL EXPENSES', 'DEBIT' );
+		$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'EXCEPTIONAL EXPENSES', 'DEBIT', $type );
 	
 		@where = ('FAMILY', 'EXCEPTIONAL INCOMES');
 		$pivotDay = $stat->groupByWhere ('DAY', 'CREDIT', \@where);
-		$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'EXCEPTIONAL INCOMES', 'CREDIT' );
+		$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'EXCEPTIONAL INCOMES', 'CREDIT', $type );
 	}
 	
 	foreach my $i ($startDay-1 .. $#{$cashflow}) {
@@ -409,35 +431,40 @@ sub populateCashflowSheet {
 
 sub displayPivotSumup {
 	my( $self, $statement, $wb_out, $ws_out, $row, $col, $currency_format, $fx_out, $type ) = @_;
-	my $categories = $statement->getCategories();
 	my $rinit = $row;
-	my $pivot = $statement->groupBy ('CATEGORY', $type);
-	my $found;
-	foreach my $i (0 .. $#{$categories}) {
-		if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? AccountStatement::AccountData::INCOME : AccountStatement::AccountData::EXPENSE) ) {
-			$ws_out->write( $row, $col, @$categories[$i]->{'CATEGORY'}, $fx_out );
-			$found = 0;
-			foreach my $key ( keys @$pivot[0] ) {
-				if ( $key eq @$categories[$i]->{'CATEGORY'} ) {
-					$ws_out->write( $row, $col+1, @$pivot[0]->{$key}, $currency_format );
-					$found = 1;
-					last;
+	if (defined $statement->getOperations()) {
+		my $categories = $statement->getCategories();
+		my $pivot = $statement->groupBy ('CATEGORY', $type);
+		my $found;
+		foreach my $i (0 .. $#{$categories}) {
+			if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? AccountStatement::AccountData::INCOME : AccountStatement::AccountData::EXPENSE) ) {
+				$ws_out->write( $row, $col, @$categories[$i]->{'CATEGORY'}, $fx_out );
+				$found = 0;
+				foreach my $key ( keys @$pivot[0] ) {
+					if ( $key eq @$categories[$i]->{'CATEGORY'} ) {
+						$ws_out->write( $row, $col+1, @$pivot[0]->{$key}, $currency_format );
+						$found = 1;
+						last;
+					}
 				}
+				if (!$found) {
+					$ws_out->write( $row, $col+1, 0, $currency_format );
+				}
+				$row++;
 			}
-			if (!$found) {
-				$ws_out->write( $row, $col+1, 0, $currency_format );
-			}
-			$row++;
 		}
+		my $fx_tot = $wb_out->add_format();
+		my $fx_sum = $wb_out->add_format();
+	    $fx_tot->copy($fx_out);
+	    $fx_tot->set_bold();
+	   	$fx_sum->copy($currency_format);
+	   	$fx_sum->set_bold();
+		$ws_out->write( $row, $col, 'Total', $fx_tot ); 	
+		$ws_out->write( $row, $col+1, '=SUM('.xl_rowcol_to_cell( $rinit, $col+1 ).':'.xl_rowcol_to_cell( $row-1, $col+1 ).')', $fx_sum );
+	} else {
+		$ws_out->write ($row, $col, 'NO TRANSACTION', $fx_out);
+		$row++;
 	}
-	my $fx_tot = $wb_out->add_format();
-	my $fx_sum = $wb_out->add_format();
-    $fx_tot->copy($fx_out);
-    $fx_tot->set_bold();
-   	$fx_sum->copy($currency_format);
-   	$fx_sum->set_bold();
-	$ws_out->write( $row, $col, 'Total', $fx_tot ); 	
-	$ws_out->write( $row, $col+1, '=SUM('.xl_rowcol_to_cell( $rinit, $col+1 ).':'.xl_rowcol_to_cell( $row-1, $col+1 ).')', $fx_sum ); 
 	return $row - $rinit;		
 }
 
@@ -477,20 +504,20 @@ sub displayDetailsDataRow {
 }
 
 sub populateCashflowMonthlyTransactions {
-	my( $self, $statement, $cashflow, $pivotDay, $family, $type ) = @_;
+	my( $self, $statement, $cashflow, $pivotDay, $family, $typeOpe, $type ) = @_;
 	foreach my $day ( keys $pivotDay ) {
 		my $found = 0;
 		foreach my $i (0 .. $#{$cashflow}) {
 			if (@$cashflow[$i]->{DAY} == $day) {
 				@$cashflow[$i]->{$family} = $pivotDay->{$day};
 				my @where = ('DAY', $day, 'FAMILY', $family);
-				my $pivotCateg = $statement->groupByWhere ('CATEGORY', $type, \@where);
+				my $pivotCateg = $statement->groupByWhere ('CATEGORY', $typeOpe, \@where);
 				@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
 				$found = 1;
 				last;
 			}
 		}
-		if (!$found) {
+		if (!$found && $type ne 'ACTUALS') {
 			# In case the current month is shorter than the previous month,
 			# Example: january and february months.
 			# Decision: All the transactions after the last day 
@@ -503,7 +530,7 @@ sub populateCashflowMonthlyTransactions {
 				@$cashflow[$#{$cashflow}]->{$family} = $pivotDay->{$day};
 			}
 			my @where = ('DAY', $day, 'FAMILY', $family);
-			my $pivotCateg = $statement->groupByWhere ('CATEGORY', $type, \@where);
+			my $pivotCateg = $statement->groupByWhere ('CATEGORY', $typeOpe, \@where);
 			if (defined @$cashflow[$#{$cashflow}]->{$family.' DETAILS'} ) {
 				@$cashflow[$#{$cashflow}]->{$family.' DETAILS'} .= $self->buildCategoryDetails ( @$pivotCateg[0] );
 			} else {
@@ -515,20 +542,20 @@ sub populateCashflowMonthlyTransactions {
 }
 
 sub populateCashflowWeeklyTransactions {
-	my( $self, $statement, $cashflow, $pivotDay, $family, $type ) = @_;
+	my( $self, $statement, $cashflow, $pivotDay, $family, $typeOpe, $type ) = @_;
 	foreach my $i (0 .. $#{$cashflow}) {
 		my $found = 0;
 		foreach my $wday ( keys $pivotDay ) {
 			if (@$cashflow[$i]->{WDAY} == $wday) {
 				@$cashflow[$i]->{$family} = $pivotDay->{$wday};
 				my @where = ('WDAY', $wday, 'FAMILY', $family);
-				my $pivotCateg = $statement->groupByWhere ('CATEGORY', $type, \@where);
+				my $pivotCateg = $statement->groupByWhere ('CATEGORY', $typeOpe, \@where);
 				@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
 				$found = 1;
 				last;
 			}
 		}
-		if (!$found) {
+		if (!$found && $type ne 'ACTUALS') {
 			# Happen when last week of current month ends after the previous month
 			# Example: current month, the last day is a Friday and the previous month last day was Wednesday.
 			# In other words, week days 4.4 and 4.5 does not exist in the previous month.
@@ -539,7 +566,7 @@ sub populateCashflowWeeklyTransactions {
 			$wday =~ s/\d\.(\d)/0.$1/;
 			@$cashflow[$i]->{$family} = $pivotDay->{$wday};
 			my @where = ('WDAY', $wday, 'FAMILY', $family);
-			my $pivotCateg = $statement->groupByWhere ('CATEGORY', $type, \@where);
+			my $pivotCateg = $statement->groupByWhere ('CATEGORY', $typeOpe, \@where);
 			@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
 
 		}
@@ -756,7 +783,8 @@ sub pastExcelSheet {
 				}
 			}
 		}
-	}	
+	}
+	return $endRow;	
 }
 
 sub getAccDataPRM {

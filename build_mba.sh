@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=2.5
+VERSION=2.7
 
 # Run unit testing
 echo '--- Unit testing... ---'
@@ -36,6 +36,8 @@ if [ -e "mba_$VERSION.tar.gz" ]
 then
 	rm mba_$VERSION.tar.gz
 fi
-tar -zcf mba_$VERSION.tar.gz mba
-echo '--- Package mba_'$VERSION'.tar.gz ready --- '
+cd mba
+tar -zcf ../mba_$VERSION.tar.gz ./*
+echo '--- Package mba_'$VERSION'.tar.gz is ready --- '
+cd ..
 rm -r ./mba
