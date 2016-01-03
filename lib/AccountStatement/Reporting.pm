@@ -13,7 +13,7 @@ use Data::Dumper;
 use Helpers::Logger;
 use Helpers::SendMail;
 use Helpers::Date;
-use AccountStatement::AccountData;
+use AccountStatement::CheckingAccount;
 
 
 sub new
@@ -437,7 +437,7 @@ sub displayPivotSumup {
 		my $pivot = $statement->groupBy ('CATEGORY', $type);
 		my $found;
 		foreach my $i (0 .. $#{$categories}) {
-			if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? AccountStatement::AccountData::INCOME : AccountStatement::AccountData::EXPENSE) ) {
+			if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? AccountStatement::Account::INCOME : AccountStatement::Account::EXPENSE) ) {
 				$ws_out->write( $row, $col, @$categories[$i]->{'CATEGORY'}, $fx_out );
 				$found = 0;
 				foreach my $key ( keys @$pivot[0] ) {

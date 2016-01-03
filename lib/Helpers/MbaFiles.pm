@@ -36,23 +36,23 @@ sub getAccountConfigFilesName {
 }
 
 sub getClosingFilePath {
-	my ($class, $accountData) = @_;
+	my ($class, $CheckingAccount) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $reportingDir = getReportingDirname ($accountData->getAccountNumber () );
-	my $dt = $accountData->getMonth();
+	my $reportingDir = getReportingDirname ($CheckingAccount->getAccountNumber () );
+	my $dt = $CheckingAccount->getMonth();
 	return  $reportingDir.
 			sprintf("%4d-%02d", $dt->year(), $dt->month()).
 			'_'.
-			$accountData->getAccountNumber().	
+			$CheckingAccount->getAccountNumber().	
 			$prop->readParamValue('account.reporting.closing.prefix')
 		;
 }
 
 sub getActualsFilePath {
-	my ($class, $accountData) = @_;
+	my ($class, $CheckingAccount) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $reportingDir = getReportingDirname ($accountData->getAccountNumber () );
-	my $dt = $accountData->getMonth();
+	my $reportingDir = getReportingDirname ($CheckingAccount->getAccountNumber () );
+	my $dt = $CheckingAccount->getMonth();
 
 	my $filePath =  $reportingDir.
 					sprintf("%02d-%02d", $dt->month(), $dt->day()).

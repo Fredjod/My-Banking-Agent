@@ -8,7 +8,7 @@ use Helpers::Logger;
 use Helpers::ConfReader;
 use Helpers::Date;
 use Helpers::MbaFiles;
-use AccountStatement::AccountData;
+use AccountStatement::CheckingAccount;
 use AccountStatement::Reporting;
 
 my $logger = Helpers::Logger->new();
@@ -22,8 +22,8 @@ my $dtPrevMonth = $dth->rollPreviousMonth();
 my $dtToday = $dth->getDate();
 
 foreach my $accountConfigFilePath (@accountConfigFiles) {
-	my $accountPRM = AccountStatement::AccountData->new ($accountConfigFilePath, $dtPrevMonth);
-	my $accountMTD = AccountStatement::AccountData->new ($accountConfigFilePath, $dtToday);
+	my $accountPRM = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $dtPrevMonth);
+	my $accountMTD = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $dtToday);
 	$logger->print ( 'Processing account '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
 	my $reportingProcessor = AccountStatement::Reporting->new();
 	$reportingProcessor->setAccDataMTD($accountMTD);

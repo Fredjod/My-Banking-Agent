@@ -8,7 +8,7 @@ echo '--- Unit testing... ---'
 cd t/
 perl -w ConfReader.t
 perl -w DateHelper.t
-perl -w AccountData.t
+perl -w CheckingAccount.t
 perl -w AccountReporting.t
 perl -w MbaFiles.t
 cd ..

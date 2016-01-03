@@ -10,10 +10,10 @@ use Helpers::MbaFiles;
 use Helpers::Date;
 
 #do 'Helpers/ConfReader.pm';
-require_ok "AccountStatement::AccountData";
+require_ok "AccountStatement::CheckingAccount";
 my @config = Helpers::MbaFiles->getAccountConfigFilesName();
 my $dth = Helpers::Date->new ();
-my $data = AccountStatement::AccountData->new( $config[0], $dth->getDate() );
+my $data = AccountStatement::CheckingAccount->new( $config[0], $dth->getDate() );
 
 is($data->getBankName(), 'CREDITMUTUEL', 'Get bank name from t.categrories.xls');
 is($data->getAccountNumber(), '033033050050029', 'Get Account number from t.categrories.xls');

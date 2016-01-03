@@ -134,7 +134,7 @@ sub download
 	
 	my @arrayDateFrom = (sprintf("%02d", $dateFrom->day()), sprintf("%02d", $dateFrom->month()), $dateFrom->year());
 	my @arrayDateTo = 	(sprintf("%02d", $dateTo->day()), sprintf("%02d", $dateTo->month()), $dateTo->year());
-	unless ( $accountNumber =~ s/^(\d{5})(\d{9})(\d{2})$/$1 $2 $3/ ) {
+	unless ( $accountNumber =~ /^(\d{5})\s(\d{9})\s(\d{2})$/ ) {
 		$logger->print ( "Wrong account number format: $accountNumber", Helpers::Logger::ERROR);
 		return undef;
 	}

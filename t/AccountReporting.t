@@ -12,10 +12,10 @@ use Helpers::Date;
 
 #do 'Helpers/ConfReader.pm';
 require_ok "AccountStatement::Reporting";
-require_ok "AccountStatement::AccountData";
+require_ok "AccountStatement::CheckingAccount";
 my @config = Helpers::MbaFiles->getAccountConfigFilesName();
 my $dth = Helpers::Date->new ();
-my $data = AccountStatement::AccountData->new( $config[0], $dth->getDate() );
+my $data = AccountStatement::CheckingAccount->new( $config[0], $dth->getDate() );
 my $report = AccountStatement::Reporting->new();
 
 open my $in, "<", "t.cm.bankdata.ofx" or die "Can't open file t.cm.bankdata.ofx file!\n";

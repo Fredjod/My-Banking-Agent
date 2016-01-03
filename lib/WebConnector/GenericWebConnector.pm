@@ -1,7 +1,6 @@
 package WebConnector::GenericWebConnector;
 # This is an abstract class, must never be instanciated!
 # This is the super class of all the web connectors.
-# The web connectors have to implement 3 methods: logIn(user, password), logOut() and downloadCSV(accountnumber, dateFrom, dateTo)
 
 use lib '../../lib';
 use strict;

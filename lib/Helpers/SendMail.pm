@@ -66,10 +66,10 @@ sub send {
 }
 
 sub buildBalanceAlertBody {
-	my ($self, $report, $accountData, $currentBalance, $plannedBalance) = @_;
+	my ($self, $report, $CheckingAccount, $currentBalance, $plannedBalance) = @_;
 	my $template = $self->{_template};
 	
-	$template->param( ACCOUNT_DESC => $accountData->getAccountDesc() );
+	$template->param( ACCOUNT_DESC => $CheckingAccount->getAccountDesc() );
 	
 	# Total value block
 	$template->param(ACTUAL => euroFormating($currentBalance));
@@ -88,8 +88,8 @@ sub buildBalanceAlertBody {
 	# Details loop
 	my @loopLineDetails = ();
 	
-	my $pivotCredit = $accountData->groupBy ('FAMILY', 'CREDIT');
-	my $pivotDebit = $accountData->groupBy ('FAMILY', 'DEBIT');
+	my $pivotCredit = $CheckingAccount->groupBy ('FAMILY', 'CREDIT');
+	my $pivotDebit = $CheckingAccount->groupBy ('FAMILY', 'DEBIT');
 	
 	foreach my $fam ('MONTHLY INCOMES', 'EXCEPTIONAL INCOMES') {
 		push ( @loopLineDetails, buildDetailsLine ($fam, @$pivotCredit[0]->{$fam}, $report->sumForecastedOperationPerFamily($fam) ));
@@ -104,10 +104,10 @@ sub buildBalanceAlertBody {
 }
 
 sub buildOverdraftAlertBody {
-	my ($self, $report, $accountData, $balance, $dt ) = @_;
+	my ($self, $report, $CheckingAccount, $balance, $dt ) = @_;
 	my $template = $self->{_template};
 	
-	$template->param( ACCOUNT_DESC => $accountData->getAccountDesc() );
+	$template->param( ACCOUNT_DESC => $CheckingAccount->getAccountDesc() );
 	$template->param( DATE => sprintf ("%02d/%02d/%04d", $dt->day(), $dt->month(), $dt->year()) );
 	$template->param( BALANCE => euroFormating($balance) );
 	

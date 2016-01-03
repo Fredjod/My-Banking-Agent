@@ -1,6 +1,8 @@
-package AccountStatement::AccountData;
+package AccountStatement::CheckingAccount;
 
 use lib '../../lib';
+use parent 'AccountStatement::Account';
+
 use strict;
 use warnings;
 use DateTime;
@@ -12,14 +14,10 @@ use Helpers::ExcelWorkbook;
 use Spreadsheet::ParseExcel;
 
 
-use constant INCOME		=> 2;
-use constant EXPENSE	=> 1;
-
-
 sub new
 {
     my ($class, $configFilePath, $dtMonth) = @_;
-    
+    # $class->SUPER::new(@_);
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
     $logger->print ( "Opening account config file: $configFilePath", Helpers::Logger::DEBUG);
@@ -124,14 +122,14 @@ sub validateFamily {
 	my $incomeFamilies = $prop->readParamValueList("income.families");
 	foreach my $item (@$incomeFamilies) {
 		next unless uc $item eq uc $family;
-		$operationType = INCOME;
+		$operationType = AccountStatement::Account::INCOME;
 		last;
 	}
 	if ($operationType == 0) {
 		my $expenseFamilies = $prop->readParamValueList("expense.families");
 		foreach my $item (@$expenseFamilies) {
 			next unless uc $item eq uc $family;
-			$operationType = EXPENSE;
+			$operationType = AccountStatement::Account::EXPENSE;
 			last;
 		}
 	}
@@ -162,7 +160,7 @@ sub addDefault {
 	my %record;
 	$record{TYPE} = $type;
 	$record{INDEX} = $index;
-	if ($type == EXPENSE) {$limit = -$limit; }
+	if ($type == AccountStatement::Account::EXPENSE) {$limit = -$limit; }
 	$record{LIMIT} = $limit;
 	push ($default, \%record);	
 }
@@ -183,7 +181,7 @@ sub findDefaultCategId {
 	my $default = $self->{_default};
 	my $id0;
 	# Find the index of DEFAULT-O for EXPENSE or for INCOME in the default array
-	if ($type == EXPENSE ) {
+	if ($type == AccountStatement::Account::EXPENSE ) {
 		$id0 = 0;
 		while (@$default[$id0]->{TYPE} == $type ) { $id0++; }
 	}
@@ -193,7 +191,7 @@ sub findDefaultCategId {
 	}
 	# Find the index for which the 
 	my $id;
-	if ( $type == EXPENSE ) {
+	if ( $type == AccountStatement::Account::EXPENSE ) {
 		$id = 0;
 		while ( $id < $id0 && $amount > @$default[$id]->{LIMIT} ) {
 			$id++;
@@ -245,8 +243,8 @@ sub parseBankStatement {
 		}
 		if (not $default) {
 			# Check the consistency of operation type and category family
-			if ( ($line->{AMOUNT} < 0 && @$categories[$i]->{TYPEOPE} == EXPENSE)
-			  || ($line->{AMOUNT} >= 0 && @$categories[$i]->{TYPEOPE} == INCOME) ) {
+			if ( ($line->{AMOUNT} < 0 && @$categories[$i]->{TYPEOPE} == AccountStatement::Account::EXPENSE)
+			  || ($line->{AMOUNT} >= 0 && @$categories[$i]->{TYPEOPE} == AccountStatement::Account::INCOME) ) {
 				push (@operations, buildExtendedRecord($line, @$categories[$i]));
 			}
 			else {
@@ -256,10 +254,10 @@ sub parseBankStatement {
 		}
 		if ($default) {
 			if ($line->{AMOUNT} < 0) { # It's an expense
-				push (@operations, buildExtendedRecord($line, @$categories[ findDefaultCategId ($self, $line->{AMOUNT}, EXPENSE) ]));
+				push (@operations, buildExtendedRecord($line, @$categories[ findDefaultCategId ($self, $line->{AMOUNT}, AccountStatement::Account::EXPENSE) ]));
 			}
 			else { # It's an income
-				push (@operations, buildExtendedRecord($line, @$categories[ findDefaultCategId ($self, $line->{AMOUNT}, INCOME) ]));
+				push (@operations, buildExtendedRecord($line, @$categories[ findDefaultCategId ($self, $line->{AMOUNT}, AccountStatement::Account::INCOME) ]));
 			}
 		}
 	}
