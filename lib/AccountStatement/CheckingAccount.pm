@@ -17,7 +17,6 @@ use Spreadsheet::ParseExcel;
 sub new
 {
     my ($class, $configFilePath, $dtMonth) = @_;
-    # $class->SUPER::new(@_);
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
     $logger->print ( "Opening account config file: $configFilePath", Helpers::Logger::DEBUG);

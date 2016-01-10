@@ -158,13 +158,23 @@ sub download
 	return $response->content;
 }
 
+sub downloadBalance {
+	my ( $self, $accountNumber, $dateFrom, $dateTo ) = @_;	
+	my $OFX = $self->download($accountNumber, $dateFrom, $dateTo, 'ofx');
+	return $self->parseOFXforBalance ($OFX, '.');
+}
+
+sub downloadOperations {
+	my ( $self, $accountNumber, $dateFrom, $dateTo ) = @_;	
+	my $QIF = $self->download($accountNumber, $dateFrom, $dateTo, 'qif');
+	return $self->parseQIF ( $QIF, '([0-9]{2})\/([0-9]{2})\/([0-9]{2})', 0, ',', '.' );	
+}
+
 sub downloadBankStatement {
 	my ( $self, $account, $dateFrom, $dateTo ) = @_;
-	my $OFX = $self->download($account->getAccountNumber(), $dateFrom, $dateTo, 'ofx');
-	my $balance = $self->parseOFXforBalance ($OFX, '.');
+	my $balance = downloadBalance ( $account->getAccountNumber(), $dateFrom, $dateTo );
 	$account->setBalance($balance);
-	my $QIF = $self->download($account->getAccountNumber(), $dateFrom, $dateTo, 'qif');
-	my $bankData = $self->parseQIF ( $QIF, '([0-9]{2})\/([0-9]{2})\/([0-9]{2})', 0, ',', '.' );	
+	my $bankData = $self->downloadOperations ( $account->getAccountNumber(), $dateFrom, $dateTo );	
 	if ($#{$bankData} > 0) {
 		$self->backwardBalanceCompute ( $bankData, $balance );
 		$account->parseBankStatement($bankData);

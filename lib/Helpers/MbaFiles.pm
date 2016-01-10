@@ -6,19 +6,13 @@ use Helpers::ConfReader;
 use Data::Dumper;
 use Helpers::Date;
 
-sub new
-{
-    my ($class) = @_;
-    bless $self, $class;
-    return $self;
-}
 
 sub getAccountConfigFilesName {
-	my ($class) = @_;
+	my ($class, $filepattern) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
 	my $dirname = $prop->readParamValue('root.account.config');
-	my $filepattern = $prop->readParamValue('account.config.pattern');
+	if (!defined $filepattern ) { $filepattern = $prop->readParamValue('account.config.pattern'); }
 	
 	my @files = ();
 	if (! -d $dirname) {
