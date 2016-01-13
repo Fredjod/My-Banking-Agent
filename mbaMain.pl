@@ -10,6 +10,7 @@ use Helpers::Date;
 use Helpers::MbaFiles;
 use AccountStatement::CheckingAccount;
 use AccountStatement::Reporting;
+use AccountStatement::SavingAccount;
 
 my $logger = Helpers::Logger->new();
 my $prop = Helpers::ConfReader->new("properties/app.txt");
@@ -57,6 +58,13 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 	
 	$logger->print ( 'End of the account processing '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
 }
+
+# Saving report
+$logger->print ( "Check if saving report is required.", Helpers::Logger::INFO);
+my $saving = AccountStatement::SavingAccount->new( );
+$saving->generateLastMonthSavingReport();
+$saving->mergeWithPreviousSavingReport();
+
 $logger->print ( "End of running.", Helpers::Logger::INFO);
 
 sub downloadBankStatementBetweenTwoDate {
