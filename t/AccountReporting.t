@@ -57,7 +57,7 @@ $report->createActualsReport();
 
 my $prop = Helpers::ConfReader->new("properties/app.txt");
 # $XLSfile = Helpers::MbaFiles->getActualsFilePath($data);
-$XLSfile = './reporting/033033050050029/05-31_actuals.xls';
+$XLSfile = './reporting/0303900020712303/05-31_actuals.xls';
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 );
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Cell E4 value?');

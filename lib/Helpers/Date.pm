@@ -2,6 +2,7 @@ package Helpers::Date;
 
 use lib "../../lib/";
 
+use strict;
 use warnings;
 use DateTime;
 
@@ -24,6 +25,7 @@ sub rollPreviousMonth
 	my $prevMonthDate = $self->getDate();
 	my $month = $prevMonthDate->month();
 	my $year = $prevMonthDate->year();
+	$prevMonthDate->set_day(1);
 	# first day of last month
 	if ($month > 1) {
 		$prevMonthDate->set_month($month-1);

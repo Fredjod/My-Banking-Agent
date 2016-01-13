@@ -16,7 +16,7 @@ my $dth = Helpers::Date->new ();
 my $data = AccountStatement::CheckingAccount->new( $config[0], $dth->getDate() );
 
 is($data->getBankName(), 'CREDITMUTUEL', 'Get bank name from t.categrories.xls');
-is($data->getAccountNumber(), '033033050050029', 'Get Account number from t.categrories.xls');
+is($data->getAccountNumber(), '03039 000207123 03', 'Get Account number from t.categrories.xls');
 is($data->getAccountDesc(), 'Marc & Sophie joint account', 'Get Account description from t.categrories.xls');
 my $categories = $data->getCategories();
 

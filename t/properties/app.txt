@@ -38,6 +38,7 @@ saving.config.pattern = ^config\.saving.*\.xls$
 root.account.reporting = ./reporting
 account.reporting.closing.prefix = _closing.xls
 account.reporting.actuals.prefix = _actuals.xls
+account.reporting.saving.prefix = _saving.xls
 ###
 
 

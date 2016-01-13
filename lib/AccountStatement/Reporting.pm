@@ -98,7 +98,7 @@ sub generateSummarySheet
 								 );		
 			}
 
-			if ($value eq '<ACCOUNT_NUMBER>') { $ws_out->write( $row+$rshift, $col, '\''.$statement->getAccountNumber, $fx_out ); next; }
+			if ($value eq '<ACCOUNT_NUMBER>') { $ws_out->write( $row+$rshift, $col, $statement->getAccountNumber, $fx_out ); next; }
 			if ($value eq '<ACCOUNT_DESC>') { $ws_out->write( $row+$rshift, $col, $statement->getAccountDesc, $fx_out); next; }
 			if ($value eq '<CURR_MONTH>') { $ws_out->write( $row+$rshift, $col, $dt_prevmonth->month_name().' '.$dt_prevmonth->year(), $fx_out ); next; }
 			if ($value eq '<INIT_BALANCE>') { $ws_out->write( $row+$rshift, $col, $balance, $currency_format ); next; }

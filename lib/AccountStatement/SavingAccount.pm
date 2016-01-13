@@ -15,26 +15,63 @@ use Helpers::WebConnector;
 use Spreadsheet::ParseExcel;
 
 sub new {
-    my ($class, $savingConfigFilePath, $dtMonth) = @_;
+    my ($class) = @_;
     # $class->SUPER::new(@_);
-    # my $prop = Helpers::ConfReader->new("properties/app.txt");
+    my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
-    $logger->print ( "Opening account config file: $savingConfigFilePath", Helpers::Logger::DEBUG);
     my @balances = ();
     my @operations = ();
     
     my $self = {
-    	_accountReferences => initReferences ( $savingConfigFilePath ), # array of references for opening accounts
+    	_accountReferences => undef, # array of references for opening accounts
     	_balances => \@balances, # array of balances
     	_operations => \@operations, # array of operations
-    	_month => $dtMonth,
+    	_month => undef,
     	_total => 0,
     };
     bless $self, $class;
-    
-    $self->loadOperationsAndBalances ();
-    
+
+    my @config = Helpers::MbaFiles->getAccountConfigFilesName( $prop->readParamValue('saving.config.pattern') );
+    if ($#config == -1) {
+    	$logger->print ( "No config file found for saving accounts", Helpers::Logger::ERROR);
+    }
+    else {
+    	$logger->print ( "Opening account config file: ". $config[0], Helpers::Logger::DEBUG);
+    	$self->{_accountReferences} = initReferences($config[0]);
+    }
     return $self;  
+}
+
+sub generateLastMonthSavingReport {
+	my ( $self ) = @_;
+	my $logger = Helpers::Logger->new();
+	
+	unless (defined $self->getAccountReferences) {
+		$logger->print ( "No saving account references available.", Helpers::Logger::ERROR);
+		return;
+	}
+	my $dt_from = Helpers::Date->new ();
+	$dt_from = $dt_from->rollPreviousMonth();
+	$self->{_month} = $dt_from;
+	my $path = Helpers::MbaFiles->getSavingFilePath ( $dt_from );
+	my $dt_to = DateTime->last_day_of_month( year => $dt_from->year(), month => $dt_from->month() );;
+    if (-e $path) {
+    	$logger->print ( "The saving report $path already exists", Helpers::Logger::DEBUG);
+    }
+    else {
+     	$logger->print ( "Start previous month saving reporting...", Helpers::Logger::INFO);
+    	$self->loadOperationsAndBalances($dt_from, $dt_to);
+    	$self->storeToExcel ($path, $dt_from);
+    }
+}
+
+sub mergeWithPreviousSavingReport {
+	my ( $self ) = @_;
+	my $dtPrevReporting = Helpers::Date->new ( self->getMonth() );
+	$dtPrevReporting->rollPreviousMonth();
+	my $path = Helpers::MbaFiles->getSavingFilePath ( $dtPrevReporting );
+	
+	
 }
 
 sub initReferences {
@@ -60,14 +97,11 @@ sub initReferences {
 }
 
 sub loadOperationsAndBalances {
-	my ( $self ) = @_;
+	my ( $self, $dt_from, $dt_to ) = @_;
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
 	my $ref = $self->getAccountReferences();
-	my $dt_from = $self->getMonth();
-	$dt_from->set_day(1);
-	my $dth = Helpers::Date->new ();
-	my $dt_to = $dth->getDate();
+
 	
 	my $i = 0;
 	while ( $i<$#{$ref}+1 ) {
@@ -90,6 +124,8 @@ sub loadOperationsAndBalances {
 		}
 		$logger->print ( "Log out", Helpers::Logger::INFO);
 		$connector->logOut();
+		my $operations = $self->getOperations();
+		@$operations = sort { $a->{'DATE'} cmp $b->{'DATE'}  } @$operations;
 	}	
 }
 
@@ -117,6 +153,51 @@ sub addSavingRecord {
 	$self->{_total} += $balance;
 }
 
+sub storeToExcel {
+	my( $self, $path, $dt_from) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+	my $wb_out = Helpers::ExcelWorkbook->createWorkbook ( $path );
+	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
+	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
+
+	my $ws_out = $wb_out->add_worksheet( "Solde" );
+	my $bal = $self->getBalances();
+
+	$ws_out->write( 0, 2, $dt_from->month() );
+	foreach my $i (0 .. $#{$bal}) {
+		$ws_out->write( $i+1, 0,  @$bal[$i]->{NUMBER});
+		$ws_out->write( $i+1, 1,  @$bal[$i]->{NAME});
+		$ws_out->write( $i+1, 2,  @$bal[$i]->{BALANCE}, $currency_format);
+	}
+	$ws_out->set_column(0, 0,  18);	
+	$ws_out->set_column(1, 1,  35);
+	$ws_out->set_column(2, 2,  10);
+	
+	my $ope = $self->getOperations();
+	$ws_out = $wb_out->add_worksheet( "Details" );
+	$ws_out->write( 0, 0, "DATE" );
+	$ws_out->write( 0, 1, "DEBIT" );
+	$ws_out->write( 0, 2, "CREDIT" );
+	$ws_out->write( 0, 3, "ACCOUNT NUMBER" );
+	$ws_out->write( 0, 4, "ACCOUNT NAME" );
+	$ws_out->write( 0, 5, "DETAILS" );
+	
+		
+	foreach my $i (0 .. $#{$ope}) {
+		$ws_out->write_date_time( $i+1, 0,  @$ope[$i]->{DATE}, $date_format);
+		(@$ope[$i]->{TYPE} == AccountStatement::Account::EXPENSE) ? 
+			$ws_out->write( $i+1, 1,  @$ope[$i]->{AMOUNT}, $currency_format) :
+			$ws_out->write( $i+1, 2,  @$ope[$i]->{AMOUNT}, $currency_format);
+		$ws_out->write( $i+1, 3,  @$ope[$i]->{NUMBER});
+		$ws_out->write( $i+1, 4,  @$ope[$i]->{NAME});
+		$ws_out->write( $i+1, 5,  @$ope[$i]->{DETAILS});
+	}
+	$ws_out->set_column(1, 3,  12);	
+	$ws_out->set_column(3, 3,  18);
+	$ws_out->set_column(4, 5,  35);
+}
+
 sub getAccountReferences {
 	my ( $self ) = @_;
 	return $self->{_accountReferences};
@@ -132,14 +213,15 @@ sub getBalances {
 	return $self->{_balances};
 }
 
+sub getTotal {
+	my ( $self ) = @_;
+	return $self->{_total};
+}
+
 sub getMonth {
 	my ( $self ) = @_;
 	return $self->{_month};
 }
 
-sub getTotal {
-	my ( $self ) = @_;
-	return $self->{_total};
-}
 
 1;

@@ -1,6 +1,10 @@
 package Helpers::MbaFiles;
 
 use lib "../../lib/";
+
+use strict;
+use warnings;
+
 use Helpers::Logger;
 use Helpers::ConfReader;
 use Data::Dumper;
@@ -30,23 +34,30 @@ sub getAccountConfigFilesName {
 }
 
 sub getClosingFilePath {
-	my ($class, $CheckingAccount) = @_;
+	my ($class, $checkingAccount) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $reportingDir = getReportingDirname ($CheckingAccount->getAccountNumber () );
-	my $dt = $CheckingAccount->getMonth();
+	my $number = $checkingAccount->getAccountNumber ();
+	my $logger = Helpers::Logger->new();
+	
+	$number =~ s/\s//g; #remove space in the original account number
+	my $reportingDir = getReportingDirname ($number);
+	$logger->print ( "account number: ". $checkingAccount->getAccountNumber (), Helpers::Logger::DEBUG);
+	my $dt = $checkingAccount->getMonth();
 	return  $reportingDir.
 			sprintf("%4d-%02d", $dt->year(), $dt->month()).
 			'_'.
-			$CheckingAccount->getAccountNumber().	
+			$number.	
 			$prop->readParamValue('account.reporting.closing.prefix')
 		;
 }
 
 sub getActualsFilePath {
-	my ($class, $CheckingAccount) = @_;
+	my ($class, $checkingAccount) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $reportingDir = getReportingDirname ($CheckingAccount->getAccountNumber () );
-	my $dt = $CheckingAccount->getMonth();
+	my $number = $checkingAccount->getAccountNumber ();
+	$number =~ s/\s//g;
+	my $reportingDir = getReportingDirname ($number );
+	my $dt = $checkingAccount->getMonth();
 
 	my $filePath =  $reportingDir.
 					sprintf("%02d-%02d", $dt->month(), $dt->day()).
@@ -58,8 +69,44 @@ sub getActualsFilePath {
 	return $filePath;
 }
 
+sub getLastSavingFilePath {
+	my ( $class ) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+	my $dirname = $prop->readParamValue('root.account.reporting');
+	my $fileprefix = $prop->readParamValue('account.reporting.saving.prefix');
+	my $filePath = undef;
+	
+	if (-d $dirname) {
+		opendir my($dh), $dirname;
+		while ( readdir($dh) ) {
+			if (-f "$dirname/$_" && $_ =~ /[0-9]{4}_[0-9]{2}$fileprefix/ ) {
+				$filePath = "$dirname/$_";
+		 	}
+		}
+		closedir $dh;
+	}
+	return $filePath;
+}
+
+sub getSavingFilePath {
+	my ( $class, $dt ) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+	my $dirname = $prop->readParamValue('root.account.reporting');
+
+	if (! -d $dirname) {
+		mkdir $dirname;
+		chmod 0771, $dirname;
+	}
+	
+	return  $dirname.'/'.
+			sprintf("%04d_%02d", $dt->year(), $dt->month()).
+			$prop->readParamValue('account.reporting.saving.prefix');	
+}
+
 sub getReportingDirname {
-	my ( $accountNumber) = @_;
+	my ( $number) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
 
@@ -68,12 +115,12 @@ sub getReportingDirname {
 		mkdir $rootReporting;
 		chmod 0771, $rootReporting;
 	}
-	if (! -d $rootReporting.'/'.$accountNumber) {
-		mkdir $rootReporting.'/'.$accountNumber;
-		chmod 0771, $rootReporting.'/'.$accountNumber;
+	if (! -d $rootReporting.'/'.$number) {
+		mkdir $rootReporting.'/'.$number;
+		chmod 0771, $rootReporting.'/'.$number;
 		
 	}
-	return $rootReporting.'/'.$accountNumber.'/';
+	return $rootReporting.'/'.$number.'/';
 }
 
 1;
