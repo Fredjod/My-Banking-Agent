@@ -172,7 +172,7 @@ sub downloadOperations {
 
 sub downloadBankStatement {
 	my ( $self, $account, $dateFrom, $dateTo ) = @_;
-	my $balance = downloadBalance ( $account->getAccountNumber(), $dateFrom, $dateTo );
+	my $balance = $self->downloadBalance ( $account->getAccountNumber(), $dateFrom, $dateTo );
 	$account->setBalance($balance);
 	my $bankData = $self->downloadOperations ( $account->getAccountNumber(), $dateFrom, $dateTo );	
 	if ($#{$bankData} > 0) {

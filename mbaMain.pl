@@ -70,24 +70,12 @@ $logger->print ( "End of running.", Helpers::Logger::INFO);
 sub downloadBankStatementBetweenTwoDate {
 	my( $account, $dt_from, $dt_to ) = @_;
 	# Use the Web connector of the account bank
-	my $connectorClass = 'WebConnector::'.$prop->readParamValue( 'connector.'.$account->getBankName() );
-	eval "use $connectorClass";
-	if( $@ ){
-		$logger->print ( "Cannot load $connectorClass: $@", Helpers::Logger::ERROR);
-		die("Cannot load $connectorClass: $@");
-	}
-	my $connector = $connectorClass->new( $prop->readParamValue( 'website.'.$account->getBankName() ));
-	die $connectorClass.' is a wrong web connector class. Must inherite from WebConnector::GenericWebConnector'
-		unless $connector->isa('WebConnector::GenericWebConnector');
-
-	# Get the auth info from a separated file
-	require "auth.pl";
-	our %auth;
+	my $connector = Helpers::WebConnector->buildWebConnectorObject ( $account->getBankName() );
 
 	# Get the operations from website
 	my $bankData;
 	$logger->print ( "Log in to ".$account->getBankName()." website", Helpers::Logger::INFO);
-	if ( $connector->logIn( $auth{$account->getAccountAuth}[0], $auth{$account->getAccountAuth}[1] ) ) {
+	if ( $connector->logIn( Helpers::WebConnector->getLogin ($account->getAccountAuth), Helpers::WebConnector->getPwd ($account->getAccountAuth) ) ) {
 		$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()." for month ".$account->getMonth->month()."...", Helpers::Logger::INFO);
 		$connector->downloadBankStatement ( $account, $dt_from, $dt_to );
 	}

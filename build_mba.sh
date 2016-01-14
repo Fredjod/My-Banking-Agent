@@ -23,7 +23,7 @@ cp -R properties mba/
 mv mba/properties/app.txt mba/properties/app.dist.txt 
 cp mbaMain.pl mba/
 cp mba.sh mba/
-cp t/accounts/config.033033050050029.xls mba/accounts/dist.config.033033050050029.xls
+cp t/accounts/config.0303900020712303.xls mba/accounts/dist.config.0303900020712303.xls
 cp auth.pl mba/auth.dist.pl
 cp LICENSE mba/
 cp README.md mba/

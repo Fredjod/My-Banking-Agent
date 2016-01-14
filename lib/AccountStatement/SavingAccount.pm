@@ -67,8 +67,8 @@ sub generateLastMonthSavingReport {
 
 sub mergeWithPreviousSavingReport {
 	my ( $self ) = @_;
-	my $dtPrevReporting = Helpers::Date->new ( self->getMonth() );
-	$dtPrevReporting->rollPreviousMonth();
+	my $dth = Helpers::Date->new ( $self->getMonth() );
+	my $dtPrevReporting = $dth->rollPreviousMonth();
 	my $path = Helpers::MbaFiles->getSavingFilePath ( $dtPrevReporting );
 	
 	
@@ -171,7 +171,7 @@ sub storeToExcel {
 		$ws_out->write( $i+1, 2,  @$bal[$i]->{BALANCE}, $currency_format);
 	}
 	$ws_out->set_column(0, 0,  18);	
-	$ws_out->set_column(1, 1,  35);
+	$ws_out->set_column(1, 1,  45);
 	$ws_out->set_column(2, 2,  10);
 	
 	my $ope = $self->getOperations();
