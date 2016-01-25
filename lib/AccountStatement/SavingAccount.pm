@@ -13,6 +13,8 @@ use Helpers::Date;
 use Helpers::ExcelWorkbook;
 use Helpers::WebConnector;
 use Spreadsheet::ParseExcel;
+use Spreadsheet::WriteExcel::Utility;
+use Data::Dumper;
 
 sub new {
     my ($class) = @_;
@@ -42,38 +44,6 @@ sub new {
     return $self;  
 }
 
-sub generateLastMonthSavingReport {
-	my ( $self ) = @_;
-	my $logger = Helpers::Logger->new();
-	
-	unless (defined $self->getAccountReferences) {
-		$logger->print ( "No saving account references available.", Helpers::Logger::ERROR);
-		return;
-	}
-	my $dt_from = Helpers::Date->new ();
-	$dt_from = $dt_from->rollPreviousMonth();
-	$self->{_month} = $dt_from;
-	my $path = Helpers::MbaFiles->getSavingFilePath ( $dt_from );
-	my $dt_to = DateTime->last_day_of_month( year => $dt_from->year(), month => $dt_from->month() );;
-    if (-e $path) {
-    	$logger->print ( "The saving report $path already exists", Helpers::Logger::DEBUG);
-    }
-    else {
-     	$logger->print ( "Start previous month saving reporting...", Helpers::Logger::INFO);
-    	$self->loadOperationsAndBalances($dt_from, $dt_to);
-    	$self->storeToExcel ($path, $dt_from);
-    }
-}
-
-sub mergeWithPreviousSavingReport {
-	my ( $self ) = @_;
-	my $dth = Helpers::Date->new ( $self->getMonth() );
-	my $dtPrevReporting = $dth->rollPreviousMonth();
-	my $path = Helpers::MbaFiles->getSavingFilePath ( $dtPrevReporting );
-	
-	
-}
-
 sub initReferences {
 	my ($savingConfigFilePath) = @_;
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( $savingConfigFilePath );	
@@ -95,6 +65,149 @@ sub initReferences {
 	@ref = sort { $a->{'BANK'} cmp $b->{'BANK'} || $a->{'KEY'} cmp $b->{'KEY'} } @ref;
 	return \@ref;
 }
+
+
+sub generateLastMonthSavingReport {
+	my ( $self ) = @_;
+	my $logger = Helpers::Logger->new();
+	
+	unless (defined $self->getAccountReferences) {
+		$logger->print ( "No saving account references available.", Helpers::Logger::ERROR);
+		return;
+	}
+	my $dt_from = Helpers::Date->new ();
+	$dt_from = $dt_from->rollPreviousMonth();
+	$self->{_month} = $dt_from;
+	my $path = Helpers::MbaFiles->getSavingFilePath ( $dt_from );
+	my $dt_to = DateTime->last_day_of_month( year => $dt_from->year(), month => $dt_from->month() );;
+    if (-e $path) {
+    	$logger->print ( "The saving report $path already exists", Helpers::Logger::DEBUG);
+    }
+    else {
+     	$logger->print ( "Generate previous month saving reporting...", Helpers::Logger::INFO);
+    	$self->loadOperationsAndBalances($dt_from, $dt_to);
+    	$self->mergeWithPreviousSavingReport();
+    }
+}
+
+sub mergeWithPreviousSavingReport {
+	my ( $self ) = @_;
+	my $logger = Helpers::Logger->new();
+	my $pathCurr = Helpers::MbaFiles->getSavingFilePath ( $self->getMonth() );
+	my $dth = Helpers::Date->new ( $self->getMonth() );
+	my $dtPrevReporting = $dth->rollPreviousMonth();
+	my $pathPrev = Helpers::MbaFiles->getSavingFilePath ( $dtPrevReporting );
+	
+	if (-e $pathPrev) { # if previous saving report exists, starting of the merge, otherwise, do nothing.
+	
+		$logger->print ( "Merging of the 2 last saving reporting", Helpers::Logger::INFO);
+		# Reading the content of the previous saving report
+		my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($pathPrev);
+		my $ws = $wb->worksheet( 0 );
+		my $prevBalanceSheet = $self->readFromExcelSheetBalance ($ws);
+		$ws = $wb->worksheet( 1 );
+		my $prevDetails = $self->readFromExcelSheetDetails ($ws);
+				
+		my $balances = $self->getBalances();
+		my $prevAccList = @$prevBalanceSheet[0];
+		
+		# Merge balances current and prev
+		foreach my $ip (0 .. $#{$prevAccList}) {
+			my $found = 0;
+			foreach my $ic (0 .. $#{$balances}) {
+				if (@$balances[$ic]->{NUMBER} eq @$prevAccList[$ip]) {
+					$found = 1;
+					last;
+				}
+			}
+			if (! $found) {
+				my %record;
+				$record {NUMBER} = @$prevAccList[$ip];
+				$record {NAME} = @$prevBalanceSheet[1]->{'NAME '.@$prevAccList[$ip]};
+				$record {BALANCE} = undef;
+				push ($balances, \%record);				
+			}
+		}
+		$self->storeToExcel ( $pathCurr, $dth->getDate(), $prevBalanceSheet, $prevDetails );
+	} else {
+		$self->storeToExcel ( $pathCurr, $dth->getDate() );
+	}	
+}
+
+sub readFromExcelSheetDetails {
+	my ( $self, $ws ) = @_;
+	my ( $row_min, $row_max ) = $ws->row_range();
+	my ( $col_min, $col_max ) = $ws->col_range();
+	my @tabSheet = ();
+
+	for my $row ( 0 .. $row_max ) {
+		for my $col ( 0 .. $col_max ) {
+			my $cell = $ws->get_cell( $row+1, $col );	
+			my %record;
+			if (defined $cell) {
+				%record = (
+					'unformatted' => $cell->unformatted(),
+					'value' => $cell->value(),
+				);
+				$tabSheet[$row][$col] = \%record;
+			}
+			else {
+				$tabSheet[$row][$col] = undef;
+			}
+		}
+	}
+	return \@tabSheet;
+}
+
+sub readFromExcelSheetBalance {
+	my ( $self, $ws ) = @_;
+	my ( $row_min, $row_max ) = $ws->row_range();
+	my ( $col_min, $col_max ) = $ws->col_range();
+	my @tabSheet = ();
+	# Populate a data structure as followed
+	# ( [
+	#		('04043 40040043 40', '04043 40040042 45', ...)
+	#	],
+	#	[
+	#		{MONTH}->12
+	#		{BALANCE 04043 40040043 40}->132343.49
+	#		{NAME 04043 40040043 40}->COMPTE EPARGNE LOGEMENT
+	#		{BALANCE 04043 40040042 45}->4343.30
+	#		{NAME 04043 40040042 45}->LIVRET BLEU
+	#		{BALANCE 04043 40040045 46}->143.14
+	#		...
+	# 	],
+	#	[
+	#		{MONTH}->11
+	#		..
+	#	]
+	#	...
+	# )
+	my @accList = ();
+	for my $row ( 1 .. $row_max - 1 ) {
+		my $cell_num = $ws->get_cell ($row, 0);
+		if (defined $cell_num) {
+			push (@accList, $cell_num->value());
+		}
+	}
+	push (@tabSheet, \@accList);
+	for my $col ( 2 .. $col_max ) {
+		my %month;
+		$month{MONTH} = $ws->get_cell( 0, $col )->value();
+		for my $row ( 1 .. $row_max - 1 ) {
+			my $cell_num = $ws->get_cell ($row, 0);
+			my $cell_name = $ws->get_cell( $row, 1 );	
+			my $cell_bal = $ws->get_cell( $row, $col );	
+			if (defined $cell_num) {
+				$month{ 'NAME '. $cell_num->value() } = ( defined $cell_name ? $cell_name->value() : undef );
+				$month{ 'BALANCE '. $cell_num->value() } = ( defined $cell_bal ? $cell_bal->unformatted() : undef );				
+			}
+		}
+		push (@tabSheet, \%month);
+	}
+	return \@tabSheet;
+}
+
 
 sub loadOperationsAndBalances {
 	my ( $self, $dt_from, $dt_to ) = @_;
@@ -154,7 +267,7 @@ sub addSavingRecord {
 }
 
 sub storeToExcel {
-	my( $self, $path, $dt_from) = @_;
+	my( $self, $path, $dt_from, $tabPrevBal, $tabPrevDet ) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
 	my $wb_out = Helpers::ExcelWorkbook->createWorkbook ( $path );
@@ -170,9 +283,24 @@ sub storeToExcel {
 		$ws_out->write( $i+1, 1,  @$bal[$i]->{NAME});
 		$ws_out->write( $i+1, 2,  @$bal[$i]->{BALANCE}, $currency_format);
 	}
+	$ws_out->write_formula ($#{$bal}+2, 2, '=SUM(C2:C'.($#{$bal}+2).')');
+	
+	if ( defined $tabPrevBal ) {
+		foreach my $j (1 .. $#{$tabPrevBal}) {
+			$ws_out->write( 0, 2+$j,  @$tabPrevBal[$j]->{MONTH});
+			foreach my $i (0 .. $#{$bal}) {
+				$ws_out->write( $i+1, 2+$j,  @$tabPrevBal[$j]->{'BALANCE '. @$bal[$i]->{NUMBER} }, $currency_format);
+			}
+			my $excelTopRef = xl_rowcol_to_cell(1, 2+$j);
+			my $excelDownRef = xl_rowcol_to_cell($#{$bal}+1, 2+$j);
+			$ws_out->write_formula ($#{$bal}+2, 2+$j, '=SUM('.$excelTopRef.':'.$excelDownRef.')' );
+		}
+	}
+	
 	$ws_out->set_column(0, 0,  18);	
-	$ws_out->set_column(1, 1,  45);
-	$ws_out->set_column(2, 2,  10);
+	$ws_out->set_column(1, 1,  65);
+	$ws_out->set_column(2, $#{$tabPrevBal}+2,  12);
+	$ws_out->set_zoom(90);
 	
 	my $ope = $self->getOperations();
 	$ws_out = $wb_out->add_worksheet( "Details" );
@@ -183,19 +311,48 @@ sub storeToExcel {
 	$ws_out->write( 0, 4, "ACCOUNT NAME" );
 	$ws_out->write( 0, 5, "DETAILS" );
 	
-		
+	my $lastrow = 0;	
 	foreach my $i (0 .. $#{$ope}) {
-		$ws_out->write_date_time( $i+1, 0,  @$ope[$i]->{DATE}, $date_format);
+		@$ope[$i]->{DATE} =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$];  #date column
+		my $date = sprintf "%4d-%02d-%02dT", $3, $2, $1;
+		$ws_out->write_date_time( $i+1, 0, $date, $date_format);
 		(@$ope[$i]->{TYPE} == AccountStatement::Account::EXPENSE) ? 
 			$ws_out->write( $i+1, 1,  @$ope[$i]->{AMOUNT}, $currency_format) :
 			$ws_out->write( $i+1, 2,  @$ope[$i]->{AMOUNT}, $currency_format);
 		$ws_out->write( $i+1, 3,  @$ope[$i]->{NUMBER});
 		$ws_out->write( $i+1, 4,  @$ope[$i]->{NAME});
 		$ws_out->write( $i+1, 5,  @$ope[$i]->{DETAILS});
+		$lastrow = $i+1;
 	}
+	$lastrow++;
+	
+	if (defined $tabPrevDet) {
+		
+		for my $row ( 0 .. $#{$tabPrevDet} ) {
+			for my $col ( 0 .. $#{@$tabPrevDet[$row]} ) {
+				if (defined @$tabPrevDet[$row]->[$col]) {
+					if (@$tabPrevDet[$row]->[$col]->{value} =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
+						my $date = sprintf "%4d-%02d-%02dT", $3, $2, $1;
+						$ws_out->write_date_time($lastrow+$row, $col, $date, $date_format);
+					}
+					elsif ( @$tabPrevDet[$row]->[$col]->{unformatted} =~ /^[+-]?\d+(\.\d+)?$/ ) { # currency column?
+						$ws_out->write( $lastrow+$row, $col, @$tabPrevDet[$row]->[$col]->{unformatted}, $currency_format ); 
+					}
+					else {
+						$ws_out->write( $lastrow+$row, $col, @$tabPrevDet[$row]->[$col]->{value} );
+					}
+					
+				}
+			}
+		}
+	}
+	
+	$ws_out->set_column(0, 0,  10);	
 	$ws_out->set_column(1, 3,  12);	
 	$ws_out->set_column(3, 3,  18);
-	$ws_out->set_column(4, 5,  35);
+	$ws_out->set_column(4, 4,  65);
+	$ws_out->set_column(5, 5,  45);
+	$ws_out->set_zoom(80);
 }
 
 sub getAccountReferences {

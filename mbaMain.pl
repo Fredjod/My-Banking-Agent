@@ -63,7 +63,6 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 $logger->print ( "Check if saving report is required.", Helpers::Logger::INFO);
 my $saving = AccountStatement::SavingAccount->new( );
 $saving->generateLastMonthSavingReport();
-$saving->mergeWithPreviousSavingReport();
 
 $logger->print ( "End of running.", Helpers::Logger::INFO);
 

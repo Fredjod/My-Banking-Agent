@@ -651,7 +651,7 @@ sub controlBalance {
 	# Check whether an alert is needed due to a too hight variation between actual and forecasted balance.
 	my $threshold = $prop->readParamValue('alert.mondays.variation.threshold');
 	my $var = abs ($currentBalance-$plannedBalance);
-	if ( $var > $threshold && $wkday == 1) { 
+	if ( $var >= $threshold && $wkday == 1) { 
 		my $subject = "Balance Variation Alert";
 		$log->print ( "Email sending: $subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
 		my $mail = Helpers::SendMail->new(
