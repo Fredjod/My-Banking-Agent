@@ -238,7 +238,7 @@ sub loadOperationsAndBalances {
 		$logger->print ( "Log out", Helpers::Logger::INFO);
 		$connector->logOut();
 		my $operations = $self->getOperations();
-		@$operations = sort { $a->{'DATE'} cmp $b->{'DATE'}  } @$operations;
+		@$operations = sort { $b->{'DATE'} cmp $a->{'DATE'}  } @$operations;
 	}	
 }
 
@@ -346,7 +346,7 @@ sub storeToExcel {
 			}
 		}
 	}
-	
+	$ws_out->autofilter(0, 0, $#{$tabPrevDet}, $#{@$tabPrevDet[$#{$tabPrevDet}]});
 	$ws_out->set_column(0, 0,  10);	
 	$ws_out->set_column(1, 3,  12);	
 	$ws_out->set_column(3, 3,  18);

@@ -505,6 +505,13 @@ sub displayDetailsDataRow {
 
 sub populateCashflowMonthlyTransactions {
 	my( $self, $statement, $cashflow, $pivotDay, $family, $typeOpe, $type ) = @_;
+	
+	my $log = Helpers::Logger->new();
+	$log->print ( "populateCashflowMonthlyTransactions :: Cashflow data", Helpers::Logger::DEBUG);
+	$log->print ( Dumper $cashflow, Helpers::Logger::DEBUG);
+	$log->print ( "populateCashflowMonthlyTransactions :: PivotDay data", Helpers::Logger::DEBUG);
+	$log->print ( Dumper $pivotDay, Helpers::Logger::DEBUG);
+	
 	foreach my $day ( keys $pivotDay ) {
 		my $found = 0;
 		foreach my $i (0 .. $#{$cashflow}) {
