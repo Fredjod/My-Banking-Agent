@@ -63,7 +63,7 @@ sub logIn
 		$logger->print ( "Login to website failed!", Helpers::Logger::ERROR);
 		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
 		$self->loginLock();
-		$logger->print ( "HTML content: ".$response->content(), Helpers::Logger::DEBUG);
+		$logger->print ( "HTML content: \n".$response->content(), Helpers::Logger::DEBUG);
 		return 0;				
 	}
 	$logger->print ( "Login to website v2 succeed", Helpers::Logger::INFO);
@@ -79,7 +79,7 @@ sub logIn
 	
 	unless (${$response->content_ref} =~ /form id="P:F" action="(.+)"\smethod/) {
 		$logger->print ( "Can't read URL download", Helpers::Logger::ERROR);
-		$logger->print ( "HTML content: ".${$response->content_ref}, Helpers::Logger::DEBUG);
+		$logger->print ( "HTML content: \n".${$response->content_ref}, Helpers::Logger::DEBUG);
 		return 0;				
 	}
 	$url .= $1;
@@ -109,12 +109,13 @@ sub logOut
 	$ua->cookie_jar($cookie_jar);
 	$request->method('GET');
 	$request->url('https://www.creditmutuel.fr/fr/identification/msg_deconnexion.html');
+	$request->header('Content-Type' => 'application/x-www-form-urlencoded');
 	$response = $ua->request($request);
-	unless ($response->content() =~ /msg_deconnexion\.html/m) {
+	unless ($response->content() =~ /<title>Page de d.connexion - Cr.dit Mutuel<\/title>/m) {
 		$logger->print ( "Logout to website failed!", Helpers::Logger::ERROR);
 		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
 		$self->loginLock();
-		$logger->print ( "HTML content: ".$response->content(), Helpers::Logger::DEBUG);
+		$logger->print ( "HTML content:\n".$response->content(), Helpers::Logger::DEBUG);
 		return 0;				
 	}
 	return 1;
@@ -140,7 +141,7 @@ sub download
 	}
 	unless ( $response->content() =~ /CB:data_accounts_account_(.*)ischecked.+$accountNumber/m ) {
 		$logger->print ( "Account number: $accountNumber can not be found", Helpers::Logger::ERROR);
-		$logger->print ( "HTML content: ".$response->content(), Helpers::Logger::DEBUG);
+		$logger->print ( "HTML content: \n".$response->content(), Helpers::Logger::DEBUG);
 		return undef;	
 	}
 	my $checkedAccount = "CB%3Adata_accounts_account_$1ischecked=on";

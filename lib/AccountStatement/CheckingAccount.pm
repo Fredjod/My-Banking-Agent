@@ -205,6 +205,45 @@ sub findDefaultCategId {
 
 }
 
+sub findOperationsCatagory {
+	my( $self, $line ) = @_;
+	my $logger = Helpers::Logger->new();
+	my $categories = $self->getCategories();
+	my $default = 1;
+	my $i=0;
+	for ($i=0; $i<$#{$categories}+1; $i++) {
+		if ( not isCategDefault( $self, $i ) ) {
+			my $keywords = @$categories[$i]->{KEYWORDS};
+			foreach my $keyword (@$keywords) {
+				if ($keyword ne '' && $line->{DETAILS} =~ /$keyword/) {
+					$default = 0;
+					last;
+				}
+			}
+			if (not $default) { last; }
+		}
+	}
+	# Check the consistency of operation type and category family
+	if (not $default) {
+		if ( ($line->{AMOUNT} >= 0 && @$categories[$i]->{TYPEOPE} == AccountStatement::Account::EXPENSE)
+			|| ($line->{AMOUNT} < 0 && @$categories[$i]->{TYPEOPE} == AccountStatement::Account::INCOME) ) {
+				$logger->print ( "Inconsistency: $line->{DETAILS} / $line->{AMOUNT} / @$categories[$i]->{TYPEOPE}", Helpers::Logger::INFO);
+				$default = 1; #for managing inconsistency, requalify the operation as a defaut one
+		}
+	}
+	
+	if ($default) {
+		if ($line->{AMOUNT} < 0) { # It's an expense
+			$i = findDefaultCategId ($self, $line->{AMOUNT}, AccountStatement::Account::EXPENSE);
+		}
+		else { # It's an income
+			$i = findDefaultCategId ($self, $line->{AMOUNT}, AccountStatement::Account::INCOME);
+		}
+	}
+	return $i;
+	
+}
+
 sub parseBankStatement {
 	my( $self, $bankData ) = @_;
 	# bankData is an array of hashes. Each hash is a transaction with the following info and format:
@@ -220,45 +259,12 @@ sub parseBankStatement {
 	#	 }
     # ]
     #
-
-	my $logger = Helpers::Logger->new();
+    
 	my $categories = $self->getCategories();
 	my @operations;
 
 	foreach my $line (@$bankData) {
-		my $default = 1;
-		my $i;
-		for ($i=0; $i<$#{$categories}+1; $i++) {
-			if ( not isCategDefault( $self, $i ) ) {
-				my $keywords = @$categories[$i]->{KEYWORDS};
-				foreach my $keyword (@$keywords) {
-					if ($keyword ne '' && $line->{DETAILS} =~ /$keyword/) {
-						$default = 0;
-						last;
-					}
-				}
-				if (not $default) { last; }
-			}
-		}
-		if (not $default) {
-			# Check the consistency of operation type and category family
-			if ( ($line->{AMOUNT} < 0 && @$categories[$i]->{TYPEOPE} == AccountStatement::Account::EXPENSE)
-			  || ($line->{AMOUNT} >= 0 && @$categories[$i]->{TYPEOPE} == AccountStatement::Account::INCOME) ) {
-				push (@operations, buildExtendedRecord($line, @$categories[$i]));
-			}
-			else {
-				$logger->print ( "Inconsistency: $line->{DETAILS} / $line->{AMOUNT} / @$categories[$i]->{TYPEOPE}", Helpers::Logger::INFO);
-				$default = 1; #for managing inconsistency, requalify the operation as a defaut one
-			}
-		}
-		if ($default) {
-			if ($line->{AMOUNT} < 0) { # It's an expense
-				push (@operations, buildExtendedRecord($line, @$categories[ findDefaultCategId ($self, $line->{AMOUNT}, AccountStatement::Account::EXPENSE) ]));
-			}
-			else { # It's an income
-				push (@operations, buildExtendedRecord($line, @$categories[ findDefaultCategId ($self, $line->{AMOUNT}, AccountStatement::Account::INCOME) ]));
-			}
-		}
+		push (@operations, buildExtendedRecord($line, @$categories[$self->findOperationsCatagory($line)]));
 	}
 	$self->{_operations} = \@operations;
 	

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=2.10.hf1
+VERSION=2.10.hf2
 
 # Run unit testing
 echo '--- Unit testing... ---'
