@@ -1,4 +1,4 @@
-use Test::More tests => 22;
+use Test::More tests => 24;
 # use Test::More qw( no_plan );
 use lib '../lib';
 use Data::Dumper;
@@ -65,10 +65,10 @@ $operations = $data->parseBankStatement($bankData);
 
 is(@$operations[0]->{FAMILY}, "EXCEPTIONAL EXPENSES", 'Check whether the 1st operation family is a Exceptional Expenses');
 is(@$operations[34]->{TYPE}, 2, 'Check whether the 34th operation is qualifed as income');
-is(@$operations[83]->{FAMILY}, "EXCEPTIONAL INCOMES", 'Check whether the 30th operation is requlifed as exceptional incomes');
-is(@$operations[89]->{DEBIT}, -102.74, 'Check whether the 51st operation expenses value');
+is(@$operations[83]->{FAMILY}, "MONTHLY INCOMES", 'Check whether the 30th operation is requlifed as exceptional incomes');
+is(@$operations[89]->{DEBIT}, '-46.80', 'Check whether the 51st operation expenses value');
 is(@$operations[$#{$operations}]->{SOLDE}, 8075.14, 'Check the solde of the last operation');
-is(@$operations[63]->{SOLDE}, '8367.10', 'Check the solde at the 63th operation');
+is(@$operations[63]->{SOLDE}, 8375.17, 'Check the solde at the 63th operation');
 
 # print Dumper $operations, "\n";
 
@@ -77,7 +77,7 @@ my $pivot1 = $data->groupBy ('CATEGORY', 'CREDIT');
 # print "total: ", @$pivot1[1],"\n";
 is(@$pivot1[0]->{'Marc'}, 2757, 'Check Marc total category');
 is(@$pivot1[0]->{'Laper'}, 130, 'Check Laper total category');
-is(@$pivot1[1], 4605.8, 'Check total credits');
+is(@$pivot1[1], 4945.8, 'Check total credits');
 
 my $pivot2 = $data->groupBy ('CATEGORY', 'DEBIT');
 # print Dumper @$pivot2[0], "\n";
@@ -88,3 +88,27 @@ is(@$pivot2[1], -7870.73, 'Check total debits');
 
 my $date = $data->getMonth();
 is($date->month(), 5, 'Month of the statement is May');
+
+my %line;
+	#	{
+    #      'DATE' => 'DD/MM/YYYY',
+    #      'AMOUNT' => -NNNN.NN,
+   	#      'DETAILS' => 'A string describing the transaction',
+    #      'BALANCE' => -NNNN.NN,
+    #    },
+$line{'DATE'} = '12/05/15';
+$line{'AMOUNT'} = -230.50;
+$line{'DETAILS'} = 'NATURALIA';
+$line{'BALANCE'} = 0;
+my $id = $data->findOperationsCatagoryId(\%line);
+is(@$categories[$id]->{FAMILY}, 'WEEKLY EXPENSES', 'Find a fictive operation familly, NATURALIA = WEEKLY EXPENSES');
+
+$line{'DATE'} = '12/05/15';
+$line{'AMOUNT'} = 230.50;
+$line{'DETAILS'} = 'NATURALIA';
+$line{'BALANCE'} = 0;
+$id = $data->findOperationsCatagoryId(\%line);
+is(@$categories[$id]->{FAMILY}, 'EXCEPTIONAL INCOMES', 'Find a fictive operation familly, Inconsistence converted to EXCEPTIONAL INCOMES');
+
+
+

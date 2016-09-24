@@ -23,10 +23,9 @@ smtp.server = smtp.free.fr
 mailing.list = myemail@server.com
 ####
 
-### Alert thresholds that trigger email to the bank account owners
-# The threshold is the absolute value (in euros) of the difference between forecasted and actual account balance
-# Mondays threshold
-alert.mondays.variation.threshold = 300
+### Parameters for email reporting
+# Mondays report providing a "month to date" situation in a weekly basis between the forecasted cashflow and the actuals.
+mondays.report.active = yes
 # Minimum balance corresponding to a bank overdraft for you (0 or any positive or negative value).
 alert.overdraft.threshold = 0
 ###
@@ -38,6 +37,7 @@ saving.config.pattern = ^config\.saving.*\.xls$
 root.account.reporting = ./reporting
 account.reporting.closing.prefix = _closing.xls
 account.reporting.actuals.prefix = _actuals.xls
+account.reporting.planned.prefix = planned_operations.xls
 account.reporting.saving.prefix = _saving.xls
 ###
 

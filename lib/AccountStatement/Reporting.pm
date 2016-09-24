@@ -14,6 +14,7 @@ use Helpers::Logger;
 use Helpers::SendMail;
 use Helpers::Date;
 use AccountStatement::CheckingAccount;
+use AccountStatement::PlannedOperation;
 
 
 sub new
@@ -264,7 +265,13 @@ sub generateActualsCashflowSheet
 	
 	my $row = $dt_currmonth->day();
 	$self->populateCashflowSheet (\@cashflow, $statMTD, 1, $dt_currmonth->day(), 'ACTUALS', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
+	
+	my $plannedOps = AccountStatement::PlannedOperation->new( $self->getAccDataMTD() );
+			
 	if ($dt_currmonth->day() < $dt_lastday->day() ) {
+		# Add planned operation not found in the clipboard
+		$self->addPlannedOperationsIntoClipBoard ( $plannedOps->getPlannedOperations (), $dt_currmonth->day()+1, $currency_format );
+		$plannedOps->saveExcelFile( $self->getAccDataMTD() );
 		$row = $self->pastExcelSheet ( $wb_out, $ws_out, $dt_currmonth->day()+1 );
 	}
 	
@@ -649,11 +656,11 @@ sub controlBalance {
 		}
 	}
 
-	# Check whether an alert is needed due to a too hight variation between actual and forecasted balance.
-	my $threshold = $prop->readParamValue('alert.mondays.variation.threshold');
-	my $var = abs ($currentBalance-$plannedBalance);
-	if ( $var >= $threshold && $wkday == 1) { 
-		my $subject = "Balance Variation Alert";
+	# Send the Monday report, if activated.
+	my $mondayReport = $prop->readParamValue('mondays.report.active');
+	my $var = $currentBalance-$plannedBalance;
+	if ( $var !=0 && $mondayReport eq "yes" && $wkday == 1) { 
+		my $subject = "Balance Variation Report";
 		$log->print ( "Email sending: $subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
 		my $mail = Helpers::SendMail->new(
 			$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
@@ -755,6 +762,35 @@ sub copyCashflowExcelSheet {
 	return $ws->get_name();
 }
 
+sub addPlannedOperationsIntoClipBoard {
+	my ( $self, $plannedOps, $startRow, $currency_format ) = @_;
+	my $tab = $self->getSheetClipBoard();
+	my $endRow = @$tab - 1;
+	
+	for my $plan ( @$plannedOps ) {
+		if (not $plan->{'FOUND'} ) {
+			if ( $plan->{'KEY'} <= @$tab[$endRow]->[0]->{unformatted} ) { # The planned operation is within the current month.
+					my $rowId = ( $plan->{'KEY'} <= @$tab[$startRow]->[0]->{unformatted} ) ? 
+						$startRow : $startRow + ($plan->{'KEY'} - @$tab[$startRow]->[0]->{unformatted});
+					my $colId;
+					for ($colId = 0; $colId <= $#{@$tab[0]}; $colId++ ) {
+						last unless @$tab[0]->[$colId]->{value} ne $plan->{'FAMILY'};
+					}
+					if (defined @$tab[$rowId]->[$colId]) {
+						@$tab[$rowId]->[$colId]->{unformatted} += $plan->{'AMOUNT'};
+					} else {
+						my %record = (
+							'unformatted' => $plan->{'AMOUNT'},
+							'value' => $plan->{'AMOUNT'},
+							'format' => $currency_format,
+						);					
+						@$tab[$rowId]->[$colId] = \%record;
+					}
+				}
+		}
+	}
+}
+
 sub pastExcelSheet {
 	my ( $self, $wb, $ws, $startRow, $endRow ) = @_;
 
@@ -766,9 +802,15 @@ sub pastExcelSheet {
 	for my $row ( $startRow .. $endRow ) {
 		for my $col ( 0 .. $#{@$tab[$row]} ) {
 			if (defined @$tab[$row]->[$col]) {
-				my $font = Helpers::ExcelWorkbook->fontTranslator( @$tab[$row]->[$col]->{format}->{Font});
-				my $shading = Helpers::ExcelWorkbook->cellFormatTranslator(@$tab[$row]->[$col]->{format});
-				my $fx_out = $wb->add_format( %$font, %$shading);
+				my $fx_out;
+				if (ref @$tab[$row]->[$col]->{format} eq 'Spreadsheet::WriteExcel::Format') {
+					$fx_out = @$tab[$row]->[$col]->{format}
+				}
+				else {
+					my $font = Helpers::ExcelWorkbook->fontTranslator( @$tab[$row]->[$col]->{format}->{Font});
+					my $shading = Helpers::ExcelWorkbook->cellFormatTranslator(@$tab[$row]->[$col]->{format});
+					$fx_out = $wb->add_format( %$font, %$shading);					
+				}
 				
 				if (@$tab[$row]->[$col]->{value} =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
 					my $date = sprintf "%4d-%02d-%02dT", $3, $2, $1;

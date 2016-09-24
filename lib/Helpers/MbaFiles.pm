@@ -105,6 +105,26 @@ sub getSavingFilePath {
 			$prop->readParamValue('account.reporting.saving.prefix');	
 }
 
+sub getPlannedOperationPath {
+	
+	my ($class, $checkingAccount) = @_;
+	my $logger = Helpers::Logger->new();
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $number = $checkingAccount->getAccountNumber ();
+	$number =~ s/\s//g;
+	my $reportingDir = getReportingDirname ($number);
+
+	my $filePath =  $reportingDir.
+					$prop->readParamValue('account.reporting.planned.prefix');	
+	
+	if (! -e $filePath ) {
+		$logger->print ( "File $filePath doesn't exist", Helpers::Logger::DEBUG);
+		return undef;
+	} else {
+		return $filePath;
+	}
+}
+
 sub getReportingDirname {
 	my ( $number) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");

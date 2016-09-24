@@ -205,7 +205,7 @@ sub findDefaultCategId {
 
 }
 
-sub findOperationsCatagory {
+sub findOperationsCatagoryId {
 	my( $self, $line ) = @_;
 	my $logger = Helpers::Logger->new();
 	my $categories = $self->getCategories();
@@ -244,6 +244,13 @@ sub findOperationsCatagory {
 	
 }
 
+sub findOperationsFamily {
+	my( $self, $line ) = @_;
+	my $categories = $self->getCategories();
+	return @$categories[$self->findOperationsCatagoryId($line)]->{FAMILY};
+	
+}
+
 sub parseBankStatement {
 	my( $self, $bankData ) = @_;
 	# bankData is an array of hashes. Each hash is a transaction with the following info and format:
@@ -264,7 +271,7 @@ sub parseBankStatement {
 	my @operations;
 
 	foreach my $line (@$bankData) {
-		push (@operations, buildExtendedRecord($line, @$categories[$self->findOperationsCatagory($line)]));
+		push (@operations, buildExtendedRecord($line, @$categories[$self->findOperationsCatagoryId($line)]));
 	}
 	$self->{_operations} = \@operations;
 	

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=2.10.hf2
+VERSION=2.11
 
 # Run unit testing
 echo '--- Unit testing... ---'
@@ -18,12 +18,14 @@ echo '--- Packaging... ---'
 mkdir mba
 mkdir mba/logs
 mkdir mba/accounts
+mkdir mba/reporting
 cp -R lib mba/
 cp -R properties mba/
 mv mba/properties/app.txt mba/properties/app.dist.txt 
 cp mbaMain.pl mba/
 cp mba.sh mba/
 cp t/accounts/config.0303900020712303.xls mba/accounts/dist.config.0303900020712303.xls
+cp t/reporting/0303900020712303/dist.planned_operations.xls mba/reporting/dist.planned_operations.xls
 cp auth.pl mba/auth.dist.pl
 cp LICENSE mba/
 cp README.md mba/
