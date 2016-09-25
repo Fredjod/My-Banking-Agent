@@ -177,7 +177,6 @@ sub generateCashflowSheet
 	my $dt_currmonth = $statMTD->getMonth()->clone();
 	
 	my $dt_lastday =  DateTime->last_day_of_month( year => $dt_currmonth->year(), month => $dt_currmonth->month() );
-	my @cashflow = ();
 	my $ws_tpl = $wb_tpl->worksheet( 2 );		
 	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name().'-'.sprintf ("%4d-%02d-%02d", $dt_currmonth->year, $dt_currmonth->month, $dt_currmonth->day ) );
 	my $balance = $statMTD->getBalance();
@@ -192,9 +191,6 @@ sub generateCashflowSheet
 			$balance = @$ops[$#{$ops}]->{SOLDE};
 		}
 	}
-	
-	### cashflow sheet
-	# init cashflow data
 	
 	# Write header line
 	my @dataRow = (
@@ -211,15 +207,45 @@ sub generateCashflowSheet
 	);
 	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
 	
+	my $startDay = 1;
+	my @cashflow = ();
 	if ( defined $statMTD->getOperations() ) { # We are NOT at the begining of the month 
-		$self->populateCashflowSheet (\@cashflow, $statMTD, 1, $dt_currmonth->day(), 'ACTUALS', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
+		$self->populateCashflowData (\@cashflow, $statMTD, $startDay , $dt_currmonth->day(), 'ACTUALS', $dt_currmonth );
 		if ($dt_currmonth->day() < $dt_lastday->day() ) {
-			$self->populateCashflowSheet (\@cashflow, $statPRM, $dt_currmonth->day()+1, $dt_lastday->day(), 'FORECASTED', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
+			$startDay = $dt_currmonth->day()+1;
+			$self->populateCashflowData (\@cashflow, $statPRM, $startDay, $dt_lastday->day(), 'FORECASTED', $dt_currmonth );
 		}
 	}
 	else {
-			$self->populateCashflowSheet (\@cashflow, $statPRM, 1, $dt_lastday->day(), 'FORECASTED', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);	
+			$self->populateCashflowData (\@cashflow, $statPRM, $startDay, $dt_lastday->day(), 'FORECASTED', $dt_currmonth );	
 	}
+	
+	# Write the core sheet data
+	foreach my $i (1 .. $#cashflow) {
+		@dataRow = ( 
+		 [
+			$cashflow[$i]->{DATE},
+			$cashflow[$i]->{WDAYNAME},
+			$cashflow[$i]->{'MONTHLY INCOMES'},
+			$cashflow[$i]->{'EXCEPTIONAL INCOMES'},
+			$cashflow[$i]->{'MONTHLY EXPENSES'},
+			$cashflow[$i]->{'WEEKLY EXPENSES'},
+			$cashflow[$i]->{'EXCEPTIONAL EXPENSES'},
+			'=H'.($i+1).'+SUM(C'.($i+2).':G'.($i+2).')'
+		 ],
+		 [ undef,
+		   undef,
+		   $cashflow[$i]->{'MONTHLY INCOMES DETAILS'},
+		   $cashflow[$i]->{'EXCEPTIONAL INCOMES DETAILS'},
+		   $cashflow[$i]->{'MONTHLY EXPENSES DETAILS'},
+		   $cashflow[$i]->{'WEEKLY EXPENSES DETAILS'},
+		   $cashflow[$i]->{'EXCEPTIONAL EXPENSES DETAILS'},
+		   undef,
+		 ]
+		);
+		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format, $current_format_actuals, 'ACTUALS' ) ;
+	}
+	
 	$ws_out->set_column(0, 1,  10);	
 	$ws_out->set_column(2, 2,  19);
 	$ws_out->set_column(3, 3,  23);
@@ -238,7 +264,6 @@ sub generateActualsCashflowSheet
 	my $dt_currmonth = $statMTD->getMonth()->clone();
 	
 	my $dt_lastday =  DateTime->last_day_of_month( year => $dt_currmonth->year(), month => $dt_currmonth->month() );
-	my @cashflow = ();
 	my $ws_tpl = $wb_tpl->worksheet( 2 );
 	my $sheetName = $ws_tpl->get_name().'-'.sprintf ("%4d-%02d-%02d", $dt_currmonth ->year, $dt_currmonth ->month, $dt_currmonth ->day );
 	
@@ -264,7 +289,33 @@ sub generateActualsCashflowSheet
 	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
 	
 	my $row = $dt_currmonth->day();
-	$self->populateCashflowSheet (\@cashflow, $statMTD, 1, $dt_currmonth->day(), 'ACTUALS', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
+	my @cashflow = ();
+	$self->populateCashflowData (\@cashflow, $statMTD, 1, $dt_currmonth->day(), 'ACTUALS', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
+
+	foreach my $i (1 .. $#cashflow) {
+		@dataRow = ( 
+		 [
+			$cashflow[$i]->{DATE},
+			$cashflow[$i]->{WDAYNAME},
+			$cashflow[$i]->{'MONTHLY INCOMES'},
+			$cashflow[$i]->{'EXCEPTIONAL INCOMES'},
+			$cashflow[$i]->{'MONTHLY EXPENSES'},
+			$cashflow[$i]->{'WEEKLY EXPENSES'},
+			$cashflow[$i]->{'EXCEPTIONAL EXPENSES'},
+			'=H'.($i+1).'+SUM(C'.($i+2).':G'.($i+2).')'
+		 ],
+		 [ undef,
+		   undef,
+		   $cashflow[$i]->{'MONTHLY INCOMES DETAILS'},
+		   $cashflow[$i]->{'EXCEPTIONAL INCOMES DETAILS'},
+		   $cashflow[$i]->{'MONTHLY EXPENSES DETAILS'},
+		   $cashflow[$i]->{'WEEKLY EXPENSES DETAILS'},
+		   $cashflow[$i]->{'EXCEPTIONAL EXPENSES DETAILS'},
+		   undef,
+		 ]
+		);
+		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format, $current_format_actuals, 'ACTUALS' ) ;
+	}
 	
 	my $plannedOps = AccountStatement::PlannedOperation->new( $self->getAccDataMTD() );
 			
@@ -366,8 +417,8 @@ sub generateVariationSheet {
 	$ws_out->set_column(1, 3,  15);
 }
 
-sub populateCashflowSheet {
-	my ( $self, $cashflow, $stat, $startDay, $endDay, $type, $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals) = @_;
+sub populateCashflowData {
+	my ( $self, $cashflow, $stat, $startDay, $endDay, $type, $dt_currmonth) = @_;
 	for (my $d=$startDay; $d<=$endDay; $d++) {
 		my %record;
 		$dt_currmonth->set_day($d);
@@ -408,32 +459,6 @@ sub populateCashflowSheet {
 		$pivotDay = $stat->groupByWhere ('DAY', 'CREDIT', \@where);
 		$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'EXCEPTIONAL INCOMES', 'CREDIT', $type );
 	}
-	
-	foreach my $i ($startDay-1 .. $#{$cashflow}) {
-		my @dataRow = ( 
-		 [
-			@$cashflow[$i]->{DATE},
-			@$cashflow[$i]->{WDAYNAME},
-			@$cashflow[$i]->{'MONTHLY INCOMES'},
-			@$cashflow[$i]->{'EXCEPTIONAL INCOMES'},
-			@$cashflow[$i]->{'MONTHLY EXPENSES'},
-			@$cashflow[$i]->{'WEEKLY EXPENSES'},
-			@$cashflow[$i]->{'EXCEPTIONAL EXPENSES'},
-			'=H'.($i+1).'+SUM(C'.($i+2).':G'.($i+2).')'
-		 ],
-		 [ undef,
-		   undef,
-		   @$cashflow[$i]->{'MONTHLY INCOMES DETAILS'},
-		   @$cashflow[$i]->{'EXCEPTIONAL INCOMES DETAILS'},
-		   @$cashflow[$i]->{'MONTHLY EXPENSES DETAILS'},
-		   @$cashflow[$i]->{'WEEKLY EXPENSES DETAILS'},
-		   @$cashflow[$i]->{'EXCEPTIONAL EXPENSES DETAILS'},
-		   undef,
-		 ]
-		);
-		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format, $current_format_actuals, $type ) ;
-	}
-	
 }
 
 sub displayPivotSumup {
