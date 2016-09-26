@@ -28,9 +28,9 @@ $parser->backwardBalanceCompute ( $bankData, $balance );
 my $operations = $data->parseBankStatement($bankData);
 ###
 
-my $planned = AccountStatement::PlannedOperation->new( $data );
+my $planned = AccountStatement::PlannedOperation->new( $data, "./reporting/0303900020712303/dist.planned_operations.xls" );
 my $ops = $planned->getPlannedOperations();
-is(@$ops[0]->{FAMILY}, 'EXCEPTIONAL EXPENSES', 'Test the sorting and the transcoding of Family');
-is(@$ops[1]->{FOUND}, 1, 'Match 1 planned operation with the current operations');
+is(@$ops[1]->{FAMILY}, 'EXCEPTIONAL EXPENSES', 'Test the sorting and the transcoding of Family');
+is(@$ops[0]->{FOUND}, 1, 'Match 1 planned operation with the current operations');
 
 #print Dumper $planned->getPlannedOperations(), "\n";

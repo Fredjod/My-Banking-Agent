@@ -15,9 +15,9 @@ use Data::Dumper;
 
 sub new
 {
-    my ($class, $account) = @_;
+    my ($class, $account, $plannedPath) = @_;
     my $prop = Helpers::ConfReader->new("properties/app.txt");
-    my $plannedPath = Helpers::MbaFiles->getPlannedOperationPath ( $account );
+    unless ( defined $plannedPath) { $plannedPath = Helpers::MbaFiles->getPlannedOperationPath ( $account ); }
     
     # 
     my $self = {
@@ -66,6 +66,11 @@ sub loadExcelFile {
 					$line{'AMOUNT'} = $cell->unformatted();
 					$line{'FAMILY'} = "";
 					$line{'FOUND'} = 0;
+					$cell = $ws->get_cell ( $row, 3 );
+					$line{'FORECASTED'} = 'N';
+					if (defined $cell) {
+						if (uc ($cell->unformatted()) eq "Y") { $line{'FORECASTED'} = 'Y'; }
+					}
 					push (@data, \%line);
 				}
 			}
@@ -89,18 +94,21 @@ sub saveExcelFile {
 		$ws_out->write( 0, 0, 'DATE' );
 		$ws_out->write( 0, 1, 'KEYWORD' );
 		$ws_out->write( 0, 2, 'AMOUNT' );
+		$ws_out->write( 0, 3, 'FORECASTED' );
 		my $row = 1;
 		for my $line ( @$ops) {
 			if (not $line->{'FOUND'}) {
 				$ws_out->write( $row, 0, $line->{'KEY'}, $date_format );
 				$ws_out->write( $row, 1, $line->{'DETAILS'} );
 				$ws_out->write( $row, 2, $line->{'AMOUNT'}, $currency_format );
+				$ws_out->write( $row, 3, $line->{'FORECASTED'} );
 				$row++;
 			}
 		}
 		$ws_out->set_column(0, 0,  10);	
 		$ws_out->set_column(1, 1,  40);
 		$ws_out->set_column(2, 2,  15);
+		$ws_out->set_column(3, 3,  15);
 		$ws_out->set_zoom(85);
 	}
 }
@@ -118,13 +126,13 @@ sub qualifyOperation {
 sub LookingForOperation {
 	my( $self, $account ) = @_;
 	if ($self->{_isPlannedOperation}) {
-		my $PlanOps = $self->{_data};
+		my $planOps = $self->{_data};
 		my $MTDOps = $account->getOperations ();
 		
 		for my $mtd ( @$MTDOps) {
-			for my $plan ( @$PlanOps ) {
+			for my $plan ( @$planOps ) {
 				my ($d,$m,$y) = $plan->{'DATE'} =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/;
-				my $PlanDate = DateTime->new(
+				my $planDate = DateTime->new(
 			   		year      => $y,
 			   		month     => $m,
 			   		day       => $d,
@@ -133,7 +141,7 @@ sub LookingForOperation {
 				if ( $mtd->{'LIBELLE'} =~ /$plan->{'DETAILS'}/ ) {
 					if ($mtd->{'FAMILY'} eq $plan->{'FAMILY'}) {
 						if (( $plan->{'AMOUNT'} < 0) ?  $mtd->{'DEBIT'} == $plan->{'AMOUNT'} : $mtd->{'CREDIT'} == $plan->{'AMOUNT'}) {
-							if (DateTime->compare( $PlanDate, $account->getMonth () ) <= 0 ) {
+							if (DateTime->compare( $planDate, $account->getMonth () ) <= 0 ) {
 								$plan->{'FOUND'} = 1;
 							}
 						}

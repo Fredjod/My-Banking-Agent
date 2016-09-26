@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=2.11
+VERSION=2.12
 
 # Run unit testing
 echo '--- Unit testing... ---'
@@ -9,6 +9,7 @@ cd t/
 perl -w ConfReader.t
 perl -w DateHelper.t
 perl -w CheckingAccount.t
+perl -w PlannedOperation.t
 perl -w AccountReporting.t
 perl -w MbaFiles.t
 cd ..

@@ -1,4 +1,4 @@
-use Test::More tests => 15;
+use Test::More tests => 18;
 # use Test::More qw( no_plan );
 use lib '../lib';
 use Data::Dumper;
@@ -43,7 +43,7 @@ open $in, "<", "t.cm.bankdata.ofx" or die "Can't open file t.cm.bankdata.ofx fil
 read $in, $ofx, -s $in;
 close $in;	
 
-open $in, "<", "t.cm.bankdata_june.qif" or die "Can't open file t.cm.bankdata.qif file!\n";
+open $in, "<", "t.cm.bankdata_june.qif" or die "Can't open file t.cm.bankdata_june.qif file!\n";
 read $in, $qif, -s $in;
 close $in;
 
@@ -64,15 +64,18 @@ $report->createPreviousMonthClosingReport();
 
 my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $dataPRM );
 my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
-my $ws = $wb->worksheet( 0 );
-is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'Cell B10 value?');
-is( $ws->get_cell( 16, 1 )->unformatted(), -1006.82, 'Cell B17 value?');
-is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'Cell E12 value?');
-$ws = $wb->worksheet( 1 );
-is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Cell E4 value?');
-is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Cell C9 value?');
-is( $ws->get_cell( 20, 6 )->unformatted(), 10270.39, 'Cell G21 value?');
-
+my $ws = $wb->worksheet( 0 ); # Summary
+is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'Closing::Summary: Cell B10 value?');
+is( $ws->get_cell( 16, 1 )->unformatted(), -1006.82, 'Closing::Summary: Cell B17 value?');
+is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'Closing::Summary: Cell E12 value?');
+$ws = $wb->worksheet( 1 ); # Details
+is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Closing::Details: Cell E4 value?');
+is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Closing::Details: Cell C9 value?');
+is( $ws->get_cell( 20, 6 )->unformatted(), 10270.39, 'Closing::Details: Cell G21 value?');
+$ws = $wb->worksheet( 2 ); # Cashflow
+is( $ws->get_cell( 5, 5 )->unformatted(), -282.08, 'Closing::Cashflow: Cell F6 value?');
+is( $ws->get_cell( 30, 5 )->unformatted(), -283.08, 'Closing::Cashflow: Cell F31 value?');
+is( $ws->get_cell( 30, 4 )->unformatted(), -325.40, 'Closing::Cashflow:Cell E31 value?');
 
 $report->createActualsReport();
 
@@ -81,19 +84,16 @@ my $prop = Helpers::ConfReader->new("properties/app.txt");
 $XLSfile = './reporting/0303900020712303/06-15_actuals.xls';
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 );
-is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Cell E4 value?');
-is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Cell C9 value?');
-is( $ws->get_cell( 20, 6 )->unformatted(), 8774.52, 'Cell G21 value?');
+is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Actuals::Details: Cell E4 value?');
+is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Actuals::Details: Cell C9 value?');
+is( $ws->get_cell( 20, 6 )->unformatted(), 8774.52, 'Actuals::Details: Cell G21 value?');
 
 $ws = $wb->worksheet( 1 );
-is( $ws->get_cell( 12, 6 )->unformatted(), -262.80, 'Cell G13 value?');
-is( $ws->get_cell( 24, 5 )->unformatted(), -100, 'Cell F25 value?');
-if ( defined $ws->get_cell( 16, 6 )) { 
-	is( $ws->get_cell( 16, 6 )->unformatted(), -120, 'Cell G17 value?');
-}
-
+is( $ws->get_cell( 12, 6 )->unformatted(), -262.80, 'Actuals::Cashflow: Cell G13 value?');
+is( $ws->get_cell( 24, 5 )->unformatted(), -100, 'Actuals::Cashflow: Cell F25 value?');
+is( $ws->get_cell( 16, 6 )->unformatted(), -120, 'Actuals::Cashflow: Cell G17 value?');
 is( $ws->get_cell( 5, 2 )->unformatted() + 
 	$ws->get_cell( 5, 4 )->unformatted() +
 	$ws->get_cell( 5, 6 )->unformatted(),
-	-1240.62, 'Sum of C6:E6?');
+	-1240.62, 'Actuals::Cashflow: Sum of C6:E6?');
 

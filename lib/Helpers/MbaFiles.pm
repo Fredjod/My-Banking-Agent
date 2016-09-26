@@ -41,7 +41,6 @@ sub getClosingFilePath {
 	
 	$number =~ s/\s//g; #remove space in the original account number
 	my $reportingDir = getReportingDirname ($number);
-	$logger->print ( "account number: ". $checkingAccount->getAccountNumber (), Helpers::Logger::DEBUG);
 	my $dt = $checkingAccount->getMonth();
 	return  $reportingDir.
 			sprintf("%4d-%02d", $dt->year(), $dt->month()).

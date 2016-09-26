@@ -209,7 +209,7 @@ sub generateCashflowSheet
 	
 	my $startDay = 1;
 	my @cashflow = ();
-	if ( defined $statMTD->getOperations() ) { # We are NOT at the begining of the month 
+	if ( defined $statMTD->getOperations() ) { # At least 1 operations occured in the current month.
 		$self->populateCashflowData (\@cashflow, $statMTD, $startDay , $dt_currmonth->day(), 'ACTUALS', $dt_currmonth );
 		if ($dt_currmonth->day() < $dt_lastday->day() ) {
 			$startDay = $dt_currmonth->day()+1;
@@ -220,8 +220,36 @@ sub generateCashflowSheet
 			$self->populateCashflowData (\@cashflow, $statPRM, $startDay, $dt_lastday->day(), 'FORECASTED', $dt_currmonth );	
 	}
 	
+	# Add to forecasted cashflow section, the known planned operations
+	my $plannedOpsObj = AccountStatement::PlannedOperation->new( $self->getAccDataMTD() );
+	my $planOps = $plannedOpsObj->getPlannedOperations();
+	my $id = 0;
+	for my $plan ( @$planOps ) {
+		my ($d,$m,$y) = $plan->{'DATE'} =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/;
+		my $planDate = DateTime->new(
+	   		year      => $y,
+	   		month     => $m,
+	   		day       => $d,
+	   		time_zone => 'local',
+		);
+		if ( (not $plan->{'FOUND'}) && 
+			(DateTime->compare( $planDate, $dt_lastday ) <= 0 ) &&
+			(DateTime->compare( $statMTD->getMonth(), $planDate ) <= 0 ) ) {
+							
+			if (!defined $cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} }) {
+				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} } = 0;
+			}
+			$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} } += $plan->{'AMOUNT'};
+			$plan->{'FORECASTED'} = 'Y';
+			@$planOps[$id] = $plan;
+		}
+		$id++;
+	}
+	$plannedOpsObj->saveExcelFile( $self->getAccDataMTD() );
+	
+	
 	# Write the core sheet data
-	foreach my $i (1 .. $#cashflow) {
+	foreach my $i (0 .. $#cashflow) {
 		@dataRow = ( 
 		 [
 			$cashflow[$i]->{DATE},
@@ -243,7 +271,11 @@ sub generateCashflowSheet
 		   undef,
 		 ]
 		);
-		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format, $current_format_actuals, 'ACTUALS' ) ;
+		my $type = 'FORECASTED';
+		if ($i < $statMTD->getMonth()->day()) {
+			$type = 'ACTUALS';
+		}
+		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format, $current_format_actuals, $type ) ;	
 	}
 	
 	$ws_out->set_column(0, 1,  10);	
@@ -292,7 +324,7 @@ sub generateActualsCashflowSheet
 	my @cashflow = ();
 	$self->populateCashflowData (\@cashflow, $statMTD, 1, $dt_currmonth->day(), 'ACTUALS', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
 
-	foreach my $i (1 .. $#cashflow) {
+	foreach my $i (0 .. $#cashflow) {
 		@dataRow = ( 
 		 [
 			$cashflow[$i]->{DATE},
@@ -440,24 +472,24 @@ sub populateCashflowData {
 	}
 	my @where = ('FAMILY', 'MONTHLY EXPENSES');
 	my $pivotDay = $stat->groupByWhere ('DAY', 'DEBIT', \@where);
-	$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'MONTHLY EXPENSES', 'DEBIT', $type);
+	$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, $startDay, $endDay, @$pivotDay[0], 'MONTHLY EXPENSES', 'DEBIT', $type);
 
 	@where = ('FAMILY', 'MONTHLY INCOMES');
 	$pivotDay = $stat->groupByWhere ('DAY', 'CREDIT', \@where);
-	$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'MONTHLY INCOMES', 'CREDIT', $type );
+	$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, $startDay, $endDay, @$pivotDay[0], 'MONTHLY INCOMES', 'CREDIT', $type );
 
 	@where = ('FAMILY', 'WEEKLY EXPENSES');
 	$pivotDay = $stat->groupByWhere ('WDAY', 'DEBIT', \@where);
-	$self->populateCashflowWeeklyTransactions ( $stat, $cashflow, @$pivotDay[0], 'WEEKLY EXPENSES', 'DEBIT', $type );
+	$self->populateCashflowWeeklyTransactions ( $stat, $cashflow, $startDay, @$pivotDay[0], 'WEEKLY EXPENSES', 'DEBIT', $type );
 
 	if ($type eq 'ACTUALS') { # the EXCEPTIONAL expenses or incomes are displayed only for actuals, not for forecasted
 		@where = ('FAMILY', 'EXCEPTIONAL EXPENSES');
 		$pivotDay = $stat->groupByWhere ('DAY', 'DEBIT', \@where);
-		$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'EXCEPTIONAL EXPENSES', 'DEBIT', $type );
+		$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, $startDay, $endDay, @$pivotDay[0], 'EXCEPTIONAL EXPENSES', 'DEBIT', $type );
 	
 		@where = ('FAMILY', 'EXCEPTIONAL INCOMES');
 		$pivotDay = $stat->groupByWhere ('DAY', 'CREDIT', \@where);
-		$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, @$pivotDay[0], 'EXCEPTIONAL INCOMES', 'CREDIT', $type );
+		$self->populateCashflowMonthlyTransactions ( $stat, $cashflow, $startDay, $endDay, @$pivotDay[0], 'EXCEPTIONAL INCOMES', 'CREDIT', $type );
 	}
 }
 
@@ -536,21 +568,16 @@ sub displayDetailsDataRow {
 }
 
 sub populateCashflowMonthlyTransactions {
-	my( $self, $statement, $cashflow, $pivotDay, $family, $typeOpe, $type ) = @_;
+	my( $self, $statement, $cashflow, $startDay, $endDay, $pivotDay, $family, $typeOpe, $type ) = @_;
 	
 	foreach my $day ( keys $pivotDay ) {
-		my $found = 0;
-		foreach my $i (0 .. $#{$cashflow}) {
-			if (@$cashflow[$i]->{DAY} == $day) {
-				@$cashflow[$i]->{$family} = $pivotDay->{$day};
-				my @where = ('DAY', $day, 'FAMILY', $family);
-				my $pivotCateg = $statement->groupByWhere ('CATEGORY', $typeOpe, \@where);
-				@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
-				$found = 1;
-				last;
-			}
-		}
-		if (!$found && $type ne 'ACTUALS') {
+		if ( $day >= $startDay && $day <= $endDay) {
+			@$cashflow[$day-1]->{$family} = $pivotDay->{$day};
+			my @where = ('DAY', $day, 'FAMILY', $family);
+			my $pivotCateg = $statement->groupByWhere ('CATEGORY', $typeOpe, \@where);
+			@$cashflow[$day-1]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
+			
+		} elsif ($day > $endDay && $type eq 'FORECASTED') {
 			# In case the current month is shorter than the previous month,
 			# Example: january and february months.
 			# Decision: All the transactions after the last day 
@@ -575,26 +602,25 @@ sub populateCashflowMonthlyTransactions {
 }
 
 sub populateCashflowWeeklyTransactions {
-	my( $self, $statement, $cashflow, $pivotDay, $family, $typeOpe, $type ) = @_;
-	foreach my $i (0 .. $#{$cashflow}) {
-		my $found = 0;
-		foreach my $wday ( keys $pivotDay ) {
-			if (@$cashflow[$i]->{WDAY} == $wday) {
-				@$cashflow[$i]->{$family} = $pivotDay->{$wday};
-				my @where = ('WDAY', $wday, 'FAMILY', $family);
-				my $pivotCateg = $statement->groupByWhere ('CATEGORY', $typeOpe, \@where);
-				@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
-				$found = 1;
-				last;
-			}
+	my( $self, $statement, $cashflow, $startDay, $pivotDay, $family, $typeOpe, $type ) = @_;
+	
+	my @pivotKeys = sort keys $pivotDay;
+	my $lastWday = $pivotKeys[$#pivotKeys];
+	foreach my $i ($startDay-1 .. $#{$cashflow}) {
+		my $wday = @$cashflow[$i]->{WDAY};
+		if ( defined $pivotDay->{$wday} ) {
+			@$cashflow[$i]->{$family} = $pivotDay->{$wday};
+			my @where = ('WDAY', $wday, 'FAMILY', $family);
+			my $pivotCateg = $statement->groupByWhere ('CATEGORY', $typeOpe, \@where);
+			@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
 		}
-		if (!$found && $type ne 'ACTUALS') {
+		elsif ($type eq 'FORECASTED' and $wday > $lastWday ) {
 			# Happen when last week of current month ends after the previous month
-			# Example: current month, the last day is a Friday and the previous month last day was Wednesday.
-			# In other words, week days 4.4 and 4.5 does not exist in the previous month.
+			# Example: current month, the last day of the week is a Tuesday and the previous month last day was Friday.
+			# In other words, week days 4.1 and 4.2 does not exist in the previous month because ended at 3.7
 			# Decision: take the week days of the first week of the previous month for populating the same week day of
 			# the last week of the current month.
-			# Sample: the wday 4.4 and 4.5 of the current month are populated with the 0.4 and 0.5 of the previous month.
+			# Sample: the wday 4.1 and 4.2 of the current month are populated with the 0.4 and 0.5 of the previous month.
 			my $wday = @$cashflow[$i]->{WDAY};
 			$wday =~ s/\d\.(\d)/0.$1/;
 			@$cashflow[$i]->{$family} = $pivotDay->{$wday};
@@ -793,7 +819,7 @@ sub addPlannedOperationsIntoClipBoard {
 	my $endRow = @$tab - 1;
 	
 	for my $plan ( @$plannedOps ) {
-		if (not $plan->{'FOUND'} ) {
+		if ( (not $plan->{'FOUND'}) && ($plan->{'FORECASTED'} ne 'Y') ) {
 			if ( $plan->{'KEY'} <= @$tab[$endRow]->[0]->{unformatted} ) { # The planned operation is within the current month.
 					my $rowId = ( $plan->{'KEY'} <= @$tab[$startRow]->[0]->{unformatted} ) ? 
 						$startRow : $startRow + ($plan->{'KEY'} - @$tab[$startRow]->[0]->{unformatted});
@@ -802,7 +828,11 @@ sub addPlannedOperationsIntoClipBoard {
 						last unless @$tab[0]->[$colId]->{value} ne $plan->{'FAMILY'};
 					}
 					if (defined @$tab[$rowId]->[$colId]) {
-						@$tab[$rowId]->[$colId]->{unformatted} += $plan->{'AMOUNT'};
+						if (@$tab[$rowId]->[$colId]->{unformatted} ne "") {
+							@$tab[$rowId]->[$colId]->{unformatted} += $plan->{'AMOUNT'};
+						} else {
+							@$tab[$rowId]->[$colId]->{unformatted} = $plan->{'AMOUNT'};
+						}
 					} else {
 						my %record = (
 							'unformatted' => $plan->{'AMOUNT'},
