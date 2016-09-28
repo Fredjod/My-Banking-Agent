@@ -34,6 +34,7 @@ alert.overdraft.threshold = 0
 root.account.config = ./accounts
 account.config.pattern = ^config\.\d+\.xls$
 saving.config.pattern = ^config\.saving.*\.xls$
+account.previous.month.cache = .previous.month.cache
 root.account.reporting = ./reporting
 account.reporting.closing.prefix = _closing.xls
 account.reporting.actuals.prefix = _actuals.xls

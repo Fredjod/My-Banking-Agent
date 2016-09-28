@@ -1,4 +1,4 @@
-use Test::More tests => 18;
+use Test::More tests => 27;
 # use Test::More qw( no_plan );
 use lib '../lib';
 use Data::Dumper;
@@ -57,7 +57,6 @@ if ($#{$bankData} > 0) {
 	$dataMTD->parseBankStatement($bankData);
 }
 
-
 $report->setAccDataMTD($dataMTD);
 
 $report->createPreviousMonthClosingReport();
@@ -96,4 +95,26 @@ is( $ws->get_cell( 5, 2 )->unformatted() +
 	$ws->get_cell( 5, 4 )->unformatted() +
 	$ws->get_cell( 5, 6 )->unformatted(),
 	-1240.62, 'Actuals::Cashflow: Sum of C6:E6?');
+
+
+$dataPRM->saveBankData();
+
+my $dataPRMCache = AccountStatement::CheckingAccount->new( $config[0], $dth->getDate() );
+$dataPRMCache->loadBankData();
+$report->setAccDataPRM($dataPRMCache);
+$report->createPreviousMonthClosingReport();
+$XLSfile = Helpers::MbaFiles->getClosingFilePath( $dataPRMCache );
+$wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
+$ws = $wb->worksheet( 0 ); # Summary
+is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'CacheData::Closing::Summary: Cell B10 value?');
+is( $ws->get_cell( 16, 1 )->unformatted(), -1006.82, 'CacheData::Closing::Summary: Cell B17 value?');
+is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'CacheData::Closing::Summary: Cell E12 value?');
+$ws = $wb->worksheet( 1 ); # Details
+is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'CacheData::Closing::Details: Cell E4 value?');
+is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'CacheData::Closing::Details: Cell C9 value?');
+is( $ws->get_cell( 20, 6 )->unformatted(), 10270.39, 'CacheData::Closing::Details: Cell G21 value?');
+$ws = $wb->worksheet( 2 ); # Cashflow
+is( $ws->get_cell( 5, 5 )->unformatted(), -282.08, 'CacheData::Closing::Cashflow: Cell F6 value?');
+is( $ws->get_cell( 30, 5 )->unformatted(), -283.08, 'CacheData::Closing::Cashflow: Cell F31 value?');
+is( $ws->get_cell( 30, 4 )->unformatted(), -325.40, 'CacheData::Closing::Cashflow:Cell E31 value?');
 

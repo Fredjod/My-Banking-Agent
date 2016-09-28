@@ -12,6 +12,7 @@ use Helpers::Logger;
 use Helpers::Date;
 use Helpers::ExcelWorkbook;
 use Spreadsheet::ParseExcel;
+use Data::Dumper;
 
 
 sub new
@@ -351,6 +352,43 @@ sub groupByWhere {
 	}
 	return [\%pivot, $tot];
 }
+
+sub saveBankData {
+	my( $self ) = @_;
+	my $ops = $self->getOperations ();
+	my $logger = Helpers::Logger->new();
+	my $opsTxt="";
+	for my $record (@$ops) {
+		my $amount = ( defined $record->{CREDIT} ) ? $record->{CREDIT} : $record->{DEBIT};
+		$opsTxt .= $record->{DATE}.';'.$amount.';'.$record->{LIBELLE}.';'.$record->{SOLDE}."\n";
+	}
+	open OUT, ">", Helpers::MbaFiles->getPreviousMonthCacheFilePath ( $self ) or
+		$logger->print ( "File ".Helpers::MbaFiles->getPreviousMonthCacheFilePath ( $self )." cant't be written!", Helpers::Logger::ERROR);
+	print OUT $opsTxt;
+	close OUT;
+}
+
+sub loadBankData {
+	my( $self ) = @_;
+	my @bankData;
+	my $logger = Helpers::Logger->new();
+	open IN, "<", Helpers::MbaFiles->getPreviousMonthCacheFilePath ( $self ) or
+		$logger->print ( "File ".Helpers::MbaFiles->getPreviousMonthCacheFilePath ( $self )." cant't be opened!", Helpers::Logger::ERROR);
+	while ( my $line = <IN> ) {
+		$line =~ s/\r|\n//g;
+		my @recTxt = split (';', $line);
+		my %record;
+		$record{'DATE'} = $recTxt[0];
+		$record{'AMOUNT'} = $recTxt[1];
+		$record{'DETAILS'} = $recTxt[2];
+		$record{'BALANCE'} =$recTxt[3];
+		push (@bankData, \%record);
+	}
+	close IN;
+	$self->parseBankStatement(\@bankData);
+	$self->setBalance($bankData[$#bankData]->{'BALANCE'});
+	
+}	
 
 sub getAccountDesc {
 	 my( $self ) = @_;

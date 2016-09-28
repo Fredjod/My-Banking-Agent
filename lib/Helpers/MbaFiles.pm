@@ -55,7 +55,7 @@ sub getActualsFilePath {
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $number = $checkingAccount->getAccountNumber ();
 	$number =~ s/\s//g;
-	my $reportingDir = getReportingDirname ($number );
+	my $reportingDir = getReportingDirname ( $number );
 	my $dt = $checkingAccount->getMonth();
 
 	my $filePath =  $reportingDir.
@@ -67,6 +67,15 @@ sub getActualsFilePath {
 	}
 	return $filePath;
 }
+
+sub getPreviousMonthCacheFilePath {
+	my ( $class, $checkingAccount ) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+	my $number = $checkingAccount->getAccountNumber ();
+	$number =~ s/\s//g;
+	return getReportingDirname ( $number ).$prop->readParamValue('account.previous.month.cache');
+}	
 
 sub getLastSavingFilePath {
 	my ( $class ) = @_;

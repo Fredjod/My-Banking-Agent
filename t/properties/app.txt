@@ -35,6 +35,7 @@ root.account.config = ./accounts
 account.config.pattern = ^config\.\d+\.xls$
 saving.config.pattern = ^config\.saving.*\.xls$
 root.account.reporting = ./reporting
+account.previous.month.cache = .previous.month.cache
 account.reporting.closing.prefix = _closing.xls
 account.reporting.actuals.prefix = _actuals.xls
 account.reporting.planned.prefix = planned_operations.xls
