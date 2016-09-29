@@ -37,17 +37,31 @@ sub getClosingFilePath {
 	my ($class, $checkingAccount) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $number = $checkingAccount->getAccountNumber ();
-	my $logger = Helpers::Logger->new();
+	
+	$number =~ s/\s//g; #remove space in the original account number
+	my $reportingDir = getClosingDirname ($number);
+	my $dt = $checkingAccount->getMonth();
+	return  $reportingDir.
+			sprintf("%4d-%02d", $dt->year(), $dt->month()).
+			'_'.$number.
+			$prop->readParamValue('account.reporting.closing.prefix');
+}
+
+sub getForecastedFilePath {
+	my ($class, $checkingAccount) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $number = $checkingAccount->getAccountNumber ();
 	
 	$number =~ s/\s//g; #remove space in the original account number
 	my $reportingDir = getReportingDirname ($number);
 	my $dt = $checkingAccount->getMonth();
-	return  $reportingDir.
+	my $filePath =  $reportingDir.
 			sprintf("%4d-%02d", $dt->year(), $dt->month()).
-			'_'.
-			$number.	
-			$prop->readParamValue('account.reporting.closing.prefix')
-		;
+			$prop->readParamValue('account.reporting.forecasted.prefix');
+	if (! -e $filePath ) {
+		unlink glob $reportingDir.'*'.$prop->readParamValue('account.reporting.forecasted.prefix');
+	}
+	return $filePath;	
 }
 
 sub getActualsFilePath {
@@ -133,22 +147,36 @@ sub getPlannedOperationPath {
 	}
 }
 
+sub getClosingDirname {
+	my ( $number) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+
+	my $closingDir = $prop->readParamValue('dir.account.closing');
+	my $rootClosing = getReportingDirname ($number);
+	checkDirectory ($rootClosing.'/'.$closingDir);
+	
+	return $rootClosing.'/'.$closingDir.'/';
+
+}
+
 sub getReportingDirname {
 	my ( $number) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
 
 	my $rootReporting = $prop->readParamValue('root.account.reporting');
-	if (! -d $rootReporting)	{
-		mkdir $rootReporting;
-		chmod 0771, $rootReporting;
-	}
-	if (! -d $rootReporting.'/'.$number) {
-		mkdir $rootReporting.'/'.$number;
-		chmod 0771, $rootReporting.'/'.$number;
-		
-	}
+	checkDirectory ($rootReporting);
+	checkDirectory ($rootReporting.'/'.$number);
 	return $rootReporting.'/'.$number.'/';
+}
+
+sub checkDirectory {
+	my ( $dir) = @_;
+	if (! -d $dir)	{
+		mkdir $dir;
+		chmod 0771, $dir;
+	}
 }
 
 1;

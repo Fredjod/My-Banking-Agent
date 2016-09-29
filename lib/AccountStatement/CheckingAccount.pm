@@ -372,8 +372,10 @@ sub loadBankData {
 	my( $self ) = @_;
 	my @bankData;
 	my $logger = Helpers::Logger->new();
-	open IN, "<", Helpers::MbaFiles->getPreviousMonthCacheFilePath ( $self ) or
+	open IN, "<", Helpers::MbaFiles->getPreviousMonthCacheFilePath ( $self ) or do {
 		$logger->print ( "File ".Helpers::MbaFiles->getPreviousMonthCacheFilePath ( $self )." cant't be opened!", Helpers::Logger::ERROR);
+		return 0;
+	};
 	while ( my $line = <IN> ) {
 		$line =~ s/\r|\n//g;
 		my @recTxt = split (';', $line);
@@ -387,6 +389,7 @@ sub loadBankData {
 	close IN;
 	$self->parseBankStatement(\@bankData);
 	$self->setBalance($bankData[$#bankData]->{'BALANCE'});
+	return 1;
 	
 }	
 

@@ -71,10 +71,14 @@ $ws = $wb->worksheet( 1 ); # Details
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Closing::Details: Cell E4 value?');
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Closing::Details: Cell C9 value?');
 is( $ws->get_cell( 20, 6 )->unformatted(), 10270.39, 'Closing::Details: Cell G21 value?');
-$ws = $wb->worksheet( 2 ); # Cashflow
-is( $ws->get_cell( 5, 5 )->unformatted(), -282.08, 'Closing::Cashflow: Cell F6 value?');
-is( $ws->get_cell( 30, 5 )->unformatted(), -283.08, 'Closing::Cashflow: Cell F31 value?');
-is( $ws->get_cell( 30, 4 )->unformatted(), -325.40, 'Closing::Cashflow:Cell E31 value?');
+
+$report->createForecastedCashflowReport();
+$XLSfile = Helpers::MbaFiles->getForecastedFilePath( $dataMTD );
+$wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
+$ws = $wb->worksheet( 0 ); # Cashflow
+is( $ws->get_cell( 5, 5 )->unformatted(), -282.08, 'Forecasted::Cashflow: Cell F6 value?');
+is( $ws->get_cell( 30, 5 )->unformatted(), -283.08, 'Forecasted::Cashflow: Cell F31 value?');
+is( $ws->get_cell( 30, 4 )->unformatted(), -325.40, 'Forecasted::Cashflow:Cell E31 value?');
 
 $report->createActualsReport();
 
@@ -113,8 +117,12 @@ $ws = $wb->worksheet( 1 ); # Details
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'CacheData::Closing::Details: Cell E4 value?');
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'CacheData::Closing::Details: Cell C9 value?');
 is( $ws->get_cell( 20, 6 )->unformatted(), 10270.39, 'CacheData::Closing::Details: Cell G21 value?');
-$ws = $wb->worksheet( 2 ); # Cashflow
-is( $ws->get_cell( 5, 5 )->unformatted(), -282.08, 'CacheData::Closing::Cashflow: Cell F6 value?');
-is( $ws->get_cell( 30, 5 )->unformatted(), -283.08, 'CacheData::Closing::Cashflow: Cell F31 value?');
-is( $ws->get_cell( 30, 4 )->unformatted(), -325.40, 'CacheData::Closing::Cashflow:Cell E31 value?');
+
+$report->createForecastedCashflowReport();
+$XLSfile = Helpers::MbaFiles->getForecastedFilePath( $dataMTD );
+$wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
+$ws = $wb->worksheet( 0 ); # Cashflow
+is( $ws->get_cell( 5, 5 )->unformatted(), -282.08, 'CacheData::Forecasted::Cashflow: Cell F6 value?');
+is( $ws->get_cell( 30, 5 )->unformatted(), -283.08, 'CacheData::Forecasted::Cashflow: Cell F31 value?');
+is( $ws->get_cell( 30, 4 )->unformatted(), -325.40, 'CacheData::Forecasted::Cashflow:Cell E31 value?');
 

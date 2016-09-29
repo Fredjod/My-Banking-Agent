@@ -37,22 +37,30 @@ sub createPreviousMonthClosingReport {
 	my $wb_out = Helpers::ExcelWorkbook->createWorkbook ( Helpers::MbaFiles->getClosingFilePath ( $self->getAccDataPRM ) );
 	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
 	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
+	
+	$self->generateSummarySheet($self->getAccDataPRM(), $wb_out, $currency_format, $date_format);
+	$self->generateDetailsSheet($self->getAccDataPRM(), $wb_out, $currency_format, $date_format);
+}
+
+sub createForecastedCashflowReport {
+	
+	my( $self) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $wb_out = Helpers::ExcelWorkbook->createWorkbook ( Helpers::MbaFiles->getForecastedFilePath( $self->getAccDataMTD ) );
+	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
+	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
 	my $current_format_actuals = $wb_out->add_format();
 	$current_format_actuals->copy($currency_format);
 	$current_format_actuals->set_pattern(17);
 	
-	$self->generateSummarySheet($self->getAccDataPRM(), $wb_out, $currency_format, $date_format);
-	$self->generateDetailsSheet($self->getAccDataPRM(), $wb_out, $currency_format, $date_format);
 	$self->generateCashflowSheet( $self->getAccDataMTD(), $self->getAccDataPRM(), $wb_out, $currency_format, $date_format, $current_format_actuals);
-
 }
-
 
 sub createActualsReport {
 	
 	my( $self) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	$self->copyCashflowExcelSheet (Helpers::MbaFiles->getClosingFilePath ( $self->getAccDataPRM ), 2 );
+	$self->copyCashflowExcelSheet (Helpers::MbaFiles->getForecastedFilePath ( $self->getAccDataMTD ), 0 );
 	my $wb_out = Helpers::ExcelWorkbook->createWorkbook( Helpers::MbaFiles->getActualsFilePath ( $self->getAccDataMTD ) );
 	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
 	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
@@ -651,8 +659,8 @@ sub computeForecastedBalancePRM {
 	my $dt_currmonth =  $statMTD->getMonth();
 	
 	# Compute the forecasted balance recorded in the cashflow sheet
-	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getClosingFilePath ( $self->getAccDataPRM ));	
-	my $worksheet = $workbook->worksheet( 2 ); # cashflow sheet
+	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getForecastedFilePath ( $self->getAccDataMTD ));	
+	my $worksheet = $workbook->worksheet( 0 ); # cashflow sheet
 	my $plannedBalance = $worksheet->get_cell( 0, 7 )->unformatted();
 	for (my $row=1; $row <= $dt_currmonth->day(); $row++) {
 		my $lineTot = 0;
@@ -752,8 +760,8 @@ sub sumForecastedOperationPerFamily {
 	my $dt_currmonth =  $statMTD->getMonth();
 	my $totFam = 0;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getClosingFilePath ( $self->getAccDataPRM ) );	
-	my $worksheet = $workbook->worksheet(2); # cashflow sheet
+	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getForecastedFilePath ( $self->getAccDataMTD ) );	
+	my $worksheet = $workbook->worksheet(0); # cashflow sheet
 	# Look for the family column (on the firs row)
 	my ( $col_min, $col_max ) = $worksheet->col_range();
 	my $colFam = -1;
