@@ -65,6 +65,7 @@ sub loadExcelFile {
 				if (defined $cell && $cell->unformatted() =~ /^[+-]?\d+(\.\d+)?$/ ) {
 					$line{'AMOUNT'} = $cell->unformatted();
 					$line{'FAMILY'} = "";
+					$line{'CATEGORY'} = "";
 					$line{'FOUND'} = 0;
 					$cell = $ws->get_cell ( $row, 3 );
 					$line{'FORECASTED'} = 'N';
@@ -119,6 +120,7 @@ sub qualifyOperation {
 		my $ops = $self->{_data};
 		for my $line ( @$ops) {
 			$line->{'FAMILY'} = $account->findOperationsFamily($line);
+			$line->{'CATEGORY'} = $account->findOperationsCategory($line);
 		}
 	}
 }

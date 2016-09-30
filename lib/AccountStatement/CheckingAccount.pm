@@ -252,6 +252,13 @@ sub findOperationsFamily {
 	
 }
 
+sub findOperationsCategory {
+	my( $self, $line ) = @_;
+	my $categories = $self->getCategories();
+	return @$categories[$self->findOperationsCatagoryId($line)]->{CATEGORY};
+	
+}
+
 sub parseBankStatement {
 	my( $self, $bankData ) = @_;
 	# bankData is an array of hashes. Each hash is a transaction with the following info and format:

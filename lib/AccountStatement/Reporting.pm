@@ -245,9 +245,15 @@ sub generateCashflowSheet
 			(DateTime->compare( $statMTD->getMonth(), $planDate ) <= 0 ) ) {
 							
 			if (!defined $cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} }) {
-				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} } = 0;
+				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} } = $plan->{'AMOUNT'};
+			} else {
+				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} } += $plan->{'AMOUNT'};
 			}
-			$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} } += $plan->{'AMOUNT'};
+			if (!defined $cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'}." DETAILS" }) {
+				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'}." DETAILS" } = $plan->{'CATEGORY'}."=".$plan->{'AMOUNT'};
+			} else {
+				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'}." DETAILS" } .= "\n".$plan->{'CATEGORY'}."=".$plan->{'AMOUNT'};
+			}
 			$plan->{'FORECASTED'} = 'Y';
 			@$planOps[$id] = $plan;
 		}
@@ -718,7 +724,7 @@ sub controlBalance {
 	# Send the Monday report, if activated.
 	my $mondayReport = $prop->readParamValue('mondays.report.active');
 	my $var = $currentBalance-$plannedBalance;
-	if ( $var !=0 && $mondayReport eq "yes" && $wkday == 1) { 
+	if ( $mondayReport eq "yes" && $wkday == 1) { 
 		my $subject = "Balance Variation Report";
 		$log->print ( "Email sending: $subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
 		my $mail = Helpers::SendMail->new(
