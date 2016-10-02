@@ -18,7 +18,7 @@ my $data = AccountStatement::CheckingAccount->new( $config[0], $dth->getDate() )
 open my $in, "<", "t.cm.bankdata.ofx" or die "Can't open file t.cm.bankdata.ofx file!\n";
 read $in, my $ofx, -s $in;
 close $in;	
-open $in, "<", "t.cm.bankdata.qif" or die "Can't open file t.cm.bankdata.qif file!\n";
+open $in, "<", "t.cm.bankdata_june.qif" or die "Can't open file t.cm.bankdata_june.qif file!\n";
 read $in, my $qif, -s $in;
 close $in;
 my $parser = WebConnector::GenericWebConnector->new();

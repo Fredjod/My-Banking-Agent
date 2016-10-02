@@ -60,7 +60,6 @@ sub createActualsReport {
 	
 	my( $self) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	$self->copyCashflowExcelSheet (Helpers::MbaFiles->getForecastedFilePath ( $self->getAccDataMTD ), 0 );
 	my $wb_out = Helpers::ExcelWorkbook->createWorkbook( Helpers::MbaFiles->getActualsFilePath ( $self->getAccDataMTD ) );
 	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
 	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
@@ -69,7 +68,7 @@ sub createActualsReport {
 	$current_format_actuals->set_pattern(17);
 	
 	$self->generateDetailsSheet($self->getAccDataMTD(), $wb_out, $currency_format, $date_format);
-	$self->generateActualsCashflowSheet( $self->getAccDataMTD(), $wb_out, $currency_format, $date_format, $current_format_actuals);
+	$self->generateCashflowSheet( $self->getAccDataMTD(), $self->getAccDataPRM(), $wb_out, $currency_format, $date_format, $current_format_actuals);
 	$self->generateVariationSheet ( $self->getAccDataMTD(), $wb_out, $currency_format, $date_format );
 }
 
@@ -187,17 +186,10 @@ sub generateCashflowSheet
 	my $dt_lastday =  DateTime->last_day_of_month( year => $dt_currmonth->year(), month => $dt_currmonth->month() );
 	my $ws_tpl = $wb_tpl->worksheet( 2 );		
 	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name().'-'.sprintf ("%4d-%02d-%02d", $dt_currmonth->year, $dt_currmonth->month, $dt_currmonth->day ) );
-	my $balance = $statMTD->getBalance();
-	my $ops = $statMTD->getOperations();
+	my $balance;
+	my $ops = $statPRM->getOperations();
 	if (defined $ops) {
-		$balance = @$ops[0]->{SOLDE} - ( (! defined @$ops[0]->{DEBIT} ? 0 : @$ops[0]->{DEBIT} )
-							+ (! defined @$ops[0]->{CREDIT} ? 0 : @$ops[0]->{CREDIT} ) 
-							 );		
-	} else {
-		$ops = $statPRM->getOperations();
-		if (defined $ops) {
-			$balance = @$ops[$#{$ops}]->{SOLDE};
-		}
+		$balance = @$ops[$#{$ops}]->{SOLDE};
 	}
 	
 	# Write header line
@@ -217,22 +209,20 @@ sub generateCashflowSheet
 	
 	my $startDay = 1;
 	my @cashflow = ();
-	if ( defined $statMTD->getOperations() ) { # At least 1 operations occured in the current month.
-		$self->populateCashflowData (\@cashflow, $statMTD, $startDay , $dt_currmonth->day(), 'ACTUALS', $dt_currmonth );
-		if ($dt_currmonth->day() < $dt_lastday->day() ) {
-			$startDay = $dt_currmonth->day()+1;
-			$self->populateCashflowData (\@cashflow, $statPRM, $startDay, $dt_lastday->day(), 'FORECASTED', $dt_currmonth );
-		}
-	}
-	else {
-			$self->populateCashflowData (\@cashflow, $statPRM, $startDay, $dt_lastday->day(), 'FORECASTED', $dt_currmonth );	
+
+	$self->populateCashflowData (\@cashflow, $statMTD, $startDay , $dt_currmonth->day(), 'ACTUALS', $dt_currmonth );
+	if ($dt_currmonth->day() < $dt_lastday->day() ) {
+		$startDay = $dt_currmonth->day()+1;
+		$self->populateCashflowData (\@cashflow, $statPRM, $startDay, $dt_lastday->day(), 'FORECASTED', $dt_currmonth );
 	}
 	
 	# Add to forecasted cashflow section, the known planned operations
 	my $plannedOpsObj = AccountStatement::PlannedOperation->new( $self->getAccDataMTD() );
 	my $planOps = $plannedOpsObj->getPlannedOperations();
-	my $id = 0;
 	for my $plan ( @$planOps ) {
+		
+		next unless ( not $plan->{'FOUND'} );
+		
 		my ($d,$m,$y) = $plan->{'DATE'} =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/;
 		my $planDate = DateTime->new(
 	   		year      => $y,
@@ -240,27 +230,27 @@ sub generateCashflowSheet
 	   		day       => $d,
 	   		time_zone => 'local',
 		);
-		if ( (not $plan->{'FOUND'}) && 
-			(DateTime->compare( $planDate, $dt_lastday ) <= 0 ) &&
-			(DateTime->compare( $statMTD->getMonth(), $planDate ) <= 0 ) ) {
-							
-			if (!defined $cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} }) {
-				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} } = $plan->{'AMOUNT'};
-			} else {
-				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'} } += $plan->{'AMOUNT'};
-			}
-			if (!defined $cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'}." DETAILS" }) {
-				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'}." DETAILS" } = $plan->{'CATEGORY'}."=".$plan->{'AMOUNT'};
-			} else {
-				$cashflow[$planDate->day()-1]->{ $plan->{'FAMILY'}." DETAILS" } .= "\n".$plan->{'CATEGORY'}."=".$plan->{'AMOUNT'};
-			}
-			$plan->{'FORECASTED'} = 'Y';
-			@$planOps[$id] = $plan;
+		
+		next unless ( (DateTime->compare( $planDate, $dt_lastday ) <= 0 ) );
+		
+		my $pday = $planDate->day();
+		if (DateTime->compare( $planDate, $statMTD->getMonth() ) <= 0 ) {
+			$pday = $statMTD->getMonth()->day() + 1;	
 		}
-		$id++;
-	}
-	$plannedOpsObj->saveExcelFile( $self->getAccDataMTD() );
-	
+		
+		if (!defined $cashflow[$pday-1]->{ $plan->{'FAMILY'} }) {
+			$cashflow[$pday-1]->{ $plan->{'FAMILY'} } = $plan->{'AMOUNT'};
+		} else {
+			$cashflow[$pday-1]->{ $plan->{'FAMILY'} } += $plan->{'AMOUNT'};
+		}
+		my $comment = $plan->{'CATEGORY'};
+		if (defined $plan->{'COMMENT'} && $plan->{'COMMENT'} ne "") { $comment = $plan->{'COMMENT'}; } 
+		if (!defined $cashflow[$pday-1]->{ $plan->{'FAMILY'}." DETAILS" }) {
+			$cashflow[$pday-1]->{ $plan->{'FAMILY'}." DETAILS" } = $comment."=".$plan->{'AMOUNT'};
+		} else {
+			$cashflow[$pday-1]->{ $plan->{'FAMILY'}." DETAILS" } .= "\n".$comment."=".$plan->{'AMOUNT'};
+		}
+	} 
 	
 	# Write the core sheet data
 	foreach my $i (0 .. $#cashflow) {
@@ -292,87 +282,8 @@ sub generateCashflowSheet
 		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format, $current_format_actuals, $type ) ;	
 	}
 	
-	$ws_out->set_column(0, 1,  10);	
-	$ws_out->set_column(2, 2,  19);
-	$ws_out->set_column(3, 3,  23);
-	$ws_out->set_column(4, 5,  19);
-	$ws_out->set_column(6, 6,  23);	
-	$ws_out->set_column(7, 7,  10);	
-	$ws_out->set_zoom(95);
-}
-
-sub generateActualsCashflowSheet
-{
-	my ( $self, $statMTD, $wb_out, $currency_format, $date_format, $current_format_actuals) = @_;
-	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));
-
-	my $dt_currmonth = $statMTD->getMonth()->clone();
-	
-	my $dt_lastday =  DateTime->last_day_of_month( year => $dt_currmonth->year(), month => $dt_currmonth->month() );
-	my $ws_tpl = $wb_tpl->worksheet( 2 );
-	my $sheetName = $ws_tpl->get_name().'-'.sprintf ("%4d-%02d-%02d", $dt_currmonth ->year, $dt_currmonth ->month, $dt_currmonth ->day );
-	
-	
-	my $ws_out = $wb_out->add_worksheet( $sheetName );
-	my $ops = $statMTD->getOperations();
-	
-	# Write header line
-	my @dataRow = (
-	 [
-		'DATE',
-		'WDAY',
-		'MONTHLY INCOMES',
-		'EXCEPTIONAL INCOMES',
-		'MONTHLY EXPENSES',
-		'WEEKLY EXPENSES',
-		'EXCEPTIONAL EXPENSES',
-		@$ops[0]->{SOLDE} - ( (! defined @$ops[0]->{DEBIT} ? 0 : @$ops[0]->{DEBIT} )
-							+ (! defined @$ops[0]->{CREDIT} ? 0 : @$ops[0]->{CREDIT} ) 
-							 )
-	 ]
-	);
-	$self->displayDetailsDataRow ( $ws_out, 0, \@dataRow, $date_format, $currency_format ) ;
-	
-	my $row = $dt_currmonth->day();
-	my @cashflow = ();
-	$self->populateCashflowData (\@cashflow, $statMTD, 1, $dt_currmonth->day(), 'ACTUALS', $dt_currmonth, $ws_out, $currency_format, $date_format, $current_format_actuals);
-
-	foreach my $i (0 .. $#cashflow) {
-		@dataRow = ( 
-		 [
-			$cashflow[$i]->{DATE},
-			$cashflow[$i]->{WDAYNAME},
-			$cashflow[$i]->{'MONTHLY INCOMES'},
-			$cashflow[$i]->{'EXCEPTIONAL INCOMES'},
-			$cashflow[$i]->{'MONTHLY EXPENSES'},
-			$cashflow[$i]->{'WEEKLY EXPENSES'},
-			$cashflow[$i]->{'EXCEPTIONAL EXPENSES'},
-			'=H'.($i+1).'+SUM(C'.($i+2).':G'.($i+2).')'
-		 ],
-		 [ undef,
-		   undef,
-		   $cashflow[$i]->{'MONTHLY INCOMES DETAILS'},
-		   $cashflow[$i]->{'EXCEPTIONAL INCOMES DETAILS'},
-		   $cashflow[$i]->{'MONTHLY EXPENSES DETAILS'},
-		   $cashflow[$i]->{'WEEKLY EXPENSES DETAILS'},
-		   $cashflow[$i]->{'EXCEPTIONAL EXPENSES DETAILS'},
-		   undef,
-		 ]
-		);
-		$self->displayDetailsDataRow ( $ws_out, $i+1, \@dataRow, $date_format, $currency_format, $current_format_actuals, 'ACTUALS' ) ;
-	}
-	
-	my $plannedOps = AccountStatement::PlannedOperation->new( $self->getAccDataMTD() );
-			
-	if ($dt_currmonth->day() < $dt_lastday->day() ) {
-		# Add planned operation not found in the clipboard
-		$self->addPlannedOperationsIntoClipBoard ( $plannedOps->getPlannedOperations (), $dt_currmonth->day()+1, $currency_format );
-		$plannedOps->saveExcelFile( $self->getAccDataMTD() );
-		$row = $self->pastExcelSheet ( $wb_out, $ws_out, $dt_currmonth->day()+1 );
-	}
-	
 	# Write footer line
+	my $row = $dt_lastday->day();
 	@dataRow = (
 	 [
 		'',
@@ -620,7 +531,7 @@ sub populateCashflowWeeklyTransactions {
 	
 	my @pivotKeys = sort keys $pivotDay;
 	my $lastWday = $pivotKeys[$#pivotKeys];
-	foreach my $i ($startDay-1 .. $#{$cashflow}) {
+	foreach my $i ($startDay - 1 .. $#{$cashflow}) {
 		my $wday = @$cashflow[$i]->{WDAY};
 		if ( defined $pivotDay->{$wday} ) {
 			@$cashflow[$i]->{$family} = $pivotDay->{$wday};
@@ -628,13 +539,13 @@ sub populateCashflowWeeklyTransactions {
 			my $pivotCateg = $statement->groupByWhere ('CATEGORY', $typeOpe, \@where);
 			@$cashflow[$i]->{$family.' DETAILS'} = $self->buildCategoryDetails ( @$pivotCateg[0] );
 		}
-		elsif ($type eq 'FORECASTED' and $wday > $lastWday ) {
+		elsif ($type eq 'FORECASTED' ) { #and $wday > $lastWday
 			# Happen when last week of current month ends after the previous month
 			# Example: current month, the last day of the week is a Tuesday and the previous month last day was Friday.
 			# In other words, week days 4.1 and 4.2 does not exist in the previous month because ended at 3.7
 			# Decision: take the week days of the first week of the previous month for populating the same week day of
 			# the last week of the current month.
-			# Sample: the wday 4.1 and 4.2 of the current month are populated with the 0.4 and 0.5 of the previous month.
+			# Sample: the wday 4.1 and 4.2 of the current month are populated with the 0.1 and 0.2 of the previous month.
 			my $wday = @$cashflow[$i]->{WDAY};
 			$wday =~ s/\d\.(\d)/0.$1/;
 			@$cashflow[$i]->{$family} = $pivotDay->{$wday};
@@ -786,117 +697,6 @@ sub sumForecastedOperationPerFamily {
 		}
 	}
 	return $totFam;
-}
-
-sub copyCashflowExcelSheet {
-	my ( $self, $wbPath, $wsNumber ) = @_;
-	my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($wbPath);
-	my $ws = $wb->worksheet( $wsNumber );		
-
-	my ( $row_min, $row_max ) = $ws->row_range();
-	my ( $col_min, $col_max ) = $ws->col_range();
-	
-	my @tabSheet;
-
-	for my $row ( 0 .. $row_max ) {
-		for my $col ( 0 .. $col_max ) {
-		my $cell = $ws->get_cell( $row, $col );	
-		my %record;
-			if (defined $cell) {	
-				if ($col == $col_max) { # Formula cumul line
-					%record = (
-						'unformatted' => '=H'.($row).'+SUM(C'.($row+1).':G'.($row+1).')',
-						'value' => '=H'.($row).'+SUM(C'.($row+1).':G'.($row+1).')',
-						'format' => $cell->get_format(),
-					);
-				} else {
-					%record = (
-						'unformatted' => $cell->unformatted(),
-						'value' => $cell->value(),
-						'format' => $cell->get_format(),
-					);
-				}
-				$tabSheet[$row][$col] = \%record;
-			}
-			else {
-				$tabSheet[$row][$col] = undef;
-			}
-		}
-	}
-	$self->setSheetClipBoard(\@tabSheet);
-	return $ws->get_name();
-}
-
-sub addPlannedOperationsIntoClipBoard {
-	my ( $self, $plannedOps, $startRow, $currency_format ) = @_;
-	my $tab = $self->getSheetClipBoard();
-	my $endRow = @$tab - 1;
-	
-	for my $plan ( @$plannedOps ) {
-		if ( (not $plan->{'FOUND'}) && ($plan->{'FORECASTED'} ne 'Y') ) {
-			if ( $plan->{'KEY'} <= @$tab[$endRow]->[0]->{unformatted} ) { # The planned operation is within the current month.
-					my $rowId = ( $plan->{'KEY'} <= @$tab[$startRow]->[0]->{unformatted} ) ? 
-						$startRow : $startRow + ($plan->{'KEY'} - @$tab[$startRow]->[0]->{unformatted});
-					my $colId;
-					for ($colId = 0; $colId <= $#{@$tab[0]}; $colId++ ) {
-						last unless @$tab[0]->[$colId]->{value} ne $plan->{'FAMILY'};
-					}
-					if (defined @$tab[$rowId]->[$colId]) {
-						if (@$tab[$rowId]->[$colId]->{unformatted} ne "") {
-							@$tab[$rowId]->[$colId]->{unformatted} += $plan->{'AMOUNT'};
-						} else {
-							@$tab[$rowId]->[$colId]->{unformatted} = $plan->{'AMOUNT'};
-						}
-					} else {
-						my %record = (
-							'unformatted' => $plan->{'AMOUNT'},
-							'value' => $plan->{'AMOUNT'},
-							'format' => $currency_format,
-						);					
-						@$tab[$rowId]->[$colId] = \%record;
-					}
-				}
-		}
-	}
-}
-
-sub pastExcelSheet {
-	my ( $self, $wb, $ws, $startRow, $endRow ) = @_;
-
-	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	my $tab = $self->getSheetClipBoard();
-	
-	if (!defined $startRow) { $startRow = 0; }
-	if (!defined $endRow) { $endRow = @$tab - 1; }
-	for my $row ( $startRow .. $endRow ) {
-		for my $col ( 0 .. $#{@$tab[$row]} ) {
-			if (defined @$tab[$row]->[$col]) {
-				my $fx_out;
-				if (ref @$tab[$row]->[$col]->{format} eq 'Spreadsheet::WriteExcel::Format') {
-					$fx_out = @$tab[$row]->[$col]->{format}
-				}
-				else {
-					my $font = Helpers::ExcelWorkbook->fontTranslator( @$tab[$row]->[$col]->{format}->{Font});
-					my $shading = Helpers::ExcelWorkbook->cellFormatTranslator(@$tab[$row]->[$col]->{format});
-					$fx_out = $wb->add_format( %$font, %$shading);					
-				}
-				
-				if (@$tab[$row]->[$col]->{value} =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
-					my $date = sprintf "%4d-%02d-%02dT", $3, $2, $1;
-					$fx_out->set_num_format($prop->readParamValue('workbook.dashboard.date.format'));
-					$ws->write_date_time($row, $col, $date, $fx_out);
-				}				
-				elsif ( @$tab[$row]->[$col]->{unformatted} =~ /^[+-]?\d+(\.\d+)?$/ ) { # currency column?
-					$fx_out->set_num_format(eval($prop->readParamValue('workbook.dashboard.currency.format')));
-					$ws->write( $row, $col, @$tab[$row]->[$col]->{unformatted}, $fx_out ); 
-				}
-				else {
-					$ws->write( $row, $col, @$tab[$row]->[$col]->{value}, $fx_out );
-				}
-			}
-		}
-	}
-	return $endRow;	
 }
 
 sub getAccDataPRM {

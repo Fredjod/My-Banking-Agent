@@ -94,7 +94,7 @@ is( $ws->get_cell( 20, 6 )->unformatted(), 8774.52, 'Actuals::Details: Cell G21 
 $ws = $wb->worksheet( 1 );
 is( $ws->get_cell( 12, 6 )->unformatted(), -262.80, 'Actuals::Cashflow: Cell G13 value?');
 is( $ws->get_cell( 24, 5 )->unformatted(), -100, 'Actuals::Cashflow: Cell F25 value?');
-is( $ws->get_cell( 16, 6 )->unformatted(), -120, 'Actuals::Cashflow: Cell G17 value?');
+is( $ws->get_cell( 16, 6 )->unformatted(), -320, 'Actuals::Cashflow: Cell G17 value?');
 is( $ws->get_cell( 5, 2 )->unformatted() + 
 	$ws->get_cell( 5, 4 )->unformatted() +
 	$ws->get_cell( 5, 6 )->unformatted(),

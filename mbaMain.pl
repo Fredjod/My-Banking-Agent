@@ -47,17 +47,20 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 		$accountPRM->saveBankData();
 		$reportingProcessor->createPreviousMonthClosingReport();
 	}
+
+	my $PRMCacheloaded = 1;
+	$PRMCacheloaded = $accountPRM->loadBankData();
+	if ($PRMCacheloaded) {
+		$logger->print ( "Previous month operations from cache is loaded", Helpers::Logger::INFO);
+	} else {
+		$logger->print ( "Loading of previous month operations from cache failed!", Helpers::Logger::ERROR);
+		return -1;
+	}
 	
 	# Check if the forecasted report processing is needed
 	if (! -e Helpers::MbaFiles->getForecastedFilePath ($accountMTD)) {
 		$logger->print ( "Processing the forecasted cashflow reporting", Helpers::Logger::INFO);
-		my $loaded = 1;
-		if (! defined $accountPRM->getOperations() ) {
-			$logger->print ( "Loading of previous month operations from cache...", Helpers::Logger::INFO);
-			$loaded = $accountPRM->loadBankData();
-		}
-		if ($loaded) { $reportingProcessor->createForecastedCashflowReport(); }
-		else { $logger->print ( "Previous month operations not loaded. Forecasted Cashflow reporting failed.", Helpers::Logger::ERROR); }
+		$reportingProcessor->createForecastedCashflowReport();
 	}
 	
 	if (defined $accountMTD->getOperations()) {
@@ -68,8 +71,6 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 		# Run the balance control
 		$logger->print ( "Run the balance control", Helpers::Logger::INFO);
 		$reportingProcessor->controlBalance ( $dt_to->wday() );
-	} else {
-		$logger->print ( "No operation for current month. Actual reporting not generated.", Helpers::Logger::INFO);
 	}
 	
 	$logger->print ( 'End of the account processing '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
