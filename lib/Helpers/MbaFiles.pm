@@ -83,12 +83,22 @@ sub getActualsFilePath {
 }
 
 sub getPreviousMonthCacheFilePath {
-	my ( $class, $checkingAccount ) = @_;
+	my ( $class, $stat ) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
-	my $number = $checkingAccount->getAccountNumber ();
+	my $number = $stat->getAccountNumber ();
 	$number =~ s/\s//g;
-	return getReportingDirname ( $number ).$prop->readParamValue('account.previous.month.cache');
+	my $prefix = sprintf("%04d%02d", $stat->getMonth->year(), $stat->getMonth->month() );
+	
+	# if needed, clean the old cache file on the disk
+	my $dth = Helpers::Date->new($stat->getMonth());
+	my $oldDateCache = $dth->rollPreviousMonth();
+	my $OldFileCachePrefix = sprintf("%04d%02d", $oldDateCache->year(), $oldDateCache->month() );
+	if (-e getReportingDirname($number).$prop->readParamValue('account.previous.month.cache').".".$OldFileCachePrefix ) {
+		unlink glob getReportingDirname($number).$prop->readParamValue('account.previous.month.cache').".".$OldFileCachePrefix;
+	}
+				 
+	return getReportingDirname ( $number ).$prop->readParamValue('account.previous.month.cache').".".$prefix;
 }	
 
 sub getLastSavingFilePath {

@@ -17,7 +17,7 @@ use Data::Dumper;
 
 sub new
 {
-    my ($class, $configFilePath, $dtMonth) = @_;
+    my ($class, $configFilePath, $dt_to ) = @_;
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
     $logger->print ( "Opening account config file: $configFilePath", Helpers::Logger::DEBUG);
@@ -31,7 +31,7 @@ sub new
     	_default => undef,
     	_operations => undef,
     	_balance => 0,
-    	_month => $dtMonth,
+    	_dt_to => $dt_to,
     };
     if ( !defined $self->{_accountNumber} ) { $logger->print (  "bank account number value not found!", Helpers::Logger::ERROR); die; }
     bless $self, $class;
@@ -275,6 +275,8 @@ sub parseBankStatement {
     # ]
     #
     
+    if ($#{$bankData} < 0) {return undef;} # No operation has been downloaded...
+    
 	my $categories = $self->getCategories();
 	my @operations;
 
@@ -291,7 +293,7 @@ sub parseBankStatement {
 	   time_zone => 'local',
 	);	
 	
-	$self->{_month} = $date;
+	$self->{_dt_to} = $date;
 	return \@operations;
 }
 
@@ -432,7 +434,12 @@ sub getOperations {
 
 sub getMonth {
 	my( $self) = @_;
-	return $self->{_month};		
+	return $self->{_dt_to};		
+}
+
+sub getDateTo {
+	my( $self) = @_;
+	return $self->{_dt_to};		
 }
 
 sub getDefault {

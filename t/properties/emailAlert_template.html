@@ -12,16 +12,22 @@
 <BODY LANG="fr-FR" DIR="LTR">
 <P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3>This
 is the "Mondays" report sent by <i>MyBankingAgent</i> service that monitors your account <b>'<TMPL_VAR NAME=ACCOUNT_DESC>'</b>.
-<P></FONT></FONT></P>
+</FONT></FONT><P></P>
+<HR>
+<P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3>
+1) The following numbers provide a current balance and forecasted balance
+at this time of the month (aka <b>M</b>onth <b>T</b>o <b>D</b>ate)
+</FONT></FONT><p></p>
 <UL>
-	<LI><P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><FONT COLOR="<TMPL_VAR NAME=ACTUAL_COLOR>"><B>Actual
+	<LI><P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><FONT COLOR="<TMPL_VAR NAME=ACTUAL_COLOR>"><B>Current
 	Balance: <TMPL_VAR NAME=ACTUAL></FONT></FONT></FONT></B></P>
-	
+
 	<LI><P><FONT FACE="Times New Roman, serif"><FONT SIZE=3><FONT COLOR="<TMPL_VAR NAME=FORECASTED_COLOR>">
-	<SPAN LANG="en-US">Forecasted balance: </SPAN> <TMPL_VAR NAME=FORECASTED></FONT></FONT></FONT></P>
+	<SPAN LANG="en-US">- Forecasted Balance: </SPAN> <TMPL_VAR NAME=FORECASTED></FONT></FONT></FONT>
 	
-	<LI><P LANG="en-US"><FONT COLOR="<TMPL_VAR NAME=VAR_COLOR>"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B>Variation:
-	<TMPL_VAR NAME=VAREURO> (<TMPL_VAR NAME=VARRATIO>)</B></FONT></FONT></FONT></P>
+	<LI><P><FONT FACE="Times New Roman, serif"><FONT SIZE=3><FONT COLOR="<TMPL_VAR NAME=VAR_COLOR>">
+	= Variation with current balance: <TMPL_VAR NAME=VAREURO></FONT></FONT></FONT></P>
+
 </UL>
 <P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3>The
 details of the variation per Transaction Family:</FONT></FONT></P>
@@ -36,10 +42,10 @@ details of the variation per Transaction Family:</FONT></FONT></P>
 			Family</SPAN></B></FONT></FONT></FONT></P>
 		</TD>
 		<TD WIDTH=25% BGCOLOR="#000080">
-			<P ALIGN=LEFT STYLE="font-style: normal; text-decoration: none"><FONT COLOR="#ffffff"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B><SPAN STYLE="text-decoration: none">Actual</SPAN></B></FONT></FONT></FONT></P>
+			<P ALIGN=LEFT STYLE="font-style: normal; text-decoration: none"><FONT COLOR="#ffffff"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B><SPAN STYLE="text-decoration: none">Actuals MTD</SPAN></B></FONT></FONT></FONT></P>
 		</TD>
 		<TD WIDTH=25% BGCOLOR="#000080">
-			<P ALIGN=LEFT STYLE="font-style: normal; text-decoration: none"><FONT COLOR="#ffffff"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B><SPAN STYLE="text-decoration: none">Forecasted</SPAN></B></FONT></FONT></FONT></P>
+			<P ALIGN=LEFT STYLE="font-style: normal; text-decoration: none"><FONT COLOR="#ffffff"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B><SPAN STYLE="text-decoration: none">Forecasted MTD</SPAN></B></FONT></FONT></FONT></P>
 		</TD>
 		<TD WIDTH=25% BGCOLOR="#000080">
 			<P ALIGN=LEFT STYLE="font-style: normal; text-decoration: none"><FONT COLOR="#ffffff"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><B><SPAN STYLE="text-decoration: none">Variation</SPAN></B></FONT></FONT></FONT></P>
@@ -75,9 +81,24 @@ details of the variation per Transaction Family:</FONT></FONT></P>
 	</TMPL_LOOP>
 
 </TABLE>
+<HR>
+<P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3>
+2) The following numbers provide an estimation of the <b>E</b>nd <b>O</b>f <b>M</b>onth</b> (EOM) balance.
+</FONT></FONT></P>
+<UL>
+	<LI><P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><FONT COLOR="<TMPL_VAR NAME=INITB_COLOR>">Init
+	Balance of current month: <TMPL_VAR NAME=INITB></FONT></FONT></FONT></P>
+
+	<LI><P><FONT FACE="Times New Roman, serif"><FONT SIZE=3><FONT COLOR="<TMPL_VAR NAME=EOM_CASHFLOW_COLOR>">
+	<SPAN LANG="en-US">+ Forecasted cashflow EOM: </SPAN> <TMPL_VAR NAME=EOM_CASHFLOW></FONT></FONT></FONT></P>
+
+	<LI><P LANG="en-US"><FONT FACE="Times New Roman, serif"><FONT SIZE=3><FONT COLOR="<TMPL_VAR NAME=EOM_BALANCE_COLOR>"><B>= Forecasted
+	Balance EOM: <TMPL_VAR NAME=EOM_BALANCE></FONT></FONT></FONT></B></P>	
+</UL>
+
 <P><HR>
 <CENTER>
-<A HREF="https://github.com/Fredjod/My-Banking-Agent">MyBankingAgent</A> project &copy; 2015 FredJod <BR>
+<A HREF="https://github.com/Fredjod/My-Banking-Agent">MyBankingAgent</A> project &copy; 2016 FredJod <BR>
     This program comes with ABSOLUTELY NO WARRANTY.<BR>
     This is free software (GNU General Public License), and you are welcome to use the code, fork it and redistribute it.
 </CENTER>

@@ -1,67 +1,45 @@
-use Test::More tests => 27;
+use Test::More tests => 37;
 # use Test::More qw( no_plan );
 use lib '../lib';
 use Data::Dumper;
 use diagnostics;
 use warnings;
 use strict;
-use WebConnector::GenericWebConnector;
 use Helpers::ConfReader;
 use Helpers::MbaFiles;
+use Helpers::Statement;
 use Helpers::Date;
+use Helpers::Logger;
 
 #do 'Helpers/ConfReader.pm';
 require_ok "AccountStatement::Reporting";
 require_ok "AccountStatement::CheckingAccount";
-my @config = Helpers::MbaFiles->getAccountConfigFilesName();
-my $dth = Helpers::Date->new ();
-my $dataMTD = AccountStatement::CheckingAccount->new( $config[0], $dth->getDate() );
-my $dataPRM = AccountStatement::CheckingAccount->new( $config[0], $dth->getDate() );
-my $report = AccountStatement::Reporting->new();
 
-open my $in, "<", "t.cm.bankdata.ofx" or die "Can't open file t.cm.bankdata.ofx file!\n";
-read $in, my $ofx, -s $in;
-close $in;	
-
-open $in, "<", "t.cm.bankdata.qif" or die "Can't open file t.cm.bankdata.qif file!\n";
-read $in, my $qif, -s $in;
-close $in;
-
-my $parser = WebConnector::GenericWebConnector->new();
-my $balance = $parser->parseOFXforBalance($ofx, '.');
-my $bankData = $parser->parseQIF ($qif, '([0-9]{2})\/([0-9]{2})\/([0-9]{2})', 0, ',', '.');
-
-$dataPRM->setBalance($balance);
-if ($#{$bankData} > 0) {
-	$parser->backwardBalanceCompute ( $bankData, $balance );
-	$dataPRM->parseBankStatement($bankData);
+my $logger = Helpers::Logger->new();
+   
+my $dt = DateTime->new(
+	   year      => 2015,
+	   month     => 6,
+	   day       => 15,
+	   time_zone => 'local',
+	);
+# delete previous month cache file
+my $dth = Helpers::Date->new($dt);
+my $dt_prev = $dth->rollPreviousMonth();
+my $stat = AccountStatement::CheckingAccount->new ("./accounts/config.0303900020712303.xls", $dt_prev);
+my $cacheFilePath = Helpers::MbaFiles->getPreviousMonthCacheFilePath ( $stat );
+if (-e $cacheFilePath ) {
+	unlink glob $cacheFilePath;
+	$logger->print ( "Cache file deleted: $cacheFilePath", Helpers::Logger::DEBUG);
 }
+my $statPRM = Helpers::Statement->buildPreviousMonthStatement("./accounts/config.0303900020712303.xls", $dt);
+my $statMTD = Helpers::Statement->buildCurrentMonthStatement("./accounts/config.0303900020712303.xls", $dt);
 
-$report->setAccDataPRM($dataPRM);
+my $reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 
-open $in, "<", "t.cm.bankdata.ofx" or die "Can't open file t.cm.bankdata.ofx file!\n";
-read $in, $ofx, -s $in;
-close $in;	
+$reportProcessor->createPreviousMonthClosingReport();
 
-open $in, "<", "t.cm.bankdata_june.qif" or die "Can't open file t.cm.bankdata_june.qif file!\n";
-read $in, $qif, -s $in;
-close $in;
-
-$parser = WebConnector::GenericWebConnector->new();
-$balance = $parser->parseOFXforBalance($ofx, '.');
-$bankData = $parser->parseQIF ($qif, '([0-9]{2})\/([0-9]{2})\/([0-9]{2})', 0, ',', '.');
-
-$dataMTD->setBalance($balance);
-if ($#{$bankData} > 0) {
-	$parser->backwardBalanceCompute ( $bankData, $balance );
-	$dataMTD->parseBankStatement($bankData);
-}
-
-$report->setAccDataMTD($dataMTD);
-
-$report->createPreviousMonthClosingReport();
-
-my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $dataPRM );
+my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRM );
 my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 my $ws = $wb->worksheet( 0 ); # Summary
 is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'Closing::Summary: Cell B10 value?');
@@ -72,19 +50,16 @@ is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Closing::Details: Cell E4 v
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Closing::Details: Cell C9 value?');
 is( $ws->get_cell( 20, 6 )->unformatted(), 10270.39, 'Closing::Details: Cell G21 value?');
 
-$report->createForecastedCashflowReport();
-$XLSfile = Helpers::MbaFiles->getForecastedFilePath( $dataMTD );
+$reportProcessor->createForecastedCashflowReport();
+$XLSfile = Helpers::MbaFiles->getForecastedFilePath( $statMTD );
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 ); # Cashflow
 is( $ws->get_cell( 5, 5 )->unformatted(), -282.08, 'Forecasted::Cashflow: Cell F6 value?');
 is( $ws->get_cell( 30, 5 )->unformatted(), -283.08, 'Forecasted::Cashflow: Cell F31 value?');
 is( $ws->get_cell( 30, 4 )->unformatted(), -325.40, 'Forecasted::Cashflow:Cell E31 value?');
 
-$report->createActualsReport();
-
-my $prop = Helpers::ConfReader->new("properties/app.txt");
-# $XLSfile = Helpers::MbaFiles->getActualsFilePath($data);
-$XLSfile = './reporting/0303900020712303/06-15_actuals.xls';
+$reportProcessor->createActualsReport();
+$XLSfile = Helpers::MbaFiles->getActualsFilePath($statMTD);
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 );
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Actuals::Details: Cell E4 value?');
@@ -100,14 +75,12 @@ is( $ws->get_cell( 5, 2 )->unformatted() +
 	$ws->get_cell( 5, 6 )->unformatted(),
 	-1240.62, 'Actuals::Cashflow: Sum of C6:E6?');
 
+my $statPRMCache = Helpers::Statement->buildPreviousMonthStatement("./accounts/config.0303900020712303.xls", $dt);
+$statMTD = Helpers::Statement->buildCurrentMonthStatement("./accounts/config.0303900020712303.xls", $dt);
+$reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 
-$dataPRM->saveBankData();
-
-my $dataPRMCache = AccountStatement::CheckingAccount->new( $config[0], $dth->getDate() );
-$dataPRMCache->loadBankData();
-$report->setAccDataPRM($dataPRMCache);
-$report->createPreviousMonthClosingReport();
-$XLSfile = Helpers::MbaFiles->getClosingFilePath( $dataPRMCache );
+$reportProcessor->createPreviousMonthClosingReport();
+$XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRMCache );
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 ); # Summary
 is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'CacheData::Closing::Summary: Cell B10 value?');
@@ -118,11 +91,47 @@ is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'CacheData::Closing::Details
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'CacheData::Closing::Details: Cell C9 value?');
 is( $ws->get_cell( 20, 6 )->unformatted(), 10270.39, 'CacheData::Closing::Details: Cell G21 value?');
 
-$report->createForecastedCashflowReport();
-$XLSfile = Helpers::MbaFiles->getForecastedFilePath( $dataMTD );
+$reportProcessor->createForecastedCashflowReport();
+$XLSfile = Helpers::MbaFiles->getForecastedFilePath( $statMTD );
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 ); # Cashflow
 is( $ws->get_cell( 5, 5 )->unformatted(), -282.08, 'CacheData::Forecasted::Cashflow: Cell F6 value?');
 is( $ws->get_cell( 30, 5 )->unformatted(), -283.08, 'CacheData::Forecasted::Cashflow: Cell F31 value?');
 is( $ws->get_cell( 30, 4 )->unformatted(), -325.40, 'CacheData::Forecasted::Cashflow:Cell E31 value?');
 
+# Testing the "mondays" reporting.
+# Update your email address in app.txt properties
+# uncomment line below
+# $reportProcessor->controlBalance(1);
+
+$dt = DateTime->new(
+	   year      => 2015,
+	   month     => 7,
+	   day       => 2,
+	   time_zone => 'local',
+	);
+$statPRM = Helpers::Statement->buildPreviousMonthStatement("./accounts/config.0303900020712303.xls", $dt);
+$statMTD = Helpers::Statement->buildCurrentMonthStatement("./accounts/config.0303900020712303.xls", $dt);
+
+$reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
+
+$reportProcessor->createPreviousMonthClosingReport();
+$XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRM );
+$wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
+$ws = $wb->worksheet( 0 ); # Summary
+is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'NoOperationInCurrentMonth::Closing::Summary: Cell B10 value?');
+is( $ws->get_cell( 16, 1 )->unformatted(), -647.22, 'NoOperationInCurrentMonth::Closing::Summary: Cell B17 value?');
+is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'NoOperationInCurrentMonth::Closing::Summary: Cell E12 value?');
+$ws = $wb->worksheet( 1 ); # Details
+is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'NoOperationInCurrentMonth::Closing::Details: Cell E4 value?');
+is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'NoOperationInCurrentMonth::Closing::Details: Cell C9 value?');
+is( $ws->get_cell( 20, 6 )->unformatted(), 8774.52, 'NoOperationInCurrentMonth::Closing::Details: Cell G21 value?');
+
+$reportProcessor->createForecastedCashflowReport();
+$XLSfile = Helpers::MbaFiles->getForecastedFilePath( $statMTD );
+$wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
+$ws = $wb->worksheet( 0 ); # Cashflow
+is( $ws->get_cell( 5, 5 )->unformatted(), -15, 'NoOperationInCurrentMonth::Forecasted::Cashflow: Cell F6 value?');
+is( $ws->get_cell( 30, 5 )->unformatted(), -40, 'NoOperationInCurrentMonth::Forecasted::Cashflow: Cell F31 value?');
+is( $ws->get_cell( 5, 4 )->unformatted(), -1301.02, 'NoOperationInCurrentMonth::Forecasted::Cashflow:Cell E6 value?');
+is( $ws->get_cell( 3, 6 )->unformatted(), -320, 'NoOperationInCurrentMonth::Forecasted::Cashflow:Cell G4 value?');

@@ -173,12 +173,52 @@ sub downloadOperations {
 
 sub downloadBankStatement {
 	my ( $self, $account, $dateFrom, $dateTo ) = @_;
-	my $balance = $self->downloadBalance ( $account->getAccountNumber(), $dateFrom, $dateTo );
-	$account->setBalance($balance);
-	my $bankData = $self->downloadOperations ( $account->getAccountNumber(), $dateFrom, $dateTo );	
-	if ($#{$bankData} > -1) {
-		$self->backwardBalanceCompute ( $bankData, $balance );
-		$account->parseBankStatement($bankData);
+
+	my ( $bankData, $balance );
+	my $logger = Helpers::Logger->new();
+	# Get the operations from website
+	$logger->print ( "Log in to ".$account->getBankName()." website", Helpers::Logger::INFO);
+	if ( $self->logIn( Helpers::WebConnector->getLogin ($account->getAccountAuth), Helpers::WebConnector->getPwd ($account->getAccountAuth) ) ) {
+		$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()." for month ".$dateTo->month(), Helpers::Logger::INFO);
+		$balance = $self->downloadBalance ( $account->getAccountNumber(), $dateFrom, $dateTo );
+		$account->setBalance($balance);
+		$bankData = $self->downloadOperations ( $account->getAccountNumber(), $dateFrom, $dateTo );
+		if ($#{$bankData} > -1) {
+			$self->backwardBalanceCompute ( $bankData, $balance );
+		}
 	}
+	$logger->print ( "Log out", Helpers::Logger::INFO);
+	$self->logOut();
+	return $bankData;
 }
+
+sub downloadMultipleBankStatement {
+	my ( $self, $AccountList, $dateFrom, $dateTo ) = @_;
+	my $logger = Helpers::Logger->new();
+	
+	my @result;
+	
+	for my $info ( @$AccountList ) {
+		# As input a array of hashes:
+		my $bankname = $info->{'BANK'};
+		my $authKey = $info->{'KEY'};
+		my $desc = 	$info->{'DESC'};
+		my $number = $info->{'NUMBER'};
+		$logger->print ( "Log in to ".$bankname." website", Helpers::Logger::INFO);
+		if ( $self->logIn(  Helpers::WebConnector->getLogin ($authKey),  Helpers::WebConnector->getPwd ($authKey) ) ) {
+			my %record;
+			$logger->print ( "Download and parse bank statement for account ".$desc." for month ".$dateFrom->month()."...", Helpers::Logger::INFO);
+			# As output an array of hashes:
+			$record{'BALANCE'} = $self->downloadBalance ( $number, , $dateFrom, $dateTo );
+			$record{'BANKOPE'} = $self->downloadOperations ( $number, $dateFrom, $dateTo );
+			$record{'NUMBER'} = $$number;
+			$record{'DESC'} = $desc;
+			push (@result, \%record);
+		}
+	}
+	$logger->print ( "Log out", Helpers::Logger::INFO);
+	$self->logOut();
+	return \@result;
+}
+
 1;

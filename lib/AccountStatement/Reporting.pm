@@ -19,12 +19,11 @@ use AccountStatement::PlannedOperation;
 
 sub new
 {
-    my ($class ) = @_;
+    my ($class, $statPRM, $statMTD ) = @_;
         
     my $self = {
-    	_accDataPRM => undef, # Previous month (1er to last day)
-    	_accDataMTD => undef, # Current month (1er to now)
-    	_sheetClipBoard => undef,
+    	_accDataPRM => $statPRM, # Previous month (1er to last day of previous month)
+    	_accDataMTD => $statMTD, # Current month (1er to now)
     };
     bless $self, $class;
     return $self;
@@ -596,6 +595,10 @@ sub computeForecastedBalancePRM {
 sub controlBalance {
 	my( $self, $wkday ) = @_;
 	
+	my $dth = Helpers::Date->new();	
+	if (! defined $wkday) { $wkday = $dth->getDate()->wday(); }
+	else {$wkday = 1;}
+	
 	my $statMTD = $self->getAccDataMTD;
 	my $dt_currmonth =  $statMTD->getMonth();
 
@@ -611,11 +614,15 @@ sub controlBalance {
 
 	# Check whether a risk of bank overdraft is known from the actuals cashflow report
 	my $risk = 0;
+	my $forecastedEOMCashflow = 0;
+	my $forecastedEOMBalance = 0;
+	my $balanceRisk = 0;
+
 	my $overdraft = $prop->readParamValue('alert.overdraft.threshold');
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getActualsFilePath ( $self->getAccDataMTD ));	
 	my $worksheet = $workbook->worksheet( 1 ); # cashflow sheet
 	my ( $row_min, $row_max ) = $worksheet->row_range();
-	my $balanceRisk = $worksheet->get_cell( 0, 7 )->unformatted();
+	my $initBalance = $worksheet->get_cell( 0, 7 )->unformatted();
 	for (my $row=1; $row <= $row_max; $row++) {
 		my $lineTot = 0;
 		for (my $col = 2; $col <=6; $col ++) {
@@ -625,31 +632,34 @@ sub controlBalance {
 			next unless $cell->unformatted() =~ /^[+-]?\d+(\.\d+)?$/; # is a amount?
 			$lineTot += $worksheet->get_cell( $row, $col )->unformatted() ;
 		}
-		$balanceRisk  += $lineTot;
-		if ( $balanceRisk  < $overdraft and $row > $dt_currmonth->day() ) { # risk of bank overdraft in the future
-			$risk = $row;
-			last;
+		$forecastedEOMCashflow += $lineTot;
+		if ( $risk == 0 ) { # no risk found yet
+			$balanceRisk = $forecastedEOMCashflow + $initBalance;
+			if ( $balanceRisk < $overdraft and $row > $dt_currmonth->day() ) { # 1st risk of bank overdraft in the future is detected
+				$risk = $row;
+			}
 		}
+		$forecastedEOMBalance = $forecastedEOMCashflow + $initBalance;
 	}
 
 	# Send the Monday report, if activated.
 	my $mondayReport = $prop->readParamValue('mondays.report.active');
 	my $var = $currentBalance-$plannedBalance;
 	if ( $mondayReport eq "yes" && $wkday == 1) { 
-		my $subject = "Balance Variation Report";
+		my $subject = "Balance Control Report";
 		$log->print ( "Email sending: $subject: Actuals:$currentBalance, Planned:$plannedBalance, Variation:$var", Helpers::Logger::INFO);
 		my $mail = Helpers::SendMail->new(
 			$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
 			"alert.body.template"
 		);
-		$mail->buildBalanceAlertBody ($self, $statMTD, $currentBalance, $plannedBalance);
+		$mail->buildBalanceAlertBody ($self, $statMTD, $initBalance, $currentBalance, $plannedBalance, $forecastedEOMBalance, $forecastedEOMCashflow);
 		$mail->send();
 	}
 	else {
 		$log->print ( "Account balance variation OK", Helpers::Logger::INFO);
 	}
-	if ($currentBalance < $overdraft ) { # Send an alert in case of actual bank overdraft.
-		my $subject = "!!! Bank Overdraft Alert !!!";
+	if ($currentBalance < $overdraft ) { # Send an alert in case of current bank overdraft.
+		my $subject = "!!!ALERT!!! Bank Overdraft is Ongoing";
 		$log->print ( "Email sending: $subject: Actuals:$currentBalance", Helpers::Logger::INFO);
 		my $mail = Helpers::SendMail->new(
 			$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
@@ -659,7 +669,7 @@ sub controlBalance {
 		$mail->send();
 	} else {
 		if ($risk > 0 ) { # Found a risk if bank overdraft before the end of the month
-			my $subject = "Bank Overdraft Risk";
+			my $subject = "!Warning! Risk of Bank Overdraft is detected";
 			$log->print ( "Email sending: $subject: forecasted:$balanceRisk on the $risk", Helpers::Logger::INFO);
 			my $mail = Helpers::SendMail->new(
 				$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
@@ -707,27 +717,6 @@ sub getAccDataPRM {
 sub getAccDataMTD {
 	my( $self) = @_;
 	return $self->{_accDataMTD};		
-}
-
-sub getSheetClipBoard {
-	my( $self ) = @_;
-	return $self->{_sheetClipBoard};	
-}
-
-
-sub setAccDataPRM {
-	my( $self, $statement) = @_;
-	$self->{_accDataPRM} = $statement;		
-}
-
-sub setAccDataMTD {
-	my( $self, $statement) = @_;
-	$self->{_accDataMTD} = $statement;		
-}
-
-sub setSheetClipBoard {
-	my( $self, $tab) = @_;
-	$self->{_sheetClipBoard} = $tab;		
 }
 
 1;

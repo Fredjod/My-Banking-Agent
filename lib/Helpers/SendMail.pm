@@ -66,24 +66,37 @@ sub send {
 }
 
 sub buildBalanceAlertBody {
-	my ($self, $report, $CheckingAccount, $currentBalance, $plannedBalance) = @_;
+	my ($self, $report, $CheckingAccount, $initBalance, $currentBalance, $plannedBalance, $EOMBalance, $EOMCashflow) = @_;
 	my $template = $self->{_template};
 	
 	$template->param( ACCOUNT_DESC => $CheckingAccount->getAccountDesc() );
 	
 	# Total value block
+	$template->param(INITB => euroFormating($initBalance));
+	$template->param(INITB_COLOR => "#000000");
+	if ($initBalance < 0) { $template->param(INITB_COLOR => "#ff0000"); } # red = #ff0000	
+	
 	$template->param(ACTUAL => euroFormating($currentBalance));
 	$template->param(ACTUAL_COLOR => "#000000");
 	if ($currentBalance < 0) { $template->param(ACTUAL_COLOR => "#ff0000"); } # red = #ff0000
+	
 	$template->param(FORECASTED => euroFormating($plannedBalance));
 	$template->param(FORECASTED_COLOR => "#000000");
 	if ($plannedBalance < 0) { $template->param(FORECASTED_COLOR => "#ff0000"); } # red = #ff0000
 	
 	my $var = $currentBalance-$plannedBalance;
 	$template->param(VAREURO => euroFormating($var) );
-	$template->param(VARRATIO => sprintf("%.2f%%", (($var)/$currentBalance)*100) );
 	$template->param(VAR_COLOR => "#00ae00"); # lightgreen = #00ae00
 	if ($var < 0) { $template->param(VAR_COLOR => "#ff0000"); } # red = #ff0000
+	
+	# EOM forecasted block
+	$template->param(EOM_BALANCE => euroFormating($EOMBalance));
+	$template->param(EOM_BALANCE_COLOR => "#000000");
+	if ($EOMBalance < 0) { $template->param(EOM_BALANCE_COLOR => "#ff0000"); } # red = #ff0000
+	$template->param(EOM_CASHFLOW => euroFormating($EOMCashflow));
+	$template->param(EOM_CASHFLOW_COLOR => "#00ae00");
+	if ($EOMCashflow < 0) { $template->param(EOM_CASHFLOW_COLOR => "#ff0000"); } # red = #ff0000	
+	
 	
 	# Details loop
 	my @loopLineDetails = ();

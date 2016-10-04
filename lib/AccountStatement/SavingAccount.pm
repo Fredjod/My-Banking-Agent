@@ -208,6 +208,33 @@ sub readFromExcelSheetBalance {
 	return \@tabSheet;
 }
 
+=cut
+sub loadOperationsAndBalances {
+	my ( $self, $dt_from, $dt_to ) = @_;
+    my $prop = Helpers::ConfReader->new("properties/app.txt");
+    my $logger = Helpers::Logger->new();
+	my $ref = $self->getAccountReferences();
+	
+	my $i = 0;
+	while ( $i<$#{$ref}+1 ) {
+		my $bankname = @$ref[$i]->{'BANK'};
+		my $authKey = @$ref[$i]->{'KEY'};
+		my $connector = Helpers::WebConnector->buildWebConnectorObject ($bankname);
+		my @listOfAccountToDownloadInOneLogin;
+		do {
+			push (@listOfAccountToDownloadInOneLogin, @$ref[$i]);
+			$i++;
+		} while ( $i<$#{$ref}+1 && @$ref[$i]->{'BANK'} eq $bankname && @$ref[$i]->{'KEY'} eq $authKey);
+		my $result = $connector->downloadMultipleBankStatement(\@listOfAccountToDownloadInOneLogin, $dt_from, $dt_to);
+		for my $record ( @$result ) {
+			$self->addSavingRecord ($record->{'BANKOPE'}, $record->{'NUMBER'}, $record->{'DESC'}, $record->{'BALANCE'});
+		}
+	}
+
+	my $operations = $self->getOperations();
+	@$operations = sort { $b->{'DATE'} cmp $a->{'DATE'}  } @$operations;	
+}
+=cut
 
 sub loadOperationsAndBalances {
 	my ( $self, $dt_from, $dt_to ) = @_;
