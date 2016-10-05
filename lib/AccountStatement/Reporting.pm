@@ -67,7 +67,7 @@ sub createActualsReport {
 	$current_format_actuals->set_pattern(17);
 	
 	$self->generateDetailsSheet($self->getAccDataMTD(), $wb_out, $currency_format, $date_format);
-	$self->generateCashflowSheet( $self->getAccDataMTD(), $self->getAccDataPRM(), $wb_out, $currency_format, $date_format, $current_format_actuals);
+	$self->generateCashflowSheet( $self->getAccDataMTD(), $self->getAccDataPRM(), $wb_out, $currency_format, $date_format, $current_format_actuals, "ActualReport");
 	$self->generateVariationSheet ( $self->getAccDataMTD(), $wb_out, $currency_format, $date_format );
 }
 
@@ -176,10 +176,10 @@ sub generateDetailsSheet
 
 sub generateCashflowSheet
 {
-	my ( $self, $statMTD, $statPRM, $wb_out, $currency_format, $date_format, $current_format_actuals) = @_;
+	my ( $self, $statMTD, $statPRM, $wb_out, $currency_format, $date_format, $current_format_actuals, $caller) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));
-
+	if (!defined $caller) { $caller = "notdefined"; }
 	my $dt_currmonth = $statMTD->getMonth()->clone();
 	
 	my $dt_lastday =  DateTime->last_day_of_month( year => $dt_currmonth->year(), month => $dt_currmonth->month() );
@@ -210,46 +210,112 @@ sub generateCashflowSheet
 	my @cashflow = ();
 
 	$self->populateCashflowData (\@cashflow, $statMTD, $startDay , $dt_currmonth->day(), 'ACTUALS', $dt_currmonth );
-	if ($dt_currmonth->day() < $dt_lastday->day() ) {
+	if ($dt_currmonth->day() < $dt_lastday->day() ) { # The current month is not ended.
 		$startDay = $dt_currmonth->day()+1;
 		$self->populateCashflowData (\@cashflow, $statPRM, $startDay, $dt_lastday->day(), 'FORECASTED', $dt_currmonth );
-	}
 	
-	# Add to forecasted cashflow section, the known planned operations
-	my $plannedOpsObj = AccountStatement::PlannedOperation->new( $self->getAccDataMTD() );
-	my $planOps = $plannedOpsObj->getPlannedOperations();
-	for my $plan ( @$planOps ) {
-		
-		next unless ( not $plan->{'FOUND'} );
-		
-		my ($d,$m,$y) = $plan->{'DATE'} =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/;
-		my $planDate = DateTime->new(
-	   		year      => $y,
-	   		month     => $m,
-	   		day       => $d,
-	   		time_zone => 'local',
-		);
-		
-		next unless ( (DateTime->compare( $planDate, $dt_lastday ) <= 0 ) );
-		
-		my $pday = $planDate->day();
-		if (DateTime->compare( $planDate, $statMTD->getMonth() ) <= 0 ) {
-			$pday = $statMTD->getMonth()->day() + 1;	
+		# Add to forecasted cashflow section, the known planned operations
+		my $plannedOpsObj = AccountStatement::PlannedOperation->new( $self->getAccDataMTD() );
+		my $planOps = $plannedOpsObj->getPlannedOperations();
+		my %isPlannedUpdated;
+		for my $plan ( @$planOps ) {
+			
+			next unless ( not $plan->{'FOUND'} );
+			
+			my ($d,$m,$y) = $plan->{'DATE'} =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/;
+			my $planDate = DateTime->new(
+		   		year      => $y,
+		   		month     => $m,
+		   		day       => $d,
+		   		time_zone => 'local',
+			);
+			
+			next unless ( (DateTime->compare( $planDate, $dt_lastday ) <= 0 ) );
+			
+			my $pday = $planDate->day();
+			if (DateTime->compare( $planDate, $statMTD->getMonth() ) <= 0 ) { # The plan operation is before the last operation of the current month
+				$pday = $statMTD->getMonth()->day() + 1;					  # the plan operation should be added to the family at the last current day+1
+			}
+			# Keep in memory (for later merging purpose with forecasted) the valule of the falimy.
+			my $key = ($pday-1).$plan->{'FAMILY'};
+			if (!defined $cashflow[$pday-1]->{ $plan->{'FAMILY'} }) {
+				$isPlannedUpdated{$key} = 0;
+				$cashflow[$pday-1]->{ $plan->{'FAMILY'} } = $plan->{'AMOUNT'};
+			} else {
+				if (!defined $isPlannedUpdated{$key}) { # keeping in memory the initial family value only
+					$isPlannedUpdated{$key} = $cashflow[$pday-1]->{ $plan->{'FAMILY'} };
+				}
+				$cashflow[$pday-1]->{ $plan->{'FAMILY'} } += $plan->{'AMOUNT'};
+			}
+	
+			my $comment = $plan->{'CATEGORY'};
+			if (defined $plan->{'COMMENT'} && $plan->{'COMMENT'} ne "") { $comment = $plan->{'COMMENT'}; } 
+			if (!defined $cashflow[$pday-1]->{ $plan->{'FAMILY'}." DETAILS" }) {
+				$cashflow[$pday-1]->{ $plan->{'FAMILY'}." DETAILS" } = $comment."=".$plan->{'AMOUNT'};
+			} else {
+				$cashflow[$pday-1]->{ $plan->{'FAMILY'}." DETAILS" } .= "\n".$comment."=".$plan->{'AMOUNT'};
+			}
 		}
 		
-		if (!defined $cashflow[$pday-1]->{ $plan->{'FAMILY'} }) {
-			$cashflow[$pday-1]->{ $plan->{'FAMILY'} } = $plan->{'AMOUNT'};
-		} else {
-			$cashflow[$pday-1]->{ $plan->{'FAMILY'} } += $plan->{'AMOUNT'};
+		# If the caller of this method is the ActualReport, do a merge with the forecasted report
+		# Srategy merge: refer to the merge specification
+		if ($caller eq "ActualReport") {
+			my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getForecastedFilePath ( $self->getAccDataMTD ));	
+			my $worksheet = $workbook->worksheet( 0 ); # cashflow sheet
+			my ( $row_min, $row_max ) = $worksheet->row_range();
+			# Go throw each single cell of Forecasted report
+			for (my $row=$startDay; $row <= $dt_lastday->day(); $row++) {
+				for (my $col = 2; $col <=6; $col ++) {
+					my $cell = $worksheet->get_cell( $row, $col );
+					
+					# Merge strategy is based on the comparison of 3 values : forecasted, isPlanned and actual.
+					my $forecasted = undef;
+					if (defined $cell) {
+						if (length($cell) &&  $cell->unformatted() =~ /^[+-]?\d+(\.\d+)?$/ ) {$forecasted = $cell->unformatted() }
+					}
+					my $key = ($row-1).$worksheet->get_cell( 0, $col )->value(); # key for the isPlannedUpdated
+					my $actual = $cashflow[$row-1]->{ $worksheet->get_cell( 0, $col )->value() };
+					my $comment = $cashflow[$row-1]->{ $worksheet->get_cell( 0, $col )->value(). " DETAILS" };
+					
+					# Execute the merge strategy. Refer to the merge_specifications file for details.
+					# case ID 2
+					if (defined $forecasted && defined $isPlannedUpdated{$key} && defined $actual ) {
+						if ($forecasted != $isPlannedUpdated{$key} && $forecasted != $actual) {
+							$actual = $forecasted + ($actual - $isPlannedUpdated{$key});
+							if (defined $comment) {$comment .= "\nMerge CaseID 2";} else { $comment = "Merge CaseID 2"; }
+						}
+					}
+					# case ID 3
+					if (defined $forecasted && !defined $isPlannedUpdated{$key} && !defined $actual ) { 
+						$actual = $forecasted;
+						$comment = "Merge CaseID 3";
+					}
+					# case ID 5
+					if (!defined $forecasted && !defined $isPlannedUpdated{$key} && defined $actual ) { 
+						$actual = undef;
+						$comment = "Merge CaseID 5";
+					}
+					# case ID 6
+					if (!defined $forecasted && defined $isPlannedUpdated{$key} && defined $actual ) {
+						if ($isPlannedUpdated{$key} != 0) {
+							$actual = $actual - $isPlannedUpdated{$key};
+							if (defined $comment) {$comment .= "\nMerge CaseID 6";} else { $comment = "Merge CaseID 6"; }
+						}
+					}
+					# case ID 7
+					if (defined $forecasted && !defined $isPlannedUpdated{$key} && defined $actual ) {
+						if ($forecasted != $actual) {
+							$actual = $forecasted;
+							$comment = "Merge CaseID 7";
+						}
+					}
+					
+					$cashflow[$row-1]->{ $worksheet->get_cell( 0, $col )->value()} = $actual;
+					$cashflow[$row-1]->{ $worksheet->get_cell( 0, $col )->value(). " DETAILS" } = $comment;
+				}
+			}
 		}
-		my $comment = $plan->{'CATEGORY'};
-		if (defined $plan->{'COMMENT'} && $plan->{'COMMENT'} ne "") { $comment = $plan->{'COMMENT'}; } 
-		if (!defined $cashflow[$pday-1]->{ $plan->{'FAMILY'}." DETAILS" }) {
-			$cashflow[$pday-1]->{ $plan->{'FAMILY'}." DETAILS" } = $comment."=".$plan->{'AMOUNT'};
-		} else {
-			$cashflow[$pday-1]->{ $plan->{'FAMILY'}." DETAILS" } .= "\n".$comment."=".$plan->{'AMOUNT'};
-		}
-	} 
+	}
 	
 	# Write the core sheet data
 	foreach my $i (0 .. $#cashflow) {
@@ -291,7 +357,7 @@ sub generateCashflowSheet
 		'',
 		'',
 		'',
-		'Month bottom line:',
+		'Month Total Cashflow:',
 		'=SUM(C2:G'.($row+1).')'
 	 ]
 	);

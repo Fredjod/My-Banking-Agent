@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=3.4
+VERSION=3.5
 
 # Run unit testing
 echo '--- Unit testing... ---'
@@ -10,7 +10,9 @@ perl -w ConfReader.t
 perl -w DateHelper.t
 perl -w CheckingAccount.t
 perl -w PlannedOperation.t
-perl -w AccountReporting.t
+perl -w Reporting1.t
+perl -w Reporting2.t
+perl -w Reporting3.t
 perl -w MbaFiles.t
 cd ..
 
