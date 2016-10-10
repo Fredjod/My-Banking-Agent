@@ -6,6 +6,7 @@ use strict;
 use warnings;
 use Helpers::ConfReader;
 use DateTime;
+use File::stat;
 
 use constant DEBUG		=> 0;
 use constant INFO		=> 1;
@@ -37,6 +38,9 @@ sub new
 sub print {
 	my ( $self, $message, $level ) = @_;
 	my $today = DateTime->now(time_zone=>'local');
+	my $config = Helpers::ConfReader->new("properties/app.txt");
+	my $maxFileSizeInBytes = $config->readParamValue("log.maxsize");
+	if (!defined $maxFileSizeInBytes) { $maxFileSizeInBytes = 200000 } # 200Ko by default.
 	my $output = $self->{_output};
 	my $levelConf = $self->{_levelConf};	
 	if (!defined $level) { $level = INFO }
@@ -47,31 +51,23 @@ sub print {
 			print STDOUT $message;
 		}
 		else {
-			open LOG, ">>", $output or die "Couldn't open file $output\n";
+			open LOG, ">>", $output or die "Couldn't open log file $output\n";
 			print LOG $message;
-			close LOG;		
+			close LOG;
+			my $currentLogSize = stat($output)->size;
+			if ( $currentLogSize > $maxFileSizeInBytes ) {
+				rotateLogFile ($output);
+			}
 		}
 	}
 }
 
-sub write {
-	my ( $self, $txt ) = @_;
-	my $output = $self->{_output};
-	open LOG, ">", $output or die "Couldn't open file $output\n";
-	print LOG $txt;
-	close LOG;
-}
-
-sub read {
-	my ( $self ) = @_;
-	my $txt='';
-	my $output = $self->{_output};
-	if (-f $output) {
-		open LOG, "<", $output or die "Couldn't open file $output\n";
-		read LOG, $txt, 10000;
-		close LOG;
+sub rotateLogFile {
+	my ( $currentFile ) = @_;
+	if (-e $currentFile.".1.txt") {
+		unlink glob $currentFile.".1.txt";
 	}
-	return $txt;
+	rename $currentFile, $currentFile.".1.txt";
 }
 
 1;

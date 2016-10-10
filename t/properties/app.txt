@@ -30,6 +30,13 @@ mondays.report.active = yes
 alert.overdraft.threshold = 0
 ###
 
+### Parameters for saving report
+# Max history of balance kept in number of months
+saving.history.balance.max = 36
+# Max history of details kept in number of lines
+saving.history.details.max = 1000
+###
+
 ### Excel files path
 root.account.config = ./accounts
 account.config.pattern = ^config\.\d+\.xls$
@@ -50,6 +57,8 @@ account.reporting.saving.prefix = _saving.xls
 logs.output = STDOUT
 # log level possible value: DEBUG, INFO or ERROR. Default is INFO.
 logs.level = DEBUG
+# Max size in bytes of the log file before rotating to a 2nd file. Script generate around 4Ko per day.
+log.maxsize = 260000
 ###
 
 ### Formating properties (in Excel)

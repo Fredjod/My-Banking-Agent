@@ -1,19 +1,33 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=3.5
+VERSION=3.6
 
 # Run unit testing
 echo '--- Unit testing... ---'
+
 cd t/
-perl -w ConfReader.t
-perl -w DateHelper.t
-perl -w CheckingAccount.t
-perl -w PlannedOperation.t
-perl -w Reporting1.t
-perl -w Reporting2.t
-perl -w Reporting3.t
-perl -w MbaFiles.t
+testFilesArray=( "ConfReader.t"
+				"DateHelper.t"
+				"MbaFiles.t" 
+				"CheckingAccount.t"
+				"PlannedOperation.t"
+				"Reporting1.t"
+				"Reporting2.t"
+				"Reporting3.t"
+				"SavingAccount.t"
+				)
+
+for file in "${testFilesArray[@]}"
+do
+	perl -w $file
+	if [ $? -gt 0 ]
+	then
+		echo !!!!! $file FAILED !!!!
+	exit 1
+	fi
+done
+
 cd ..
 
 # Packaging

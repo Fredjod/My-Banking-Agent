@@ -19,8 +19,8 @@ First, make sure that the system is uptodate:
 ## Install Owncloud
 Latest release: [https://owncloud.org/install/#instructions-server](https://owncloud.org/install/#instructions-server)
 
-    $ sudo wget https://download.owncloud.org/community/owncloud-9.0.2.zip
-    $ sudo unzip owncloud-9.0.2.zip
+    $ sudo wget https://download.owncloud.org/community/owncloud-9.1.1.zip
+    $ sudo unzip owncloud-9.1.1.zip
     $ sudo cp -r owncloud /path/to/webserver/document-root/oc
 
 where /path/to/webserver/document-root is replaced by the document root of your Web server:

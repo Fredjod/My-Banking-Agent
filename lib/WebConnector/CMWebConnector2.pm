@@ -195,23 +195,24 @@ sub downloadBankStatement {
 sub downloadMultipleBankStatement {
 	my ( $self, $AccountList, $dateFrom, $dateTo ) = @_;
 	my $logger = Helpers::Logger->new();
-	
 	my @result;
 	
-	for my $info ( @$AccountList ) {
-		# As input a array of hashes:
-		my $bankname = $info->{'BANK'};
-		my $authKey = $info->{'KEY'};
-		my $desc = 	$info->{'DESC'};
-		my $number = $info->{'NUMBER'};
-		$logger->print ( "Log in to ".$bankname." website", Helpers::Logger::INFO);
-		if ( $self->logIn(  Helpers::WebConnector->getLogin ($authKey),  Helpers::WebConnector->getPwd ($authKey) ) ) {
+	return \@result unless $#{$AccountList} > -1;
+	
+	my $bankname = @$AccountList[0]->{'BANK'};
+	my $authKey = @$AccountList[0]->{'KEY'};
+	$logger->print ( "Log in to ".$bankname." website with key ".$authKey, Helpers::Logger::INFO);
+	if ( $self->logIn(  Helpers::WebConnector->getLogin ($authKey),  Helpers::WebConnector->getPwd ($authKey) ) ) {
+		for my $info ( @$AccountList ) {
+			# As input a array of hashes:
+			my $desc = 	$info->{'DESC'};
+			my $number = $info->{'NUMBER'};
 			my %record;
 			$logger->print ( "Download and parse bank statement for account ".$desc." for month ".$dateFrom->month()."...", Helpers::Logger::INFO);
 			# As output an array of hashes:
 			$record{'BALANCE'} = $self->downloadBalance ( $number, , $dateFrom, $dateTo );
 			$record{'BANKOPE'} = $self->downloadOperations ( $number, $dateFrom, $dateTo );
-			$record{'NUMBER'} = $$number;
+			$record{'NUMBER'} = $number;
 			$record{'DESC'} = $desc;
 			push (@result, \%record);
 		}

@@ -50,6 +50,7 @@ sub getClosingFilePath {
 sub getForecastedFilePath {
 	my ($class, $checkingAccount) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
 	my $number = $checkingAccount->getAccountNumber ();
 	
 	$number =~ s/\s//g; #remove space in the original account number
@@ -59,7 +60,9 @@ sub getForecastedFilePath {
 			sprintf("%4d-%02d", $dt->year(), $dt->month()).
 			$prop->readParamValue('account.reporting.forecasted.prefix');
 	if (! -e $filePath ) {
-		unlink glob $reportingDir.'*'.$prop->readParamValue('account.reporting.forecasted.prefix');
+		my $deletingMask = $reportingDir.'*'.$prop->readParamValue('account.reporting.forecasted.prefix');
+		unlink glob $deletingMask;
+		$logger->print ( "Deleting old Forecasted files: $deletingMask", Helpers::Logger::INFO);
 	}
 	return $filePath;	
 }
@@ -67,6 +70,7 @@ sub getForecastedFilePath {
 sub getActualsFilePath {
 	my ($class, $checkingAccount) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
 	my $number = $checkingAccount->getAccountNumber ();
 	$number =~ s/\s//g;
 	my $reportingDir = getReportingDirname ( $number );
@@ -77,7 +81,9 @@ sub getActualsFilePath {
 					$prop->readParamValue('account.reporting.actuals.prefix');	
 	
 	if (! -e $filePath ) {
-		unlink glob $reportingDir.'*'.$prop->readParamValue('account.reporting.actuals.prefix');
+		my $deletingMask = $reportingDir.'*'.$prop->readParamValue('account.reporting.actuals.prefix');
+		unlink glob $deletingMask;
+		$logger->print ( "Deleting all Actuals files: $deletingMask", Helpers::Logger::INFO);
 	}
 	return $filePath;
 }
@@ -93,27 +99,35 @@ sub getPreviousMonthCacheFilePath {
 	# if needed, clean the old cache file on the disk
 	my $dth = Helpers::Date->new($stat->getMonth());
 	my $oldDateCache = $dth->rollPreviousMonth();
-	my $OldFileCachePrefix = sprintf("%04d%02d", $oldDateCache->year(), $oldDateCache->month() );
-	if (-e getReportingDirname($number).$prop->readParamValue('account.previous.month.cache').".".$OldFileCachePrefix ) {
-		unlink glob getReportingDirname($number).$prop->readParamValue('account.previous.month.cache').".".$OldFileCachePrefix;
+	my $oldFileCachePrefix = sprintf("%04d%02d", $oldDateCache->year(), $oldDateCache->month() );
+	my $oldFileCacheToDelete = getReportingDirname($number).$prop->readParamValue('account.previous.month.cache').".".$oldFileCachePrefix;
+	if (-e $oldFileCacheToDelete ) {
+		unlink glob $oldFileCacheToDelete;
+		$logger->print ( "Deleting old cache file: $oldFileCacheToDelete", Helpers::Logger::INFO);
 	}
 				 
 	return getReportingDirname ( $number ).$prop->readParamValue('account.previous.month.cache').".".$prefix;
 }	
 
-sub getLastSavingFilePath {
-	my ( $class ) = @_;
+sub deleteOldSavingFiles {
+	my ( $class, $dt ) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
 	my $dirname = $prop->readParamValue('root.account.reporting');
 	my $fileprefix = $prop->readParamValue('account.reporting.saving.prefix');
 	my $filePath = undef;
+	my $currentSavingFile = $class->getSavingFilePath ( $dt );
 	
 	if (-d $dirname) {
 		opendir my($dh), $dirname;
 		while ( readdir($dh) ) {
 			if (-f "$dirname/$_" && $_ =~ /[0-9]{4}_[0-9]{2}$fileprefix/ ) {
 				$filePath = "$dirname/$_";
+				do {
+					unlink glob $filePath;
+					$logger->print ( "Deleting old saving file: $filePath", Helpers::Logger::INFO);
+				}
+				unless $filePath eq $currentSavingFile;
 		 	}
 		}
 		closedir $dh;
