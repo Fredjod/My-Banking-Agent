@@ -64,4 +64,60 @@ sub buildPreviousMonthStatement {
 	
 	return $statement;
 }
+
+sub buildYTDStatement {
+	my ( $class, $accountConfigFilePath, $PRMStat ) = @_;
+
+	my $statement = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $PRMStat->getMonth());	
+	my $yearlyFilePath = Helpers::MbaFiles->getYearlyClosingFilePath ( $statement );
+	# Filling the statement operations
+	$class->loadOperationsFromDetailsSheet ($yearlyFilePath, $statement);
+	$statement->mergeWithAnotherStatement($PRMStat);
+	return $statement;
+}
+
+sub loadOperationsFromDetailsSheet {
+	my( $class, $path, $statement ) = @_;
+	my $tabDetails;
+	if (-e $path ) { # Reading the content of the existing yearly file.
+		my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( $path );	
+		my $worksheet = $workbook->worksheet(1); # operation details	
+		$tabDetails = Helpers::ExcelWorkbook->readFromExcelSheetDetails ($worksheet);
+	}
+	# Filling the statement operations
+	my @bankData;
+
+	if (defined $tabDetails) {
+		for my $row ( 1 .. $#{$tabDetails} ) { # skipping the first line containing the column headers
+			my %record;
+			if (defined @$tabDetails[$row]->[0]) {
+				if (@$tabDetails[$row]->[0]->{value} =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
+					$record{'DATE'} = @$tabDetails[$row]->[0]->{value};
+				} else { next; }
+			} else { next; }
+			if ( defined @$tabDetails[$row]->[1] ) { # Debit?
+				if ( @$tabDetails[$row]->[1]->{unformatted} =~ /^[+-]?\d+(\.\d+)?$/ ) { # currency column?
+					$record{'AMOUNT'} = @$tabDetails[$row]->[1]->{unformatted};
+				} else { next; }
+			} elsif ( defined @$tabDetails[$row]->[2]) { # Credit?
+				if ( @$tabDetails[$row]->[2]->{unformatted} =~ /^[+-]?\d+(\.\d+)?$/ ) { # currency column?
+					$record{'AMOUNT'} = @$tabDetails[$row]->[2]->{unformatted};
+				} else { next; }
+			} else {next; }
+			
+			if ( defined @$tabDetails[$row]->[5] ) { # Details?
+				$record{'DETAILS'} = @$tabDetails[$row]->[5]->{value};
+			} else {next; }
+			if ( defined @$tabDetails[$row]->[6] ) { # Balance?
+				if ( @$tabDetails[$row]->[6]->{unformatted} =~ /^[+-]?\d+(\.\d+)?$/ ) { # currency column?
+					$record{'BALANCE'} = @$tabDetails[$row]->[6]->{unformatted};
+				} else { next; }
+			} else { next; }
+			
+			push (@bankData, \%record);
+		}
+	}
+	$statement->parseBankStatement(\@bankData);
+}
+
 1;

@@ -41,6 +41,17 @@ sub createPreviousMonthClosingReport {
 	$self->generateDetailsSheet($self->getAccDataPRM(), $wb_out, $currency_format, $date_format);
 }
 
+sub createYearlyClosingReport {
+	my( $self, $YTDStat) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $wb_out = Helpers::ExcelWorkbook->createWorkbook ( Helpers::MbaFiles->getYearlyClosingFilePath ( $YTDStat ) );
+	my $currency_format = $wb_out->add_format( num_format => eval($prop->readParamValue('workbook.dashboard.currency.format')));
+	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
+	
+	$self->generateSummarySheet($YTDStat, $wb_out, $currency_format, $date_format);
+	$self->generateDetailsSheet($YTDStat, $wb_out, $currency_format, $date_format);
+}
+
 sub createForecastedCashflowReport {
 	
 	my( $self) = @_;

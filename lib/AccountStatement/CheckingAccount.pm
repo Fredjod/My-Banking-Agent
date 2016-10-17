@@ -12,7 +12,6 @@ use Helpers::Logger;
 use Helpers::Date;
 use Helpers::ExcelWorkbook;
 use Spreadsheet::ParseExcel;
-use Data::Dumper;
 
 
 sub new
@@ -294,6 +293,7 @@ sub parseBankStatement {
 	);	
 	
 	$self->{_dt_to} = $date;
+	$self->{_balance} = @$bankData[$#{$bankData}]->{'BALANCE'};
 	return \@operations;
 }
 
@@ -397,10 +397,30 @@ sub loadBankData {
 	}
 	close IN;
 	$self->parseBankStatement(\@bankData);
-	$self->setBalance($bankData[$#bankData]->{'BALANCE'});
 	return 1;
 	
 }	
+
+sub mergeWithAnotherStatement {
+	my( $self, $otherStat ) = @_;
+	my $ops = $self->getOperations();
+	my $otherOps = $otherStat->getOperations();
+	
+	if (defined $ops) {
+		my $record;
+		foreach $record (@$otherOps) {
+			push (@$ops, $record);
+		}
+		if (defined $record) { 
+			$self->{_balance} = $record->{'SOLDE'};
+		}
+		$self->{_dt_to} = $otherStat->getMonth();
+	} else {
+		$self->{_operations} = $otherOps;
+		$self->{_balance} = $otherStat->getBalance();
+		$self->{_dt_to} = $otherStat->getMonth();
+	}
+}
 
 sub getAccountDesc {
 	 my( $self ) = @_;
@@ -450,11 +470,6 @@ sub getDefault {
 sub getBalance {
 	my( $self) = @_;
 	return $self->{_balance};		
-}
-
-sub setBalance {
-	my( $self, $balance) = @_;
-	$self->{_balance} = $balance;		
 }
 
 1;

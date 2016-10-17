@@ -1,4 +1,4 @@
-use Test::More tests => 12;
+use Test::More tests => 14;
 use lib '../lib';
 use Data::Dumper;
 use diagnostics;
@@ -28,6 +28,9 @@ my $statMTD = Helpers::Statement->buildCurrentMonthStatement("./accounts/config.
 my $reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 
 $reportProcessor->createPreviousMonthClosingReport();
+my $accountYTD = Helpers::Statement->buildYTDStatement("./accounts/config.0303900020712303.xls", $statPRM);
+$reportProcessor->createYearlyClosingReport($accountYTD);
+
 my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRM );
 my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 my $ws = $wb->worksheet( 0 ); # Summary
@@ -39,6 +42,13 @@ is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'NoOperationInCurrentMonth::
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'NoOperationInCurrentMonth::Closing::Details: Cell C9 value?');
 is( $ws->get_cell( 20, 6 )->unformatted(), 8774.52, 'NoOperationInCurrentMonth::Closing::Details: Cell G21 value?');
 
+$XLSfile = Helpers::MbaFiles->getYearlyClosingFilePath( $statPRM );
+$wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
+$ws = $wb->worksheet( 0 ); # Yearly Summary
+is( $ws->get_cell( 9, 4 )->unformatted(), 2777.55, 'YealyReport::Summary:: Cell E10 value?');
+$ws = $wb->worksheet( 1 ); # Details Summary
+is( $ws->get_cell( 143, 2 )->unformatted(), 340, 'YealyReport::Details:: Cell C144 value?');
+
 $reportProcessor->createForecastedCashflowReport();
 $XLSfile = Helpers::MbaFiles->getForecastedFilePath( $statMTD );
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
@@ -47,3 +57,4 @@ is( $ws->get_cell( 5, 5 )->unformatted(), -15, 'NoOperationInCurrentMonth::Forec
 is( $ws->get_cell( 30, 5 )->unformatted(), -40, 'NoOperationInCurrentMonth::Forecasted::Cashflow: Cell F31 value?');
 is( $ws->get_cell( 5, 4 )->unformatted(), -1301.02, 'NoOperationInCurrentMonth::Forecasted::Cashflow:Cell E6 value?');
 is( $ws->get_cell( 3, 6 )->unformatted(), -320, 'NoOperationInCurrentMonth::Forecasted::Cashflow:Cell G4 value?');
+

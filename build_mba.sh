@@ -1,12 +1,13 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=3.6
+VERSION=3.7
 
 # Run unit testing
 echo '--- Unit testing... ---'
 
 cd t/
+
 testFilesArray=( "ConfReader.t"
 				"DateHelper.t"
 				"MbaFiles.t" 

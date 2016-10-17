@@ -47,6 +47,20 @@ sub getClosingFilePath {
 			$prop->readParamValue('account.reporting.closing.prefix');
 }
 
+sub getYearlyClosingFilePath {
+	my ($class, $checkingAccount) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $number = $checkingAccount->getAccountNumber ();
+	
+	$number =~ s/\s//g; #remove space in the original account number
+	my $reportingDir = getClosingDirname ($number);
+	my $dt = $checkingAccount->getMonth();
+	return  $reportingDir.
+			sprintf("%4d", $dt->year() ).
+			'_'.$number.
+			$prop->readParamValue('account.reporting.yearly.prefix');
+}
+
 sub getForecastedFilePath {
 	my ($class, $checkingAccount) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");

@@ -76,4 +76,36 @@ sub createWorkbook {
 	# Pre-requisite: the mba user and www-data should be both in the same unix group.
 	return $wb_out;
 }
+
+sub readFromExcelSheetDetails {
+	my ( $class, $ws, $maxColumnToCopy, $maxLineToCopy) = @_;
+	my ( $row_min, $row_max ) = $ws->row_range();
+	my ( $col_min, $col_max ) = $ws->col_range();
+	my @tabSheet = ();
+
+	if (defined $maxColumnToCopy) {
+		 $col_max = $maxColumnToCopy unless $col_max < $maxColumnToCopy;
+	}
+	if (defined $maxLineToCopy) {
+		 $row_max = $maxLineToCopy unless $row_max < $maxLineToCopy;
+	}	
+	for my $row ( 0 .. $row_max ) {
+		for my $col ( 0 .. $col_max ) {
+			my $cell = $ws->get_cell( $row, $col );	
+			my %record;
+			if (defined $cell) {
+				%record = (
+					'unformatted' => $cell->unformatted(),
+					'value' => $cell->value(),
+				);
+				$tabSheet[$row][$col] = \%record;
+			}
+			else {
+				$tabSheet[$row][$col] = undef;
+			}
+		}
+	}
+	return \@tabSheet;
+}
+
 1;

@@ -181,7 +181,6 @@ sub downloadBankStatement {
 	if ( $self->logIn( Helpers::WebConnector->getLogin ($account->getAccountAuth), Helpers::WebConnector->getPwd ($account->getAccountAuth) ) ) {
 		$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()." for month ".$dateTo->month(), Helpers::Logger::INFO);
 		$balance = $self->downloadBalance ( $account->getAccountNumber(), $dateFrom, $dateTo );
-		$account->setBalance($balance);
 		$bankData = $self->downloadOperations ( $account->getAccountNumber(), $dateFrom, $dateTo );
 		if ($#{$bankData} > -1) {
 			$self->backwardBalanceCompute ( $bankData, $balance );

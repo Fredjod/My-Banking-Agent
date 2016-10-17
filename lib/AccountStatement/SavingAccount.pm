@@ -110,7 +110,7 @@ sub mergeWithPreviousSavingReport {
 		my $ws = $wb->worksheet( 0 ); # Balance sheet
 		my $prevBalanceSheet = $self->readFromExcelSheetBalance ($ws, $maxHistoryBalanceInMonth+2, undef);
 		$ws = $wb->worksheet( 1 ); # Details sheet
-		my $prevDetails = $self->readFromExcelSheetDetails ($ws, undef, $maxHistoryDetailsInLine+1);
+		my $prevDetails = Helpers::ExcelWorkbook->readFromExcelSheetDetails ($ws, undef, $maxHistoryDetailsInLine+1);
 				
 		my $balances = $self->getBalances();
 		my $prevAccList = @$prevBalanceSheet[0];
@@ -136,37 +136,6 @@ sub mergeWithPreviousSavingReport {
 	} else {
 		$self->storeToExcel ( $pathCurr, $dth->getDate() );
 	}	
-}
-
-sub readFromExcelSheetDetails {
-	my ( $self, $ws, $maxColumnToCopy, $maxLineToCopy) = @_;
-	my ( $row_min, $row_max ) = $ws->row_range();
-	my ( $col_min, $col_max ) = $ws->col_range();
-	my @tabSheet = ();
-
-	if (defined $maxColumnToCopy) {
-		 $col_max = $maxColumnToCopy unless $col_max < $maxColumnToCopy;
-	}
-	if (defined $maxLineToCopy) {
-		 $row_max = $maxLineToCopy unless $row_max < $maxLineToCopy;
-	}	
-	for my $row ( 0 .. $row_max ) {
-		for my $col ( 0 .. $col_max ) {
-			my $cell = $ws->get_cell( $row+1, $col );	
-			my %record;
-			if (defined $cell) {
-				%record = (
-					'unformatted' => $cell->unformatted(),
-					'value' => $cell->value(),
-				);
-				$tabSheet[$row][$col] = \%record;
-			}
-			else {
-				$tabSheet[$row][$col] = undef;
-			}
-		}
-	}
-	return \@tabSheet;
 }
 
 sub readFromExcelSheetBalance {
@@ -329,11 +298,10 @@ sub storeToExcel {
 		$ws_out->write( $i+1, 5,  @$ope[$i]->{DETAILS});
 		$lastrow = $i+1;
 	}
-	$lastrow++;
 	
 	my $row=0;
 	if (defined $tabPrevDet) {
-		for $row ( 0 .. $#{$tabPrevDet} ) {
+		for $row ( 1 .. $#{$tabPrevDet} ) { # skipping the first line containing the column headers
 			for my $col ( 0 .. $#{@$tabPrevDet[$row]} ) {
 				if (defined @$tabPrevDet[$row]->[$col]) {
 					if (@$tabPrevDet[$row]->[$col]->{value} =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
@@ -346,7 +314,6 @@ sub storeToExcel {
 					else {
 						$ws_out->write( $lastrow+$row, $col, @$tabPrevDet[$row]->[$col]->{value} );
 					}
-					
 				}
 			}
 		}

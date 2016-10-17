@@ -31,6 +31,9 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 	if (! -e Helpers::MbaFiles->getClosingFilePath($accountPRM) ) {
 		$logger->print ( "Processing the previous month closing report", Helpers::Logger::INFO);
 		$reportingProcessor->createPreviousMonthClosingReport();
+		$logger->print ( "Processing the yearly closing report", Helpers::Logger::INFO);
+		my $accountYTD = Helpers::Statement->buildYTDStatement($accountConfigFilePath, $accountPRM);
+		$reportingProcessor->createYearlyClosingReport($accountYTD);
 	}
 	
 	# Check if the forecasted report processing is needed

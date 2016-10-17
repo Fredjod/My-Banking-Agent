@@ -1,4 +1,4 @@
-use Test::More tests => 27;
+use Test::More tests => 30;
 
 use lib '../lib';
 use Data::Dumper;
@@ -33,16 +33,27 @@ if (-e $cacheFilePath ) {
 	unlink glob $cacheFilePath;
 	$logger->print ( "Cache file deleted: $cacheFilePath", Helpers::Logger::DEBUG);
 }
+
+# delete yearly report
+my $yearlyReportPath = Helpers::MbaFiles->getYearlyClosingFilePath ( $stat );
+if (-e $yearlyReportPath ) {
+	unlink glob $yearlyReportPath;
+	$logger->print ( "Yearly report deleted: $yearlyReportPath", Helpers::Logger::DEBUG);
+}
+
 my $statPRM = Helpers::Statement->buildPreviousMonthStatement("./accounts/config.0303900020712303.xls", $dt);
 my $statMTD = Helpers::Statement->buildCurrentMonthStatement("./accounts/config.0303900020712303.xls", $dt);
 
 my $reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 
 $reportProcessor->createPreviousMonthClosingReport();
+my $accountYTD = Helpers::Statement->buildYTDStatement("./accounts/config.0303900020712303.xls", $statPRM);
+$reportProcessor->createYearlyClosingReport($accountYTD);
 
 my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRM );
 my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 my $ws = $wb->worksheet( 0 ); # Summary
+is( $ws->get_cell( 5, 1 )->unformatted(), 8075.14, 'Closing::Summary: Cell B6 value?');
 is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'Closing::Summary: Cell B10 value?');
 is( $ws->get_cell( 16, 1 )->unformatted(), -1006.82, 'Closing::Summary: Cell B17 value?');
 is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'Closing::Summary: Cell E12 value?');
@@ -50,6 +61,7 @@ $ws = $wb->worksheet( 1 ); # Details
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Closing::Details: Cell E4 value?');
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Closing::Details: Cell C9 value?');
 is( $ws->get_cell( 20, 6 )->unformatted(), 10270.39, 'Closing::Details: Cell G21 value?');
+is( $ws->get_cell( 93, 6 )->unformatted(), 8075.14, 'Closing::Details: Cell G94 value?');
 
 $reportProcessor->createForecastedCashflowReport();
 $XLSfile = Helpers::MbaFiles->getForecastedFilePath( $statMTD );
@@ -84,6 +96,7 @@ $reportProcessor->createPreviousMonthClosingReport();
 $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRMCache );
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 ); # Summary
+is( $ws->get_cell( 5, 1 )->unformatted(), 8075.14, 'Closing::Summary: Cell B6 value?');
 is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'CacheData::Closing::Summary: Cell B10 value?');
 is( $ws->get_cell( 16, 1 )->unformatted(), -1006.82, 'CacheData::Closing::Summary: Cell B17 value?');
 is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'CacheData::Closing::Summary: Cell E12 value?');

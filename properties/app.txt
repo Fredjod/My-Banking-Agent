@@ -45,6 +45,7 @@ root.account.reporting = ./reporting
 dir.account.closing = closing
 account.previous.month.cache = .previous.month.cache
 account.reporting.closing.prefix = _closing.xls
+account.reporting.yearly.prefix = _yearly.xls
 account.reporting.forecasted.prefix = _forecasted.xls
 account.reporting.actuals.prefix = _actuals.xls
 account.reporting.planned.prefix = planned_operations.xls
