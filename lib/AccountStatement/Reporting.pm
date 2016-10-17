@@ -136,6 +136,7 @@ sub generateSummarySheet
 		}
 	}
 	$ws_out->set_column(0, 4,  15);
+	$ws_out->set_zoom(85);
 }
 
 sub generateDetailsSheet
@@ -180,9 +181,10 @@ sub generateDetailsSheet
 		$ws_out->autofilter(0, 0, $#{$ops}+1, $#{$dataRow[0]});
 	}
 	$ws_out->set_column(0, 2,  10);
-	$ws_out->set_column(3, 4,  20);
-	$ws_out->set_column(5, 5,  40);
-	$ws_out->set_column(6, 6,  10);	
+	$ws_out->set_column(3, 4,  22);
+	$ws_out->set_column(5, 5,  52);
+	$ws_out->set_column(6, 6,  10);
+	$ws_out->set_zoom(85);
 }
 
 sub generateCashflowSheet
@@ -732,9 +734,7 @@ sub controlBalance {
 		$mail->buildBalanceAlertBody ($self, $statMTD, $initBalance, $currentBalance, $plannedBalance, $forecastedEOMBalance, $forecastedEOMCashflow);
 		$mail->send();
 	}
-	else {
-		$log->print ( "Account balance variation OK", Helpers::Logger::INFO);
-	}
+
 	if ($currentBalance < $overdraft ) { # Send an alert in case of current bank overdraft.
 		my $subject = "!!!ALERT!!! Bank Overdraft is Ongoing";
 		$log->print ( "Email sending: $subject: Actuals:$currentBalance", Helpers::Logger::INFO);
@@ -744,17 +744,16 @@ sub controlBalance {
 		);
 		$mail->buildOverdraftAlertBody ($self, $statMTD, $currentBalance, $dt_currmonth );
 		$mail->send();
-	} else {
-		if ($risk > 0 ) { # Found a risk if bank overdraft before the end of the month
-			my $subject = "!Warning! Risk of Bank Overdraft is detected";
-			$log->print ( "Email sending: $subject: forecasted:$balanceRisk on the $risk", Helpers::Logger::INFO);
-			my $mail = Helpers::SendMail->new(
-				$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
-				"alert.risk.overdraft.body.template"
-			);
-			$mail->buildOverdraftAlertBody ($self, $statMTD, $balanceRisk, $dt_currmonth->set_day($risk) );
-			$mail->send();
-		}
+		
+	} elsif ($risk > 0 ) { # Found a risk if bank overdraft before the end of the month
+		my $subject = "!Warning! Risk of Bank Overdraft is detected";
+		$log->print ( "Email sending: $subject: forecasted:$balanceRisk on the $risk", Helpers::Logger::INFO);
+		my $mail = Helpers::SendMail->new(
+			$subject." - ".sprintf ("%4d-%02d-%02d", $dt_currmonth->year(), $dt_currmonth->month(), $dt_currmonth->day()),
+			"alert.risk.overdraft.body.template"
+		);
+		$mail->buildOverdraftAlertBody ($self, $statMTD, $balanceRisk, $dt_currmonth->set_day($risk) );
+		$mail->send();
 	}
 }
 
