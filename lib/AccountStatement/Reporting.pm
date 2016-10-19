@@ -382,7 +382,7 @@ sub generateCashflowSheet
 	$ws_out->set_column(4, 5,  19);
 	$ws_out->set_column(6, 6,  23);	
 	$ws_out->set_column(7, 7,  10);	
-	$ws_out->set_zoom(95);
+	$ws_out->set_zoom(85);
 }
 
 sub generateVariationSheet {
@@ -450,6 +450,7 @@ sub generateVariationSheet {
 	}
 	$ws_out->set_column(0, 0,  23);	
 	$ws_out->set_column(1, 3,  15);
+	$ws_out->set_zoom(85);
 }
 
 sub populateCashflowData {
