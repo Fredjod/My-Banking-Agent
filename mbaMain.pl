@@ -26,6 +26,8 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 	$logger->print ( 'Processing account '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
 	my $reportingProcessor = AccountStatement::Reporting->new($accountPRM, $accountMTD);
 
+	# Check the balance Integrity
+	$accountPRM = Helpers::Statement->checkBalanceIntegrity($accountConfigFilePath, $accountMTD, $accountPRM);
 	
 	# Check if the closing report processing is needed
 	if (! -e Helpers::MbaFiles->getClosingFilePath($accountPRM) ) {

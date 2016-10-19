@@ -13,6 +13,8 @@ use Helpers::Logger;
 my $logger = Helpers::Logger->new();
 $logger->print ( "###### Test the reporting process when the current month is empty", Helpers::Logger::INFO);
 
+my $accountConfigFilePath = "./accounts/config.0303900020712303.xls";
+
 require_ok "AccountStatement::Reporting";
 require_ok "AccountStatement::CheckingAccount";
 
@@ -22,13 +24,16 @@ my $dt = DateTime->new(
 	   day       => 2,
 	   time_zone => 'local',
 	);
-my $statPRM = Helpers::Statement->buildPreviousMonthStatement("./accounts/config.0303900020712303.xls", $dt);
-my $statMTD = Helpers::Statement->buildCurrentMonthStatement("./accounts/config.0303900020712303.xls", $dt);
+my $statPRM = Helpers::Statement->buildPreviousMonthStatement($accountConfigFilePath, $dt);
+my $statMTD = Helpers::Statement->buildCurrentMonthStatement($accountConfigFilePath, $dt);
+
+# Check the balance Integrity
+$statPRM = Helpers::Statement->checkBalanceIntegrity($accountConfigFilePath, $statMTD, $statPRM );
 
 my $reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 
 $reportProcessor->createPreviousMonthClosingReport();
-my $accountYTD = Helpers::Statement->buildYTDStatement("./accounts/config.0303900020712303.xls", $statPRM);
+my $accountYTD = Helpers::Statement->buildYTDStatement($accountConfigFilePath, $statPRM);
 $reportProcessor->createYearlyClosingReport($accountYTD);
 
 my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRM );

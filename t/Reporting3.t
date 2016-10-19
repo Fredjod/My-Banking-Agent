@@ -52,7 +52,7 @@ is( $ws->get_cell( 5, 2 )->unformatted() +
 	-1240.62, 'Actuals::Cashflow: Sum of C6:E6?');
 
 $ws = $wb->worksheet( 0 ); # Details
-is( $ws->get_cell( 1, 6 )->unformatted(), 9251.62, 'Actuals::Details: Cell G2 value?');
+is( $ws->get_cell( 1, 6 )->unformatted(), 7823.56, 'Actuals::Details: Cell G2 value?');
 is( $ws->get_cell( 15, 1 )->unformatted(), -32.8, 'Actuals::Details: Cell B16 value?');
 
 rename "./reporting/0303900020712303/planned_operations.xls", "./reporting/0303900020712303/planned_operations.manual.xls";

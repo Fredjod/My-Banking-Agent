@@ -14,6 +14,8 @@ use Helpers::Logger;
 my $logger = Helpers::Logger->new();
 $logger->print ( "###### Test the Closing, Forecasted and Actual generation, with and w/o last month operation cache file", Helpers::Logger::INFO);
 
+my $accountConfigFilePath = "./accounts/config.0303900020712303.xls";
+
 #do 'Helpers/ConfReader.pm';
 require_ok "AccountStatement::Reporting";
 require_ok "AccountStatement::CheckingAccount";
@@ -27,7 +29,7 @@ my $dt = DateTime->new(
 # delete previous month cache file
 my $dth = Helpers::Date->new($dt);
 my $dt_prev = $dth->rollPreviousMonth();
-my $stat = AccountStatement::CheckingAccount->new ("./accounts/config.0303900020712303.xls", $dt_prev);
+my $stat = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $dt_prev);
 my $cacheFilePath = Helpers::MbaFiles->getPreviousMonthCacheFilePath ( $stat );
 if (-e $cacheFilePath ) {
 	unlink glob $cacheFilePath;
@@ -41,13 +43,15 @@ if (-e $yearlyReportPath ) {
 	$logger->print ( "Yearly report deleted: $yearlyReportPath", Helpers::Logger::DEBUG);
 }
 
-my $statPRM = Helpers::Statement->buildPreviousMonthStatement("./accounts/config.0303900020712303.xls", $dt);
-my $statMTD = Helpers::Statement->buildCurrentMonthStatement("./accounts/config.0303900020712303.xls", $dt);
+my $statPRM = Helpers::Statement->buildPreviousMonthStatement($accountConfigFilePath, $dt);
+my $statMTD = Helpers::Statement->buildCurrentMonthStatement($accountConfigFilePath, $dt);
+# Check the balance Integrity
+$statPRM = Helpers::Statement->checkBalanceIntegrity($accountConfigFilePath, $statMTD, $statPRM );
 
 my $reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 
 $reportProcessor->createPreviousMonthClosingReport();
-my $accountYTD = Helpers::Statement->buildYTDStatement("./accounts/config.0303900020712303.xls", $statPRM);
+my $accountYTD = Helpers::Statement->buildYTDStatement($accountConfigFilePath, $statPRM);
 $reportProcessor->createYearlyClosingReport($accountYTD);
 
 my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRM );
@@ -77,7 +81,7 @@ $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 );
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Actuals::Details: Cell E4 value?');
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Actuals::Details: Cell C9 value?');
-is( $ws->get_cell( 20, 6 )->unformatted(), 8774.52, 'Actuals::Details: Cell G21 value?');
+is( $ws->get_cell( 20, 6 )->unformatted(), 7346.46, 'Actuals::Details: Cell G21 value?');
 
 $ws = $wb->worksheet( 1 );
 is( $ws->get_cell( 12, 6 )->unformatted(), -262.80, 'Actuals::Cashflow: Cell G13 value?');
@@ -88,8 +92,8 @@ is( $ws->get_cell( 5, 2 )->unformatted() +
 	$ws->get_cell( 5, 6 )->unformatted(),
 	-1240.62, 'Actuals::Cashflow: Sum of C6:E6?');
 
-my $statPRMCache = Helpers::Statement->buildPreviousMonthStatement("./accounts/config.0303900020712303.xls", $dt);
-$statMTD = Helpers::Statement->buildCurrentMonthStatement("./accounts/config.0303900020712303.xls", $dt);
+my $statPRMCache = Helpers::Statement->buildPreviousMonthStatement($accountConfigFilePath, $dt);
+$statMTD = Helpers::Statement->buildCurrentMonthStatement($accountConfigFilePath, $dt);
 $reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 
 $reportProcessor->createPreviousMonthClosingReport();
