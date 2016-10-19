@@ -411,9 +411,7 @@ sub mergeWithAnotherStatement {
 		foreach $record (@$otherOps) {
 			push (@$ops, $record);
 		}
-		if (defined $record) { 
-			$self->{_balance} = $record->{'SOLDE'};
-		}
+		$self->{_balance} = $otherStat->getBalance();
 		$self->{_dt_to} = $otherStat->getMonth();
 	} else {
 		$self->{_operations} = $otherOps;
