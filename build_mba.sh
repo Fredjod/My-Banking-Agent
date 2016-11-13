@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=3.8
+VERSION=3.8f1
 
 # Run unit testing
 echo '--- Unit testing... ---'

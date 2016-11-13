@@ -284,16 +284,19 @@ sub parseBankStatement {
 	}
 	$self->{_operations} = \@operations;
 	
-	my ($d,$m,$y) = $operations[$#operations]->{DATE} =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/;
-	my $date = DateTime->new(
-	   year      => $y,
-	   month     => $m,
-	   day       => $d,
-	   time_zone => 'local',
-	);	
+	if (! defined $self->{_dt_to} ) { 
+		my ($d,$m,$y) = $operations[$#operations]->{DATE} =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/;
+		my $date = DateTime->new(
+		   year      => $y,
+		   month     => $m,
+		   day       => $d,
+		   time_zone => 'local',
+		);	
+		$self->{_dt_to} = $date; 
+	}
 	
-	$self->{_dt_to} = $date;
 	$self->{_balance} = @$bankData[$#{$bankData}]->{'BALANCE'};
+	
 	return \@operations;
 }
 
