@@ -137,7 +137,7 @@ sub checkBalanceIntegrity {
 	# the forecasted report is renamed, because could have been updated by user. A new one is regenerated.
 	
 	my ( $class, $accountConfigFilePath, $MTDStat, $PRMStat ) = @_;
-	my $newPRMStatement = $PRMStat;
+	my $newPRMStatement;
 	my $logger = Helpers::Logger->new();
 	my $ops = $MTDStat->getOperations();
 	if (defined $ops) { # The integrity test is done only if current month has transactions.
