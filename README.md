@@ -15,10 +15,10 @@ Some specific modules for accessing more bank websites will require extra suppor
 <li>Group debit or credit operations per customized categories</li>
 <li>Forecasting of the coming month budget, based on the previous month transactions. You can adjust the forecast at will</li>
 <li>Automatically connect and download bank statements from bank website. Only Credit Mutuel (France) is currently supported. Should be followed by BNP (France) and then Citibank (USA)</li>
-<li>Send an alert to the account owner by email, if the forecast significantly varies from the actuals downloaded from bank website</li> 
-<li>This is possible to monitor as many bank accounts as needed, even hosted in several banks</li>
+<li>Send an alert to the account owner by email in case of an current overdraft or an anticipated overdraft based on the monthly forecast</li> 
+<li>It is possible to monitor as many bank accounts as needed, even hosted in several banks</li>
 <li> Keep monthly and yearly history of your transactions
-<li> Manage the saving accounts
+<li> Specific management of the saving accounts (PEL, CEL, Livret, etc...)
 </ul>
 
 <b>Architecture</b>
