@@ -22,6 +22,7 @@ Some specific modules for accessing more bank websites will require extra suppor
 </ul>
 
 <b>Architecture</b>
+<P>
 The architecture is quite simple. The components are the following:
 1) A main batch, wrote in Perl. Works without database. This batch contains all the business logics and procedures of MBA. It generates Excel files (bank statements reports). The batch parameters are read in Excel files.
 2) Crontab. A crontab that manages the occurences of the MBA executions. By experience, the bank statements are not updated quite ofen. One or 2 daily execution is enought. However, the batch can be run as ofen as desired.
