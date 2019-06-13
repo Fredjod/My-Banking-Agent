@@ -146,8 +146,8 @@ sub checkBalanceIntegrity {
 			( ( defined @$ops[0]->{CREDIT} ) ? @$ops[0]->{CREDIT} : 0 )
 			);
 		
-		if ($PRMStat->getBalance() ne $initialMTDBalance ) { # Integrity check failed
-			$logger->print ( "Balances integrity testing failded. PRM: ".$PRMStat->getBalance(). " / MTD: ".$initialMTDBalance, Helpers::Logger::ERROR);
+		if (abs($PRMStat->getBalance() - $initialMTDBalance) > 0.009 ) { # Integrity check failed
+			$logger->print ( "Balances integrity testing failded. PRM: ".$PRMStat->getBalance()." / MTD: ".$initialMTDBalance." Diff: ".abs($PRMStat->getBalance() - $initialMTDBalance), Helpers::Logger::ERROR);
 			$logger->print ( "Balances integrity testing failded: Previous month closing is rebuilding", Helpers::Logger::INFO);
 			$newPRMStatement = $class->buildPreviousMonthStatement ($accountConfigFilePath, $MTDStat->getMonth(), 1); # Force the cache refreshing
 			if ( -e Helpers::MbaFiles->getClosingFilePath( $PRMStat ) ) {
