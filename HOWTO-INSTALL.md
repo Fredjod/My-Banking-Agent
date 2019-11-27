@@ -19,8 +19,8 @@ First, make sure that the system is uptodate:
 ## Install Owncloud
 Latest release: [https://owncloud.org/install/#instructions-server](https://owncloud.org/install/#instructions-server)
 
-    $ sudo wget https://download.owncloud.org/community/owncloud-9.1.1.zip
-    $ sudo unzip owncloud-9.1.1.zip
+    $ sudo wget https://download.owncloud.org/community/owncloud-9.0.2.zip
+    $ sudo unzip owncloud-9.0.2.zip
     $ sudo cp -r owncloud /path/to/webserver/document-root/oc
 
 where /path/to/webserver/document-root is replaced by the document root of your Web server:
@@ -53,7 +53,6 @@ The following external modules are required
     $ sudo ./localperl/bin/cpanm Archive::Zip
     $ sudo ./localperl/bin/cpanm LWP::UserAgent
     $ sudo ./localperl/bin/cpanm LWP::Protocol::https
-    $ sudo ./localperl/bin/cpanm Parse::Decrescent
     $ sudo ./localperl/bin/cpanm Spreadsheet::ParseExcel
     $ sudo ./localperl/bin/cpanm Spreadsheet::XLSX
     $ sudo ./localperl/bin/cpanm Spreadsheet::WriteExcel
@@ -66,6 +65,16 @@ The Perl installation size is about 97MB
 And then make sure that any unix user can execute it:
 
     $ sudo chmod -R 755 ./localperl
+
+## Docker variant
+
+Change directory to the My-Banking-Agent root project dir and type the following command for executing the provided Dockerfile:
+
+	$ docker build -t mba .
+
+Then for running a unit test on your local machine:
+
+	$ docker run -it --rm -v $(pwd):/usr/src/mba -w /usr/src/mba/t mba perl -w ConfReader.t 
 
 ## MyBankingAgent installation
 Then unzip the MBA distribution, where xxx is the release number. The MBA files will have to be read/write by Apache/Owncloud process, thus the owner should be the system web user (assuming here www-data) 

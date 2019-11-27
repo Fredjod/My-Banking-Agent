@@ -28,14 +28,14 @@ sub buildWebConnectorObject {
 
 sub getLogin {
 	my ($class, $authKey) = @_;
-	require "auth.pl";
+	require "./auth.pl";
 	our %auth;
 	return $auth{$authKey}[0];
 }
 
 sub getPwd {
 	my ($class, $authKey) = @_;
-	require "auth.pl";
+	require "./auth.pl";
 	our %auth;
 	return $auth{$authKey}[1];
 

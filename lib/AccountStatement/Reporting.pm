@@ -472,7 +472,7 @@ sub populateCashflowData {
 		$record{'EXCEPTIONAL EXPENSES DETAILS'} = undef;
 		$record{'EXCEPTIONAL INCOMES'} = undef;
 		$record{'EXCEPTIONAL INCOMES DETAILS'} = undef;
-		push ($cashflow, \%record);
+		push (@{$cashflow}, \%record);
 	}
 	my @where = ('FAMILY', 'MONTHLY EXPENSES');
 	my $pivotDay = $stat->groupByWhere ('DAY', 'DEBIT', \@where);
@@ -502,15 +502,16 @@ sub displayPivotSumup {
 	my $rinit = $row;
 	if (defined $statement->getOperations()) {
 		my $categories = $statement->getCategories();
-		my $pivot = $statement->groupBy ('CATEGORY', $type);
+		my $result = $statement->groupBy ('CATEGORY', $type);
 		my $found;
 		foreach my $i (0 .. $#{$categories}) {
 			if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? AccountStatement::Account::INCOME : AccountStatement::Account::EXPENSE) ) {
 				$ws_out->write( $row, $col, @$categories[$i]->{'CATEGORY'}, $fx_out );
 				$found = 0;
-				foreach my $key ( keys @$pivot[0] ) {
+				my $pivot = @$result[0];
+				foreach my $key ( keys %{$pivot} ) {
 					if ( $key eq @$categories[$i]->{'CATEGORY'} ) {
-						$ws_out->write( $row, $col+1, @$pivot[0]->{$key}, $currency_format );
+						$ws_out->write( $row, $col+1, $pivot->{$key}, $currency_format );
 						$found = 1;
 						last;
 					}
@@ -574,7 +575,7 @@ sub displayDetailsDataRow {
 sub populateCashflowMonthlyTransactions {
 	my( $self, $statement, $cashflow, $startDay, $endDay, $pivotDay, $family, $typeOpe, $type ) = @_;
 	
-	foreach my $day ( keys $pivotDay ) {
+	foreach my $day ( keys %{$pivotDay} )  { 
 		if ( $day >= $startDay && $day <= $endDay) {
 			@$cashflow[$day-1]->{$family} = $pivotDay->{$day};
 			my @where = ('DAY', $day, 'FAMILY', $family);
@@ -608,7 +609,7 @@ sub populateCashflowMonthlyTransactions {
 sub populateCashflowWeeklyTransactions {
 	my( $self, $statement, $cashflow, $startDay, $pivotDay, $family, $typeOpe, $type ) = @_;
 	
-	my @pivotKeys = sort keys $pivotDay;
+	my @pivotKeys = sort keys %{$pivotDay};
 	my $lastWday = $pivotKeys[$#pivotKeys];
 	foreach my $i ($startDay - 1 .. $#{$cashflow}) {
 		my $wday = @$cashflow[$i]->{WDAY};
@@ -640,7 +641,7 @@ sub populateCashflowWeeklyTransactions {
 sub buildCategoryDetails {
 	my( $self, $categHash ) = @_;
 	my $details = undef;
-	foreach my $categItem ( keys $categHash ) {
+	foreach my $categItem ( keys %{$categHash} ) {
 		if ( defined $details ) { $details .= "\n\r"; }
 		$details .= $categItem.'='.$categHash->{$categItem};
 	}

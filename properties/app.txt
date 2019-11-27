@@ -21,6 +21,7 @@ smtp.server = smtp.free.fr
 ### Email recipients that receive the reports (list of emails can be entered, separated per semi colon)
 # mailing.list = myemail@server.com, myemail2@server2.com
 mailing.list = myemail@server.com
+mailing.from = myemail@free.fr
 ####
 
 ### Parameters for email reporting
@@ -38,10 +39,10 @@ saving.history.details.max = 1000
 ###
 
 ### Excel files path
-root.account.config = ./accounts
+root.account.config = ./user/accounts
 account.config.pattern = ^config\.\d+\.xls$
 saving.config.pattern = ^config\.saving.*\.xls$
-root.account.reporting = ./reporting
+root.account.reporting = ./user/reporting
 dir.account.closing = closing
 account.previous.month.cache = .previous.month.cache
 account.reporting.closing.prefix = _closing.xls
@@ -55,7 +56,7 @@ account.reporting.saving.prefix = _saving.xls
 
 ### Logger properties
 # output can be STDOUT (for consol display) or a path file (like logs/output.txt)
-logs.output = logs/output.txt
+logs.output = /usr/local/logs/mba.log
 # log level possible value: DEBUG, INFO or ERROR. Default is INFO.
 logs.level = INFO
 # Max size in bytes of the log file before rotating to a 2nd file. Script generate around 4Ko per day.

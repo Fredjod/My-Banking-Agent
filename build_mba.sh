@@ -1,12 +1,12 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=3.8f3
+VERSION=3.8f4
 
 # Run unit testing
 echo '--- Unit testing... ---'
 
-cd t/
+# cd t/
 
 testFilesArray=( "ConfReader.t"
 				"DateHelper.t"
@@ -21,7 +21,8 @@ testFilesArray=( "ConfReader.t"
 
 for file in "${testFilesArray[@]}"
 do
-	perl -w $file
+	# perl -w $file
+	docker run -it --rm -v $(pwd):/usr/src/mba -w /usr/src/mba/t mba perl -w $file
 	if [ $? -gt 0 ]
 	then
 		echo !!!!! $file FAILED !!!!
@@ -29,7 +30,7 @@ do
 	fi
 done
 
-cd ..
+# cd ..
 
 # Packaging
 echo '--- Packaging... ---'

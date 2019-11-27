@@ -129,7 +129,7 @@ sub mergeWithPreviousSavingReport {
 				$record {NUMBER} = @$prevAccList[$ip];
 				$record {NAME} = @$prevBalanceSheet[1]->{'NAME '.@$prevAccList[$ip]};
 				$record {BALANCE} = undef;
-				push ($balances, \%record);				
+				push (@{$balances}, \%record);				
 			}
 		}
 		$self->storeToExcel ( $pathCurr, $dth->getDate(), $prevBalanceSheet, $prevDetails );
@@ -228,13 +228,13 @@ sub addSavingRecord {
 		$record {NUMBER} = $accountNumber;
 		$record {NAME} = $accountName;
 		$record {DETAILS} = $line->{DETAILS};
-		push ($operations, \%record);
+		push (@{$operations}, \%record);
 	}
 	my %record;
 	$record {NUMBER} = $accountNumber;
 	$record {NAME} = $accountName;
 	$record {BALANCE} = $balance;
-	push ($balances, \%record);
+	push (@{$balances}, \%record);
 	$self->{_total} += $balance;
 }
 

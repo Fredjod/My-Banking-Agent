@@ -29,7 +29,10 @@ sub new
 		die "$bodyTemplateProperty property is undefined or corresponding $templatePath file doesn't exist!";
 	}
 	my $template = HTML::Template->new(filename => $templatePath);
-	my $from = 'MyBankingAgent@home.com';
+	my $from = $config->readParamValue("mailing.from"); if (!defined $from) {
+		$logger->print ( "mailing.from property is undefined!", Helpers::Logger::ERROR);
+		die "mailing.from property is undefined!";
+	}
 
 	my $msg = MIME::Lite->new (
 		From    =>$from,

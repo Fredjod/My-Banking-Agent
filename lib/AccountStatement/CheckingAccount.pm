@@ -161,7 +161,7 @@ sub addDefault {
 	$record{INDEX} = $index;
 	if ($type == AccountStatement::Account::EXPENSE) {$limit = -$limit; }
 	$record{LIMIT} = $limit;
-	push ($default, \%record);	
+	push (@{$default}, \%record);	
 }
 
 sub isCategDefault {
