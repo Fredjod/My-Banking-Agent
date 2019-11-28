@@ -19,4 +19,8 @@ nytprof.out
 *.bs
 /_eumm/
 /categories.xls
-/HOWTO-INSTALL.md
+/t/reporting/0303900020712303/
+/t/logs/
+.DS_Store
+/t/reporting/2015_06_saving.xls
+/*.tar.gz
