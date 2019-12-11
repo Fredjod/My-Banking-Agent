@@ -111,7 +111,7 @@ sub logOut
 	$request->url('https://www.creditmutuel.fr/fr/identification/msg_deconnexion.html');
 	$request->header('Content-Type' => 'application/x-www-form-urlencoded');
 	$response = $ua->request($request);
-	unless ($response->content() =~ /<title>Page de d.connexion - Cr.dit Mutuel<\/title>/m) {
+	unless ($response->content() =~ /<title>Page de déconnexion - Crédit Mutuel<\/title>/m) {
 		$logger->print ( "Logout to website failed!", Helpers::Logger::ERROR);
 		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
 		$self->loginLock();
