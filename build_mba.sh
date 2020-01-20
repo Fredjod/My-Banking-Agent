@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=3.8f4
+VERSION=3.9
 
 # Run unit testing
 echo '--- Unit testing... ---'
@@ -22,7 +22,7 @@ testFilesArray=( "ConfReader.t"
 for file in "${testFilesArray[@]}"
 do
 	# perl -w $file
-	docker run -it --rm -v $(pwd):/usr/src/mba -w /usr/src/mba/t mba perl -w $file
+	docker run -it --rm -v $(pwd):/usr/src/mba -w /usr/src/mba/t mba:build $file
 	if [ $? -gt 0 ]
 	then
 		echo !!!!! $file FAILED !!!!
@@ -58,7 +58,7 @@ then
 	rm mba_$VERSION.tar.gz
 fi
 cd mba
-tar -zcf ../mba_$VERSION.tar.gz ./*
+tar -zcf ../docker/prod/mba_$VERSION.tar.gz ./*
 echo '--- Package mba_'$VERSION'.tar.gz is ready --- '
 cd ..
 rm -r ./mba

@@ -52,6 +52,8 @@ The following external modules are required
     $ sudo ./localperl/bin/cpanm DateTime 
     $ sudo ./localperl/bin/cpanm Archive::Zip
     $ sudo ./localperl/bin/cpanm LWP::UserAgent
+    $ sudo ./localperl/bin/cpanm HTTP::CookieJar::LWP (*** NEW with MBA release 3.9 ***)
+    $ sudo ./localperl/bin/cpanm Path::Tiny (*** NEW with MBA release 3.9 ***)
     $ sudo ./localperl/bin/cpanm LWP::Protocol::https
     $ sudo ./localperl/bin/cpanm Spreadsheet::ParseExcel
     $ sudo ./localperl/bin/cpanm Spreadsheet::XLSX
@@ -66,15 +68,6 @@ And then make sure that any unix user can execute it:
 
     $ sudo chmod -R 755 ./localperl
 
-## Docker variant
-
-Change directory to the My-Banking-Agent root project dir and type the following command for executing the provided Dockerfile:
-
-	$ docker build -t mba .
-
-Then for running a unit test on your local machine:
-
-	$ docker run -it --rm -v $(pwd):/usr/src/mba -w /usr/src/mba/t mba perl -w ConfReader.t 
 
 ## MyBankingAgent installation
 Then unzip the MBA distribution, where xxx is the release number. The MBA files will have to be read/write by Apache/Owncloud process, thus the owner should be the system web user (assuming here www-data) 
@@ -186,3 +179,25 @@ This is the point where we can declare the access to the MBA file via Owncloud, 
 ![config Owncloud-MBA](./occonf.tiff)
 
 Create additional owncloud login, according your needs, and then you can use any of the Owncloud client (Desktop or Mobile apps) for read and editing your MBA files. 
+
+
+
+## DOCKER / ANSIBLE variant
+
+## Docker variant
+
+Change directory to the My-Banking-Agent root project dir and type the following command for executing the provided Dockerfile:
+
+	$ docker build -t mba:build ./docker/build
+
+Run set of tests and build the source
+
+	$ ./build_mba.sh
+
+If OK, build the production mba docker image
+
+	$ docker build --build-arg mba_version=3.8f4 -t mba:prod ./docker/prod
+
+Then deploying the full application as follow:
+
+	$ docker-compose up -d

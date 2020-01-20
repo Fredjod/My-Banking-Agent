@@ -6,26 +6,33 @@ use lib '../../lib';
 use strict;
 use warnings;
 use LWP::UserAgent;
+
+# Documentation: https://metacpan.org/source/DAGOLDEN/HTTP-CookieJar-0.008/lib/HTTP
+use HTTP::CookieJar;
+use HTTP::CookieJar::LWP;
+
 use HTTP::Request;
 use HTTP::Cookies;
 use MIME::Base64;
 use DateTime;
 use Helpers::Logger;
 use Encode;
+use Path::Tiny;
 
 
 sub new
 {
     my ($class, $url) = @_;
     my $self = {
-        _ua =>			LWP::UserAgent->new(),
-        _cookie_jar =>	HTTP::Cookies->new(),
-         _url =>		$url,
-         _response => undef,
+         _ua 				=> LWP::UserAgent->new(),
+       	 _cookie_jar		=> HTTP::CookieJar::LWP->new(),
+         _url 				=> $url,
+         _response 			=> undef,
     };
     my $ua = $self->{_ua};
+    $ua->cookie_jar( $self->{_cookie_jar} );
 	$ua->ssl_opts( 'verify_hostname' => 0 );
-	$ua->agent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:35.0) Gecko/20100101 Firefox/35.0');
+	$ua->agent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:72.0) Gecko/20100101 Firefox/72.0');
 	$ua->default_header(
 		'Accept' => 'text/html,application/xhtml+xml,application/xml,application/x-excel;q=0.9,*/*;q=0.8',
 		'Accept-Charset' => 'iso-8859-1,*,utf-8',
@@ -46,8 +53,9 @@ sub logIn {
 }
 
 sub logOut {
-	# No parameter
+	# parameters: login (for cookies management per bank login
 	# Need to be implelented per bank website
+	# Have to store the cookies in a file
 	# Return 1 if logout succeeds
 	return 1;	
 }
@@ -60,7 +68,21 @@ sub download {
 	return undef;
 }
 
+sub downloadBalance {
+	my ( $self, $accountNumber, $dateFrom, $dateTo ) = @_;	
+	my $OFX = $self->download($accountNumber, $dateFrom, $dateTo, 'ofx');
+	return $self->parseOFXforBalance ($OFX, '.');
+}
+
+sub downloadOperations {
+	my ( $self, $accountNumber, $dateFrom, $dateTo ) = @_;	
+	my $QIF = $self->download($accountNumber, $dateFrom, $dateTo, 'qif');
+	return $self->parseQIF ( $QIF, '([0-9]{2})\/([0-9]{2})\/([0-9]{2})', 0, ',', '.' );	
+}
+
+
 sub downloadBankStatement {
+	
 	# Parameters: Accountnumber, dateFrom, dateTo
 	# Need to be implelented per bank website
 	# Return an array of hashes. Each hash is a transaction with the following info and format:
@@ -80,8 +102,57 @@ sub downloadBankStatement {
     #
     # This array is built wit the OFX format for reading the balance value
     # and the QIf format for reading the transaction info (date, amount and details)
-	return ();
+    
+	my ( $self, $account, $dateFrom, $dateTo ) = @_;
+
+	my ( $bankData, $balance );
+	my $logger = Helpers::Logger->new();
+	# Get the operations from website
+	$logger->print ( "Log in to ".$account->getBankName()." website", Helpers::Logger::INFO);
+	if ( $self->logIn( Helpers::WebConnector->getLogin ($account->getAccountAuth), Helpers::WebConnector->getPwd ($account->getAccountAuth) ) ) {
+		$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()." for month ".$dateTo->month(), Helpers::Logger::INFO);
+		$balance = $self->downloadBalance ( $account->getAccountNumber(), $dateFrom, $dateTo );
+		$bankData = $self->downloadOperations ( $account->getAccountNumber(), $dateFrom, $dateTo );
+		if ($#{$bankData} > -1) {
+			$self->backwardBalanceCompute ( $bankData, $balance );
+		}
+	}
+	$logger->print ( "Log out", Helpers::Logger::INFO);
+	$self->logOut( Helpers::WebConnector->getLogin ($account->getAccountAuth) );
+	return $bankData;
 }
+
+
+sub downloadMultipleBankStatement {
+	my ( $self, $AccountList, $dateFrom, $dateTo ) = @_;
+	my $logger = Helpers::Logger->new();
+	my @result;
+	
+	return \@result unless $#{$AccountList} > -1;
+	
+	my $bankname = @$AccountList[0]->{'BANK'};
+	my $authKey = @$AccountList[0]->{'KEY'};
+	$logger->print ( "Log in to ".$bankname." website with key ".$authKey, Helpers::Logger::INFO);
+	if ( $self->logIn(  Helpers::WebConnector->getLogin ($authKey),  Helpers::WebConnector->getPwd ($authKey) ) ) {
+		for my $info ( @$AccountList ) {
+			# As input a array of hashes:
+			my $desc = 	$info->{'DESC'};
+			my $number = $info->{'NUMBER'};
+			my %record;
+			$logger->print ( "Download and parse bank statement for account ".$desc." for month ".$dateFrom->month()."...", Helpers::Logger::INFO);
+			# As output an array of hashes:
+			$record{'BALANCE'} = $self->downloadBalance ( $number, , $dateFrom, $dateTo );
+			$record{'BANKOPE'} = $self->downloadOperations ( $number, $dateFrom, $dateTo );
+			$record{'NUMBER'} = $number;
+			$record{'DESC'} = $desc;
+			push (@result, \%record);
+		}
+	}
+	$logger->print ( "Log out", Helpers::Logger::INFO);
+	$self->logOut( Helpers::WebConnector->getLogin ($authKey) );
+	return \@result;
+}
+
 
 sub loginLock {
 	my ($self) = @_;
@@ -177,6 +248,20 @@ sub forwardBalanceCompute {
 		@$bankData[$i]->{BALANCE} = sprintf("%.2f", $balance);
 	}
 	return $bankData;
+}
+
+sub getStoredCookies {
+	my ( $self, $login ) = @_;
+	my $filename = $login.'.cookies.txt';
+	if (-e $filename) {
+ 		$self->{_cookie_jar}->load_cookies( path($filename)->lines );
+	}
+}
+
+sub saveCookies {
+	my ( $self, $login ) = @_;
+	my $filename = $login.'.cookies.txt';
+	path($filename)->spew( join "\n", $self->{_cookie_jar}->dump_cookies ( { persistent => 1 } ) );
 }
 
 1;
