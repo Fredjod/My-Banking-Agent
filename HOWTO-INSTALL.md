@@ -58,12 +58,12 @@ Before running MBA for the first time:
 
 - Add the www-data user in the linux docker group (in /etc/group)
 
-	docker:x:999:debian,www-data
+		docker:x:999:debian,www-data
 
 - Create the files/ and logs/ directory accordignly to your choosen Volumes mapping. Don't forget to make them with www-data user:
 
-	$ sudo -u www-data mkdir ./files
-	$ sudo -u www-data mkdir ./logs
+		$ sudo -u www-data mkdir ./files
+		$ sudo -u www-data mkdir ./logs
 	
 - Create the auth.pl file (by coping and updating the auth.dist.pl file in app/ directory.
 
