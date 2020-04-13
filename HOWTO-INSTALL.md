@@ -78,7 +78,7 @@ You are all set !
 This presents the complete installation guide for all the required applications: Apache, MySQL, PHP, Owncloud and Perl.
 You can bypass some of those steps depending on your current system conf. 
 
-First, make sure that the system is uptodate:
+First, make sure that the system is up to date:
 
     $ sudo apt-get update
     $ sudo apt-get upgrade

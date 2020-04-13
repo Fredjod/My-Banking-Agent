@@ -9,6 +9,6 @@ cp ./prod/mba.sh ./server/app
 
 (crontab -l 2>/dev/null; echo "30 20 * * * sudo -u www-data docker run -it --rm -v /home/debian/mba-server/docker/server/app:/usr/mba/app -v /home/debian/mba-server/docker/server/logs:/usr/mba/logs -v /home/debian/mba-server/docker/server/files:/usr/mba/files mba:prod >> /var/log/cron.log 2>&1") | crontab -
 
-cd ./server
+cd ./owncloud-server
 docker-compose stop
 docker-compose up -d

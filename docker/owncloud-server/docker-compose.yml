@@ -3,6 +3,15 @@ version: '2.1'
 volumes:
   redis:
     driver: local
+  mysql:
+    driver: local
+  backup:
+    driver: local
+  data:
+    driver: local
+
+# The docker logs command will show you the output a container is generating when you don't run it interactively.
+# $ docker logs --tail 50 --follow --timestamps owncloud-server_owncloud_1
 
 services:
   owncloud:
@@ -31,7 +40,7 @@ services:
       timeout: 10s
       retries: 5
     volumes:
-      - ./files:/mnt/data
+      - data:/mnt/data
 
   db:
     image: webhippie/mariadb:latest
@@ -49,8 +58,8 @@ services:
       timeout: 10s
       retries: 5
     volumes:
-      - ./mysql:/var/lib/mysql
-      - ./backup:/var/lib/backup
+      - mysql:/var/lib/mysql
+      - backup:/var/lib/backup
 
   redis:
     image: webhippie/redis:latest
