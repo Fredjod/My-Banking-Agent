@@ -1,12 +1,14 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=3.9
+VERSION=3.10
 
-# Run unit testing
+# Create/Update the Perl Docker image
+docker build -t mba:build ./docker/build
+
+# Run unit testing in the Docker container
 echo '--- Unit testing... ---'
 
-# cd t/
 
 testFilesArray=( "ConfReader.t"
 				"DateHelper.t"
@@ -21,7 +23,6 @@ testFilesArray=( "ConfReader.t"
 
 for file in "${testFilesArray[@]}"
 do
-	# perl -w $file
 	docker run -it --rm -v $(pwd):/usr/src/mba -w /usr/src/mba/t mba:build $file
 	if [ $? -gt 0 ]
 	then

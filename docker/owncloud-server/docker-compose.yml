@@ -5,13 +5,13 @@ volumes:
     driver: local
   mysql:
     driver: local
-  backup:
-    driver: local
-  data:
-    driver: local
 
 # The docker logs command will show you the output a container is generating when you don't run it interactively.
 # $ docker logs --tail 50 --follow --timestamps owncloud-server_owncloud_1
+# $ docker-compose exec owncloud ls -al /var/www/owncloud
+# $ docker exec -it owncloud-server_owncloud_1 bin/bash
+# https://github.com/owncloud-docker/base
+
 
 services:
   owncloud:
@@ -34,13 +34,15 @@ services:
       - OWNCLOUD_MYSQL_UTF8MB4=true
       - OWNCLOUD_REDIS_ENABLED=true
       - OWNCLOUD_REDIS_HOST=redis
+      - OWNCLOUD_SKIP_CHOWN=true
     healthcheck:
       test: ["CMD", "/usr/bin/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 5
     volumes:
-      - data:/mnt/data
+      - ${OWNCLOUD_DATA_DIR}:/mnt/data
+      - ${OWNCLOUD_MBA_DIR}:/mnt/mba
 
   db:
     image: webhippie/mariadb:latest
@@ -59,7 +61,7 @@ services:
       retries: 5
     volumes:
       - mysql:/var/lib/mysql
-      - backup:/var/lib/backup
+      - ${OWNCLOUD_DB_BACKUP_DIR}:/var/lib/backup
 
   redis:
     image: webhippie/redis:latest
