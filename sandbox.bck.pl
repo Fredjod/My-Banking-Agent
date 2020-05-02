@@ -21,6 +21,30 @@ use File::stat;
 use URI::Encode;
 
 
+my $data = "<div id=\"C:O:OTPMainBlock\" class=\"_c1 OTPMainBlock a_blocfctl saisir divOtp _c1\">
+<div>
+<div id=\"C:O:OTPDeliveryChannelText\" class=\"_c1 OTPDeliveryChannelText _c1\">
+ <span><script type=\"text/javascript\" src=\"https://cdnsi.e-i.com/SOSD/sd/otp/1.1.1/js/otp_ui.min.js\"></script>
+<script type=\"text/javascript\" src=\"https://cdnsi.e-i.com/SOSD/sd/otp/1.1.1/js/otp_in_mobile_app.min.js\"></script>
+<script type=\"text/javascript\">
+var otpInMobileAppParameters = {
+	transactionId: 'a324a221896940ee4ad670fb193a61f450cac59e234100450',
+	getTransactionValidationStateUrl: 'https://www.creditmutuel.fr/fr/banque/async/otp/SOSD_OTP_GetTransactionState.htm',
+	pollingInterval: 1000,
+	cancelTransactionUrl: 'https://www.creditmutuel.fr/fr/banque/async/otp/SOSD_OTP_CancelTransaction.htm',
+	messages : {
+	},
+	buttons: {
+		confirmButtonId: 'btnConfirm',
+		modifyButtonId: '',
+		cancelButtonId: 'btnCancel'
+	}
+};";
+
+if ($data =~ /transactionId: '(.*)'/m) {
+	print "Id: $1\n";
+}
+
 my $a = "29.6";
 my $b = "29.61";
 print "Diff: ".(abs($a-$b) > 0.009), "\n";

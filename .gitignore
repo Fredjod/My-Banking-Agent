@@ -22,9 +22,7 @@ nytprof.out
 /t/logs/
 .DS_Store
 /t/reporting/2015_06_saving.xls
-/docker/prod/app.txt
-/docker/prod/auth.pl
-/docker/prod/*.tar.gz
+/mba_app/prod/*.tar.gz
 /*.tar.gz
 /t/reporting/*
 /t/*.cookies.txt

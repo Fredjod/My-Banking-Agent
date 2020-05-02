@@ -4,7 +4,7 @@
 VERSION=3.10
 
 # Create/Update the Perl Docker image
-docker build -t mba:build ./docker/build
+docker build -t mba:build ./mba_app/build
 
 # Run unit testing in the Docker container
 echo '--- Unit testing... ---'
@@ -54,12 +54,12 @@ chmod +x mba/mba.sh
 chmod +x mba/properties/installDeamon.sh
 chmod +x mba/properties/uninstallDeamon.sh
 #zip -yqr mba_$VERSION.zip mba
-if [ -e "mba_$VERSION.tar.gz" ]
+if [ -e "./mba_app/prod/mba_$VERSION.tar.gz" ]
 then
-	rm mba_$VERSION.tar.gz
+	rm ./mba_app/prod/mba_$VERSION.tar.gz
 fi
 cd mba
-tar -zcf ../docker/prod/mba_$VERSION.tar.gz ./*
+tar -zcf ../mba_app/prod/mba_$VERSION.tar.gz ./*
 echo '--- Package mba_'$VERSION'.tar.gz is ready --- '
 cd ..
 rm -r ./mba
