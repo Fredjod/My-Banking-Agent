@@ -157,7 +157,7 @@ sub logIn
 	$request->content('');
 	$response = $ua->request($request);
 	
-	unless (${$response->content_ref} =~ /form id="P:F" action="(.+)"\smethod/) {
+	unless (${$response->content_ref} =~ /form id="P1:F" action="(.+)"\smethod/) {
 		$logger->print ( "Can't open download page", Helpers::Logger::ERROR);
 		$logger->print ( "HTML content: \n".${$response->content_ref}, Helpers::Logger::DEBUG);
 		return 0;				
