@@ -23,7 +23,7 @@ testFilesArray=( "ConfReader.t"
 
 for file in "${testFilesArray[@]}"
 do
-	docker run -it --rm -v $(pwd):/usr/src/mba -w /usr/src/mba/t mba:build $file
+	docker run -it --rm -v $(pwd):/usr/mba/src -w /usr/mba/src/t mba:build $file
 	if [ $? -gt 0 ]
 	then
 		echo !!!!! $file FAILED !!!!
