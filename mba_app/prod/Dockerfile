@@ -1,5 +1,6 @@
 FROM mba:build
 
+ENV TZ 'Europe/Paris'
 
 # ARG mba_version
 RUN mkdir -p /usr/mba/files
@@ -13,4 +14,5 @@ VOLUME /usr/mba/app
 WORKDIR /usr/mba/app
 ENTRYPOINT [ "bash" ]
 USER www-data
+
 CMD [ "/usr/mba/app/mba.sh" ]
