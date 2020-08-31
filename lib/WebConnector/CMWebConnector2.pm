@@ -65,11 +65,13 @@ sub logIn
 	# Authentification forte
 	unless ($response->content() !~ /<title>Authentification forte<\/title>/m) {
 		
-		if ($response->content() =~ (/href="\/fr\/banque\/validation.aspx?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=SCA"/)) {
+		$logger->print ( "Strong Authentification content page (step 1): ".$response->content(), Helpers::Logger::DEBUG);
+		if ($response->content() =~ (/href="\/fr\/banque\/validation.aspx\?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=SCA"/m)) {
 			$request->method('GET');
 			$request->url('https://www.creditmutuel.fr/fr/banque/validation.aspx?_tabi=C&_pid=AuthChoicePage&_fid=SCA');
 			$cookies->add_cookie_header($request);
 			$response = $ua->request($request);
+			$logger->print ( "Strong Authentification content page (step 2): ".$response->content(), Helpers::Logger::DEBUG);
 		}
 	
 		my $count = 100;

@@ -6,43 +6,52 @@ use lib "./lib/";
 use warnings;
 use MIME::Base64;
 use DateTime;
-use Spreadsheet::ParseExcel;
-use Spreadsheet::XLSX;
-use File::Basename;
-# use Imager;
+#use Spreadsheet::ParseExcel;
+#use Spreadsheet::XLSX;
+#use File::Basename;
+#use Imager;
 use Data::Dumper;
-use HTML::Parser;
-use Data::Dumper;
-use Helpers::ExcelWorkbook;
-use Encode;
-use Helpers::Date;
-use Helpers::WebConnector;
-use File::stat;
+#use HTML::Parser;
+#use Data::Dumper;
+#use Helpers::ExcelWorkbook;
+#use Encode;
+#use Helpers::Date;
+#use Helpers::WebConnector;
+#use File::stat;
 #use URI::Encode;
 
 
-my $data = "<div id=\"C:O:OTPMainBlock\" class=\"_c1 OTPMainBlock a_blocfctl saisir divOtp _c1\">
-<div>
-<div id=\"C:O:OTPDeliveryChannelText\" class=\"_c1 OTPDeliveryChannelText _c1\">
- <span><script type=\"text/javascript\" src=\"https://cdnsi.e-i.com/SOSD/sd/otp/1.1.1/js/otp_ui.min.js\"></script>
-<script type=\"text/javascript\" src=\"https://cdnsi.e-i.com/SOSD/sd/otp/1.1.1/js/otp_in_mobile_app.min.js\"></script>
-<script type=\"text/javascript\">
-var otpInMobileAppParameters = {
-	transactionId: 'a324a221896940ee4ad670fb193a61f450cac59e234100450',
-	getTransactionValidationStateUrl: 'https://www.creditmutuel.fr/fr/banque/async/otp/SOSD_OTP_GetTransactionState.htm',
-	pollingInterval: 1000,
-	cancelTransactionUrl: 'https://www.creditmutuel.fr/fr/banque/async/otp/SOSD_OTP_CancelTransaction.htm',
-	messages : {
-	},
-	buttons: {
-		confirmButtonId: 'btnConfirm',
-		modifyButtonId: '',
-		cancelButtonId: 'btnCancel'
-	}
-};";
+my $data = "<p id=\"C:M:T:title\" role=\"heading\" aria-level=\"2\" class=\"ei_titletext\">Authentification forte</p>
+</div> 
+</div>
+</div>
+</div><div class=\"_c1 ei_mainblocfctl _c1\">
+<div id=\"C:T2:D\" class=\"bloctxt alerte\">
+<b>Pourquoi nous vous demandons de confirmer votre identité ?</b><br/><br/>Dans le cadre de la directive européenne relative aux services de paiement (DSP2), le niveau de sécurité de l'accès à votre Espace Client est renforcé.<br/><br/>Pour accéder à vos comptes, merci de confirmer votre identité depuis votre smartphone ou votre tablette avec <b>Confirmation Mobile</b>. Cette étape est obligatoire au moins une fois tous les 90 jours.  
+</div><div id=\"C:F:D\" class=\"ei_fnblock\">
+<div id=\"C:F:expContent\" class=\"ei_fnblock_body\">
+<div id=\"C:T3:D\" class=\"bloctxt\">
+<b>Votre derni&#232;re authentification forte a &#233;t&#233; enregistr&#233;e le mercredi 1 juillet 2020.</b><br /><b>Vous devrez saisir un nouveau code de confirmation au plus tard le mardi 29 septembre 2020.</b>  
+</div><div id=\"C:G:D\" class=\"ei_gpblock\">
+<div id=\"C:G:expContent\" class=\"ei_gpblock_body\">
+<div id=\"C:O:D\" class=\"blocboutons\">
+  <span id=\"C:B:S\" class=\"ei_buttonbar\"><span id=\"C:R:RootSpan\" class=\"ei_button\"><a id=\"C:R:link\" aria-labelledby=\"C:R:labelsubmit\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=SCA\" class=\"ei_btn ei_btn_fn_forward\"><span id=\"C:R:labelsubmit\" class=\"_c1 ei_btn_body _c1\"><span role=\"presentation\" class=\"_c1 ei_btn_tlcorn _c1\"></span><span class=\"_c1 ei_btn_label _c1\">Confirmer mon identit&#233;</span><span role=\"presentation\" class=\"_c1 ei_iblock ei_btn_pic _c1\">&nbsp;</span></span><span role=\"presentation\" class=\"_c1 ei_btn_footer _c1\"><span role=\"presentation\" class=\"_c1 ei_btn_blcorn _c1\"></span></span></a></span></span>
+</div> 
+</div>
+</div><ul class=\"_c1 niv1 _c1\">
+<li>Si vous pr&#233;f&#233;rez confirmer votre identit&#233; plus tard : <a id=\"C:L1\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=Bypass\">cliquez ici.</a></li>
+</ul>  
+</div>
+</div>Consultez notre <a id=\"C:L2\" href=\"https://www.creditmutuel.fr/fr/assistance/faq/connexion-comptes.html\" target=\"_blank\">Foire Aux Questions (FAQ).</a> <div id=\"C:O1:D\" class=\"blocboutons\">
+  <span id=\"C:B1:S\" class=\"ei_buttonbar\"><span id=\"C:R1:RootSpan\" class=\"ei_button\"><a id=\"C:R1:link\" aria-labelledby=\"C:R1:labelsubmit\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=DoCancel\" class=\"ei_btn ei_btn_typ_back\"><span id=\"C:R1:labelsubmit\" class=\"_c1 ei_btn_body _c1\"><span role=\"presentation\" class=\"_c1 ei_btn_tlcorn _c1\"></span><span class=\"_c1 ei_btn_label _c1\">Abandonner</span><span role=\"presentation\" class=\"_c1 ei_iblock ei_btn_pic _c1\">&nbsp;</span></span><span role=\"presentation\" class=\"_c1 ei_btn_footer _c1\"><span role=\"presentation\" class=\"_c1 ei_btn_blcorn _c1\"></span></span></a></span></span>
+</div>
+</div>
+</div> 
+</div><input name=\"_wxf2_cc\" type=\"hidden\" value=\"fr-FR\" />
+</form><script type=\"text/javascript\">";
 
-if ($data =~ /transactionId: '(.*)'/m) {
-	print "Id: $1\n";
+if ($data =~ /href="\/fr\/banque\/validation.aspx\?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=SCA"/m) {
+	print "SCA found\n";
 }
 
 my $a = "29.6";
