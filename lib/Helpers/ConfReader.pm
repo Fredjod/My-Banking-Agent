@@ -1,15 +1,20 @@
 package Helpers::ConfReader;
 
+use lib "../../lib/";
+
 use strict;
 use warnings;
-
 
 sub new
 {
 	my ($class, $confFile) = @_;
-	open my $in, "<", $confFile or die "Can't open file $confFile.\n";
-	read $in, my $confData, -s $in;
-	close $in;	
+	my $confData = undef;
+	if (-e $confFile) {
+		open my $in, "<", $confFile;
+		read $in, $confData, -s $in;
+		close $in;
+	}
+
     my $self = {
         _confData =>	$confData,
     };
@@ -26,6 +31,7 @@ sub readParamValueList
 {
 	my ( $self, $param ) = @_;
 	my $confData = $self->{_confData};
+	unless ( defined $confData ) { return undef;}
 	my ($line, @list);
 	foreach $line (split /\n/ ,$confData) {
 		if ($line =~ /^$param\s*=\s*(.*)/) {
@@ -39,6 +45,7 @@ sub readParamValue
 {
 	my ( $self, $param ) = @_;
 	my $confData = $self->{_confData};
+	unless ( defined $confData ) { return undef;}
 	my ($line, $value);
 	foreach $line (split /\n/ ,$confData) {
 		if ($line =~ /^\s*$param\s*=\s*(.*)/) {

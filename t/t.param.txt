@@ -12,3 +12,6 @@ param4 = value4.1;value4.2;value4.3
 
 # Pram as a list of values with spaces to trim
 param5 = value 5.1; value 5.2  ;   value 5.3
+
+# Param with space
+01039 345120 01 = 01039 345121 01

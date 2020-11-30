@@ -21,37 +21,35 @@ use Data::Dumper;
 #use URI::Encode;
 
 
-my $data = "<p id=\"C:M:T:title\" role=\"heading\" aria-level=\"2\" class=\"ei_titletext\">Authentification forte</p>
-</div> 
-</div>
-</div>
-</div><div class=\"_c1 ei_mainblocfctl _c1\">
-<div id=\"C:T2:D\" class=\"bloctxt alerte\">
-<b>Pourquoi nous vous demandons de confirmer votre identité ?</b><br/><br/>Dans le cadre de la directive européenne relative aux services de paiement (DSP2), le niveau de sécurité de l'accès à votre Espace Client est renforcé.<br/><br/>Pour accéder à vos comptes, merci de confirmer votre identité depuis votre smartphone ou votre tablette avec <b>Confirmation Mobile</b>. Cette étape est obligatoire au moins une fois tous les 90 jours.  
-</div><div id=\"C:F:D\" class=\"ei_fnblock\">
-<div id=\"C:F:expContent\" class=\"ei_fnblock_body\">
-<div id=\"C:T3:D\" class=\"bloctxt\">
-<b>Votre derni&#232;re authentification forte a &#233;t&#233; enregistr&#233;e le mercredi 1 juillet 2020.</b><br /><b>Vous devrez saisir un nouveau code de confirmation au plus tard le mardi 29 septembre 2020.</b>  
-</div><div id=\"C:G:D\" class=\"ei_gpblock\">
-<div id=\"C:G:expContent\" class=\"ei_gpblock_body\">
-<div id=\"C:O:D\" class=\"blocboutons\">
-  <span id=\"C:B:S\" class=\"ei_buttonbar\"><span id=\"C:R:RootSpan\" class=\"ei_button\"><a id=\"C:R:link\" aria-labelledby=\"C:R:labelsubmit\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=SCA\" class=\"ei_btn ei_btn_fn_forward\"><span id=\"C:R:labelsubmit\" class=\"_c1 ei_btn_body _c1\"><span role=\"presentation\" class=\"_c1 ei_btn_tlcorn _c1\"></span><span class=\"_c1 ei_btn_label _c1\">Confirmer mon identit&#233;</span><span role=\"presentation\" class=\"_c1 ei_iblock ei_btn_pic _c1\">&nbsp;</span></span><span role=\"presentation\" class=\"_c1 ei_btn_footer _c1\"><span role=\"presentation\" class=\"_c1 ei_btn_blcorn _c1\"></span></span></a></span></span>
-</div> 
-</div>
-</div><ul class=\"_c1 niv1 _c1\">
-<li>Si vous pr&#233;f&#233;rez confirmer votre identit&#233; plus tard : <a id=\"C:L1\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=Bypass\">cliquez ici.</a></li>
-</ul>  
-</div>
-</div>Consultez notre <a id=\"C:L2\" href=\"https://www.creditmutuel.fr/fr/assistance/faq/connexion-comptes.html\" target=\"_blank\">Foire Aux Questions (FAQ).</a> <div id=\"C:O1:D\" class=\"blocboutons\">
-  <span id=\"C:B1:S\" class=\"ei_buttonbar\"><span id=\"C:R1:RootSpan\" class=\"ei_button\"><a id=\"C:R1:link\" aria-labelledby=\"C:R1:labelsubmit\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=DoCancel\" class=\"ei_btn ei_btn_typ_back\"><span id=\"C:R1:labelsubmit\" class=\"_c1 ei_btn_body _c1\"><span role=\"presentation\" class=\"_c1 ei_btn_tlcorn _c1\"></span><span class=\"_c1 ei_btn_label _c1\">Abandonner</span><span role=\"presentation\" class=\"_c1 ei_iblock ei_btn_pic _c1\">&nbsp;</span></span><span role=\"presentation\" class=\"_c1 ei_btn_footer _c1\"><span role=\"presentation\" class=\"_c1 ei_btn_blcorn _c1\"></span></span></a></span></span>
-</div>
-</div>
-</div> 
-</div><input name=\"_wxf2_cc\" type=\"hidden\" value=\"fr-FR\" />
-</form><script type=\"text/javascript\">";
+my $data = "<td><span id=\"accountListController:S\" style=\"margin-left:5px;\"><a id=\"accountListController:chk\" href=\"#\">Tout cocher</a>&nbsp;|&nbsp;<a id=\"accountListController:uchk\" href=\"#\">Tout d&#233;cocher</a></span></td>
+</tr><tr>
+<td><table id=\"account-table\" width=\"100%\" cellspacing=\"1\" summary=\"\" class=\"liste\">
+<tbody>
+<tr>
+<td id=\"F_0.T2\" class=\"i\" style=\"width:50px;text-align:center;\"><span id=\"F_0.accountCheckbox:span\"><input name=\"Bool:data_accounts_account_ischecked\" id=\"F_0.accountCheckbox:DataEntry:cbhf\" type=\"hidden\" value=\"false\" /><input id=\"F_0.accountCheckbox:DataEntry\" name=\"CB:data_accounts_account_ischecked\" type=\"checkbox\" class=\"checkbox\" /></span></td><td class=\"i\"><label for=\"F_0.accountCheckbox:DataEntry\" id=\"F_0.L21\" class=\"__e_Label\">06039 000207123 02 COMPTE COURANT MLE V LAMBLET OU M F JAUDIN</label></td>
+</tr><tr>
+<td id=\"F_1.T2\" class=\"p\" style=\"width:50px;text-align:center;\"><span id=\"F_1.accountCheckbox:span\"><input name=\"Bool:data_accounts_account_2__ischecked\" id=\"F_1.accountCheckbox:DataEntry:cbhf\" type=\"hidden\" value=\"false\" /><input id=\"F_1.accountCheckbox:DataEntry\" name=\"CB:data_accounts_account_2__ischecked\" type=\"checkbox\" class=\"checkbox\" /></span></td><td class=\"p\"><label for=\"F_1.accountCheckbox:DataEntry\" id=\"F_1.L21\" class=\"__e_Label\">06039 000207123 04 COMPTE COURANT M JAUDIN FREDERIC</label></td>
+</tr><tr>
+<td id=\"F_2.T2\" class=\"i\" style=\"width:50px;text-align:center;\"><span id=\"F_2.accountCheckbox:span\"><input name=\"Bool:data_accounts_account_3__ischecked\" id=\"F_2.accountCheckbox:DataEntry:cbhf\" type=\"hidden\" value=\"false\" /><input id=\"F_2.accountCheckbox:DataEntry\" name=\"CB:data_accounts_account_3__ischecked\" type=\"checkbox\" class=\"checkbox\" /></span></td><td class=\"i\"><label for=\"F_2.accountCheckbox:DataEntry\" id=\"F_2.L21\" class=\"__e_Label\">06039 000207123 05 LIVRET DE DEVELOPPEMENT DURABLE SOLIDAIRE TRIPLEX M FREDERIC JAUDIN</label></td>
+</tr><tr>
+<td id=\"F_3.T2\" class=\"p\" style=\"width:50px;text-align:center;\"><span id=\"F_3.accountCheckbox:span\"><input name=\"Bool:data_accounts_account_4__ischecked\" id=\"F_3.accountCheckbox:DataEntry:cbhf\" type=\"hidden\" value=\"false\" /><input id=\"F_3.accountCheckbox:DataEntry\" name=\"CB:data_accounts_account_4__ischecked\" type=\"checkbox\" class=\"checkbox\" /></span></td><td class=\"p\"><label for=\"F_3.accountCheckbox:DataEntry\" id=\"F_3.L21\" class=\"__e_Label\">06039 000207123 06 PLAN D'EPARGNE LOGEMENT M FREDERIC JAUDIN</label></td>
+</tr><tr>
+<td id=\"F_4.T2\" class=\"i\" style=\"width:50px;text-align:center;\"><span id=\"F_4.accountCheckbox:span\"><input name=\"Bool:data_accounts_account_5__ischecked\" id=\"F_4.accountCheckbox:DataEntry:cbhf\" type=\"hidden\" value=\"false\" /><input id=\"F_4.accountCheckbox:DataEntry\" name=\"CB:data_accounts_account_5__ischecked\" type=\"checkbox\" class=\"checkbox\" /></span></td><td class=\"i\"><label for=\"F_4.accountCheckbox:DataEntry\" id=\"F_4.L21\" class=\"__e_Label\">06039 000207123 07 COMPTE EPARGNE LOGEMENT M FREDERIC JAUDIN</label></td>
+</tr><tr>
+<td id=\"F_5.T2\" class=\"p\" style=\"width:50px;text-align:center;\"><span id=\"F_5.accountCheckbox:span\"><input name=\"Bool:data_accounts_account_6__ischecked\" id=\"F_5.accountCheckbox:DataEntry:cbhf\" type=\"hidden\" value=\"false\" /><input id=\"F_5.accountCheckbox:DataEntry\" name=\"CB:data_accounts_account_6__ischecked\" type=\"checkbox\" class=\"checkbox\" /></span></td><td class=\"p\"><label for=\"F_5.accountCheckbox:DataEntry\" id=\"F_5.L21\" class=\"__e_Label\">06039 000207123 08 LIVRET BLEU M FREDERIC JAUDIN</label></td>
+</tr><tr>
+<td id=\"F_6.T2\" class=\"i\" style=\"width:50px;text-align:center;\"><span id=\"F_6.accountCheckbox:span\"><input name=\"Bool:data_accounts_account_7__ischecked\" id=\"F_6.accountCheckbox:DataEntry:cbhf\" type=\"hidden\" value=\"false\" /><input id=\"F_6.accountCheckbox:DataEntry\" name=\"CB:data_accounts_account_7__ischecked\" type=\"checkbox\" class=\"checkbox\" /></span></td><td class=\"i\"><label for=\"F_6.accountCheckbox:DataEntry\" id=\"F_6.L21\" class=\"__e_Label\">06039 000217275 02 LIVRET BLEU M VICTOR JAUDIN</label></td>
+</tr><tr>
+<td id=\"F_7.T2\" class=\"p\" style=\"width:50px;text-align:center;\"><span id=\"F_7.accountCheckbox:span\"><input name=\"Bool:data_accounts_account_8__ischecked\" id=\"F_7.accountCheckbox:DataEntry:cbhf\" type=\"hidden\" value=\"false\" /><input id=\"F_7.accountCheckbox:DataEntry\" name=\"CB:data_accounts_account_8__ischecked\" type=\"checkbox\" class=\"checkbox\" /></span></td><td class=\"p\"><label for=\"F_7.accountCheckbox:DataEntry\" id=\"F_7.L21\" class=\"__e_Label\">06039 000217277 02 LIVRET BLEU MLE CHLOE JAUDIN</label></td>
+</tr>
+</tbody>
+</table><script type=\"text/javascript\">
+/** * Méthode de création de cookie **/ function createCookie(name, value) { var date = new Date(); date.setTime(date.getTime() + (3600 * 1000 * 24 * 365)); var expires = \"; expires=\" + date.toGMTString(); document.cookie = name + \"=\" + value + expires + \"; path=/\"; } /** * Méthode pour modifier un seul caractère d'une chaîne javascript **/ function setCharAt(str,index,chr) { if(index > str.length-1) return str; return str.substr(0,index) + chr + str.substr(index+1); }";
 
-if ($data =~ /href="\/fr\/banque\/validation.aspx\?_tabi=C&amp;_pid=AuthChoicePage&amp;_fid=SCA"/m) {
-	print "SCA found\n";
+my $accountNumber="06039 000207123 05";
+
+if ($data =~ /CB:data_accounts_account_(.*)ischecked.+$accountNumber/m) {
+	print "found: "."CB%3Adata_accounts_account_$1ischecked=on\n";
 }
 
 my $a = "29.6";

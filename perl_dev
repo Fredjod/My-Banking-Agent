@@ -1,0 +1,4 @@
+#!/bin/bash
+
+#docker build -t mba:build ./mba_app/build
+docker run -it --rm -v $(pwd):/usr/mba/src -w /usr/mba/src mba:build "$@"

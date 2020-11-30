@@ -11,6 +11,7 @@ use HTTP::Cookies;
 use MIME::Base64;
 use DateTime;
 use Helpers::Logger;
+use Helpers::ConfReader;
 
 use Data::Dumper;
 
@@ -59,7 +60,12 @@ sub logIn
 		$request->method('GET');
 		$request->content('');
 		$request->url($response->header( 'Location' ));
+		$cookies->add_cookie_header($request);
 		$response = $ua->request($request);
+	}
+	else {
+		$logger->print ( "Login/password authentification failed!", Helpers::Logger::ERROR);
+		return 0;
 	}
 
 	# Authentification forte
@@ -204,20 +210,29 @@ sub download
 {
 	my ( $self, $accountNumber, $dateFrom, $dateTo, $format ) = @_;
 	my $logger = Helpers::Logger->new();
+	my $correlationTable = Helpers::ConfReader->new("properties/correlation.txt");
 	my $ua = $self->{_ua};
 	my $url = $self->{_url};
 	my $request = HTTP::Request->new();
 	my $response = $self->{_response};
 	if (!defined $format) {$format = 'csv';}
 	
+	my $accountNumberToUse = $accountNumber;
+	my $correlatedAccountNumber = $correlationTable->readParamValue($accountNumber);
+	unless ( !defined $correlatedAccountNumber ) {
+		$accountNumberToUse = $correlatedAccountNumber;
+		$logger->print ( "A correlation account found: $accountNumber -> $accountNumberToUse", Helpers::Logger::DEBUG);
+	}
+	
 	my @arrayDateFrom = (sprintf("%02d", $dateFrom->day()), sprintf("%02d", $dateFrom->month()), $dateFrom->year());
 	my @arrayDateTo = 	(sprintf("%02d", $dateTo->day()), sprintf("%02d", $dateTo->month()), $dateTo->year());
-	unless ( $accountNumber =~ /^(\d{5})\s(\d{9})\s(\d{2})$/ ) {
-		$logger->print ( "Wrong account number format: $accountNumber", Helpers::Logger::ERROR);
+	unless ( $accountNumberToUse =~ /^(\d{5})\s(\d{9})\s(\d{2})$/ ) {
+		$logger->print ( "Wrong account number format: $accountNumberToUse", Helpers::Logger::ERROR);
 		return undef;
 	}
-	unless ( $response->content() =~ /CB:data_accounts_account_(.*)ischecked.+$accountNumber/m ) {
-		$logger->print ( "Account number: $accountNumber can not be found", Helpers::Logger::ERROR);
+
+	unless ( $response->content() =~ /CB:data_accounts_account_(.*)ischecked.+$accountNumberToUse/m ) {
+		$logger->print ( "Account number: $accountNumberToUse can not be found", Helpers::Logger::ERROR);
 		$logger->print ( "HTML content: \n".$response->content(), Helpers::Logger::DEBUG);
 		return undef;	
 	}

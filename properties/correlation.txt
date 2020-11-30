@@ -1,0 +1,6 @@
+# Account numbers correlation table
+# Makes corresponding account number on the left to the one on the right
+# Useful for making transparent a new number for a same given account
+
+02495 002059423 0A = 02495 002059423 02
+02495 002059123 02 = 02495 002059423 0B

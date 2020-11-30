@@ -25,11 +25,11 @@ die $connectorClass.' is a wrong web connector class. Must inherite from WebConn
 # NEVER COMMIT ON GIT with real values
 # ####################################
 my $login = 'xxxxxxxxx';
-my $password = 'xxxxxxx';
-my $accontNum = '06xxx 000xxxxxx xx';
+my $password = 'xxxxxxxx';
+my $accontNum = 'xxx38 xxxxxx129 65';
 ######################################
 
-my ($d,$m,$y) = '01/12/2019' =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/
+my ($d,$m,$y) = '01/11/2020' =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/
    or die;
 my $dt_from = DateTime->new(
    year      => $y,
@@ -38,7 +38,7 @@ my $dt_from = DateTime->new(
    time_zone => 'local',
 );
 
-($d,$m,$y) = '31/12/2019' =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/
+($d,$m,$y) = '30/11/2020' =~ /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})\z/
    or die;
 my $dt_to = DateTime->new(
    year      => $y,
