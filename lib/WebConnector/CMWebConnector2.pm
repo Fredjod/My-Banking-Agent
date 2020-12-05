@@ -65,6 +65,8 @@ sub logIn
 	}
 	else {
 		$logger->print ( "Login/password authentification failed!", Helpers::Logger::ERROR);
+		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
+		$self->loginLock();
 		return 0;
 	}
 
