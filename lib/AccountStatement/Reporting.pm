@@ -198,7 +198,7 @@ sub generateCashflowSheet
 	my $dt_lastday =  DateTime->last_day_of_month( year => $dt_currmonth->year(), month => $dt_currmonth->month() );
 	my $ws_tpl = $wb_tpl->worksheet( 2 );		
 	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name().'-'.sprintf ("%4d-%02d-%02d", $dt_currmonth->year, $dt_currmonth->month, $dt_currmonth->day ) );
-	my $balance;
+	my $balance = 0;
 	my $ops = $statPRM->getOperations();
 	if (defined $ops) {
 		$balance = @$ops[$#{$ops}]->{SOLDE};
