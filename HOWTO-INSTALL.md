@@ -11,9 +11,9 @@ In the Docker directory, you will find Docker files for executing MBA in the bui
 To build MBA on a dev box, first you have to create the image (base on a Perl image).
 Change directory to the My-Banking-Agent root project dir and type the following command for executing the provided Dockerfile:
 
-	$ docker build -t mba:build ./docker/build	
+	$ docker build -t mba:build ./mba_app/build	
 	
-Then you can run the set of tests and package the release with:
+Then you can run the set of tests and package the release with (don't forget to update the release number in the build_mba.sh file before running):
 
 	$ ./build_mba.sh
 	
@@ -22,6 +22,12 @@ Or simply run a single a test script located in t/:
 	$ docker run -it --rm -v $(pwd):/usr/src/mba -w /usr/src/mba/t mba:build CMWebConnector.t
 
 ## PROD environment
+
+### To push a new MBA release in prod
+
+Open the playbook-mba.yml, update the var "install_archive" and the run the playbook:
+
+	$ ansible-playbook -i hosts playbook-mba.yml
 
 ### Setup Onwcloud
 
