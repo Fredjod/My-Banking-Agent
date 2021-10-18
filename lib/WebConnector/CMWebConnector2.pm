@@ -46,6 +46,10 @@ sub logIn
 	$request->url('https://www.creditmutuel.fr/fr/authentification.html');
 	$cookies->add_cookie_header($request);
 	$response = $ua->request($request);
+
+	#  Adding of RGPD consent cookie to the cookieJAR:
+	my $rgpd_cookie = "lang=en-US; Path=/; Domain=www.creditmutuel.fr; eu-consent={\"/fr/\":{\"solutions\":{\"googleAnalytics\":true,\"ABTasty\":true,\"uxcustom\":true,\"DCLIC\":true,\"googleMarketingPlatform\":true,\"youtube\":true},\"expireDate\":\"2099-04-17T20:22:54.523Z\"}}; Max-Age=". 365*0.5*24*60*60;
+	$cookies->add ( "https://www.creditmutuel.fr", $rgpd_cookie );
 	
 	# Login
 	$request->method('POST');
