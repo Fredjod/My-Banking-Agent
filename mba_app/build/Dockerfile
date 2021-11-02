@@ -10,6 +10,7 @@ RUN cpanm Spreadsheet::ParseExcel
 RUN cpanm Spreadsheet::XLSX
 RUN cpanm Spreadsheet::WriteExcel
 RUN cpanm MIME::Lite
+RUN cpanm JSON 
 
 VOLUME /usr/mba/src
 WORKDIR /usr/mba/src

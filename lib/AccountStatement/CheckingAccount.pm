@@ -12,6 +12,7 @@ use Helpers::Logger;
 use Helpers::Date;
 use Helpers::ExcelWorkbook;
 use Spreadsheet::ParseExcel;
+use Data::Dumper;
 
 
 sub new
@@ -26,6 +27,8 @@ sub new
     	_accountNumber =>	initAccountNumber($prop, $configFilePath),
     	_accountDesc =>	initAccountDesc($prop, $configFilePath),
     	_accountAuth => initAccountAuth ($prop, $configFilePath),
+    	_categoriesBudgetToFollow => initCategoriesBudgetToFollow ($prop, $configFilePath),
+    	_montly_budget_objective => undef,
     	_categories => 	undef,
     	_default => undef,
     	_operations => undef,
@@ -34,7 +37,8 @@ sub new
     };
     if ( !defined $self->{_accountNumber} ) { $logger->print (  "bank account number value not found!", Helpers::Logger::ERROR); die; }
     bless $self, $class;
-    initCategoriesAndDefault($self, $prop, $configFilePath);
+    initCategoriesAndDefault ($self, $prop, $configFilePath);
+    initMonthlyBudgetObjective ($self, $prop, $configFilePath);
     return $self;
 }
 
@@ -57,6 +61,23 @@ sub initBankName {
 sub initAccountAuth {
 	my ($prop, $configFilePath) = @_;
 	return lookForPairKeyValue($prop, $prop->readParamValue("account.user.auth"), $configFilePath);	
+}
+
+sub initCategoriesBudgetToFollow  {
+	my ($prop, $configFilePath) = @_;
+	my @list = map { trim($_) } split(',', lookForPairKeyValue($prop, $prop->readParamValue("account.category.budget.tofollow"), $configFilePath));
+	return \@list;
+}
+
+sub initMonthlyBudgetObjective {
+	my ($self, $prop, $configFilePath) = @_;
+	my %monthlyBudget;
+	my $listCategory = $self->{_categoriesBudgetToFollow};
+	
+	foreach my $item ( @$listCategory ) {
+		$monthlyBudget{$item} = lookForPairKeyValue($prop, uc "$item MONTHLY BUDGET", $configFilePath);
+	}
+	$self->{_montly_budget_objective} = \%monthlyBudget;
 }
 
 sub lookForPairKeyValue {
@@ -445,7 +466,17 @@ sub getAccountAuth {
 
 sub getCategories {
 	my( $self) = @_;
-	return $self->{_categories};	
+	return $self->{_categories};
+}
+
+sub getCategoriesBudgetToFollow {
+	my( $self) = @_;
+	return $self->{_categoriesBudgetToFollow};
+}
+
+sub getMontlyBudgetObjective {
+	my( $self) = @_;
+	return $self->{_montly_budget_objective};
 }
 
 sub getOperations {

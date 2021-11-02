@@ -9,6 +9,8 @@ use Helpers::Logger;
 use Helpers::ConfReader;
 use Data::Dumper;
 use Helpers::Date;
+use utf8;
+use JSON;
 
 
 sub getAccountConfigFilesName {
@@ -102,7 +104,7 @@ sub getActualsFilePath {
 	return $filePath;
 }
 
-sub getPreviousMonthCacheFilePath {
+sub getPreviousMonthCacheFilePath { # to be called with the previous month statement only
 	my ( $class, $stat ) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
@@ -122,6 +124,90 @@ sub getPreviousMonthCacheFilePath {
 				 
 	return getReportingDirname ( $number ).$prop->readParamValue('account.previous.month.cache').".".$prefix;
 }	
+
+sub getPreviousMonthCacheObjectiveFilePath { # to be called with the Previous month statement only
+	my ( $class, $stat ) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+	my $number = $stat->getAccountNumber ();
+	$number =~ s/\s//g;
+	
+	my $prefix = sprintf("%04d%02d", $stat->getMonth->year(), $stat->getMonth->month() );
+	my $previousMonthObjectiveCacheFileName = getReportingDirname ( $number ).$prop->readParamValue('previous.month.objective.cache').".".$prefix;
+	my $lastCurrentObjectiveCacheFileName = getReportingDirname ( $number ).$prop->readParamValue('current.month.objective.cache').".".$prefix;
+	
+	# if previous month objective file does not exist and the last month current objectives file exists, then move it to previous month objective
+	if (! -e $previousMonthObjectiveCacheFileName && -e $lastCurrentObjectiveCacheFileName) {
+		rename ($lastCurrentObjectiveCacheFileName, $previousMonthObjectiveCacheFileName); 
+		$logger->print( "Rename: $lastCurrentObjectiveCacheFileName to: $previousMonthObjectiveCacheFileName", Helpers::Logger::INFO);
+	}
+
+	# if needed, clean the old cache file on the disk
+	my $dth = Helpers::Date->new($stat->getMonth());
+	my $oldDateCache = $dth->rollPreviousMonth();
+	my $oldFileCachePrefix = sprintf("%04d%02d", $oldDateCache->year(), $oldDateCache->month() );
+	my $oldFileCacheToDelete = getReportingDirname($number).$prop->readParamValue('previous.month.objective.cache').".".$oldFileCachePrefix;
+	if (-e $oldFileCacheToDelete ) {
+		unlink glob $oldFileCacheToDelete;
+		$logger->print ( "Deleting old cache file: $oldFileCacheToDelete", Helpers::Logger::INFO);
+	}
+			 
+	return $previousMonthObjectiveCacheFileName;
+}
+
+sub getCurrentMonthCacheObjectiveFilePath { # to be called with the Current month statement only
+	my ( $class, $stat ) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+	my $number = $stat->getAccountNumber ();
+	$number =~ s/\s//g;
+	
+	my $prefix = sprintf("%04d%02d", $stat->getMonth->year(), $stat->getMonth->month() );
+	return getReportingDirname ( $number ).$prop->readParamValue('current.month.objective.cache').".".$prefix;
+}
+
+sub readBudgetObjectiveCacheFile {
+	my ( $class, $filePath ) = @_;
+	my $logger = Helpers::Logger->new();
+	open IN, "<", $filePath or do {
+		$logger->print ( "File ".$filePath." cant't be opened!", Helpers::Logger::INFO);
+		return undef;
+	};
+	my %record;
+	while ( my $line = <IN> ) {
+		$line =~ s/\r|\n//g;
+		my @recTxt = split (':', $line);
+		$record{$recTxt[0]} = $recTxt[1];
+	}
+	close IN;
+	return \%record;
+}
+
+sub writeBudgetObjectiveCacheFile {
+	my ( $class, $filePath, $record ) = @_;
+	my $logger = Helpers::Logger->new();
+	my $recordTxt = "";
+	foreach my $key ( keys %{$record} ) {
+		$recordTxt .= "$key:".$record->{$key}."\n";
+	}
+	open OUT, ">", $filePath or
+		$logger->print ( "File ".$filePath." cant't be written!", Helpers::Logger::ERROR);
+	print OUT $recordTxt;
+	close OUT;
+}
+
+sub writeJSONFile {
+	my ( $class, $fileName, $record ) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+	
+	my $filePath = $prop->readParamValue('webreport.json.reporting').'/'.$fileName;
+	open OUT, ">", $filePath or
+		$logger->print ( "File ".$filePath." cant't be written!", Helpers::Logger::ERROR);
+	print OUT encode_json $record;
+	close OUT;
+}
+
 
 sub deleteOldSavingFiles {
 	my ( $class, $dt ) = @_;

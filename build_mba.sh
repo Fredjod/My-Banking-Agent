@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=3.3
+VERSION=4.0
 
 # Create/Update the Perl Docker image
 docker build -t mba:build ./mba_app/build
@@ -18,6 +18,7 @@ testFilesArray=( "ConfReader.t"
 				"Reporting1.t"
 				"Reporting2.t"
 				"Reporting3.t"
+				"Reporting4.t"
 				"SavingAccount.t"
 				)
 

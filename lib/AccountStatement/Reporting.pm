@@ -15,6 +15,7 @@ use Helpers::SendMail;
 use Helpers::Date;
 use AccountStatement::CheckingAccount;
 use AccountStatement::PlannedOperation;
+use Data::Dumper;
 
 
 sub new
@@ -80,6 +81,83 @@ sub createActualsReport {
 	$self->generateDetailsSheet($self->getAccDataMTD(), $wb_out, $currency_format, $date_format);
 	$self->generateCashflowSheet( $self->getAccDataMTD(), $self->getAccDataPRM(), $wb_out, $currency_format, $date_format, $current_format_actuals, "ActualReport");
 	$self->generateVariationSheet ( $self->getAccDataMTD(), $wb_out, $currency_format, $date_format );
+}
+
+sub computeCurrentMontBudgetObjective {
+	my( $self) = @_;
+	my %currentMontBudgetObjective;
+	my $previousMonthObjective = Helpers::MbaFiles->readBudgetObjectiveCacheFile(Helpers::MbaFiles->getPreviousMonthCacheObjectiveFilePath ( $self->getAccDataPRM ) );
+	my $monthlyBudgetObjective = $self->getAccDataMTD->getMontlyBudgetObjective();
+	my $categoryToFollow = $self->getAccDataMTD->getCategoriesBudgetToFollow();
+	my $logger = Helpers::Logger->new();
+	
+	my $totalObjectiveAchivement=0;
+	foreach my $category (@$categoryToFollow) {
+		my $a = $monthlyBudgetObjective->{$category};
+		my $b = $a;
+		if ( defined($previousMonthObjective) ) { $b = $previousMonthObjective->{$category} }	
+		my @where = ('CATEGORY', $category);
+		my $result = $self->getAccDataPRM->groupByWhere ('CATEGORY', 'DEBIT', \@where);
+		my $c = abs(@$result[1]); # total en valeur absolue
+		$totalObjectiveAchivement += ( ($a - $b) + ($c - $b) );
+	}
+	my $nbrOfCategorie=scalar @$categoryToFollow;
+	foreach my $category (@$categoryToFollow) {
+		my $a = $monthlyBudgetObjective->{$category};
+		$currentMontBudgetObjective{$category} = $a - sprintf("%.2f", $totalObjectiveAchivement/$nbrOfCategorie);
+	}
+	  
+    $logger->print ( "Writing current month objective cache file: ".Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ($self->getAccDataMTD), Helpers::Logger::DEBUG);
+	Helpers::MbaFiles->writeBudgetObjectiveCacheFile(Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ($self->getAccDataMTD), \%currentMontBudgetObjective);
+}
+	
+sub generateBudgetJSON {
+	my( $self) = @_;
+	my %jsonRecord;
+	# Date field
+	$jsonRecord{'date'} = sprintf("%2d/%02d/%04d", $self->getAccDataMTD->getMonth->day(), $self->getAccDataMTD->getMonth->month(), $self->getAccDataMTD->getMonth->year() );
+	my %currentMontBudgetObjective;
+	my $logger = Helpers::Logger->new();
+	
+	# Labels fied
+	my $categoryToFollow = $self->getAccDataMTD->getCategoriesBudgetToFollow();
+	my @labels = @$categoryToFollow;
+	push(@labels, "Total");
+	$jsonRecord{'labels'} = \@labels;
+	
+	# Objectives current month objective and expected month to date
+	my @dataObjecif;
+	my @dataExpected;
+	my $total=0;
+	my $dtd = $self->getAccDataMTD->getMonth->day();
+	my $currentMonthObjective = Helpers::MbaFiles->readBudgetObjectiveCacheFile(Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ( $self->getAccDataMTD ) );
+	foreach my $category ( keys %{$currentMonthObjective} ) {
+		push(@dataObjecif, $currentMonthObjective->{$category});
+		push(@dataExpected, sprintf("%.2f", $currentMonthObjective->{$category}*$dtd/30));
+		$total += $currentMonthObjective->{$category};
+	}
+	push(@dataObjecif, $total);
+	push(@dataExpected, sprintf("%.2f", $total*$dtd/30));
+	$jsonRecord{'data_objectif'} = \@dataObjecif;
+	$jsonRecord{'data_attendu'} = \@dataExpected;
+	
+	# Expenses by category
+	my @dataExpenses;
+	$total=0;
+
+	foreach my $category (@$categoryToFollow) {
+		my @where = ('CATEGORY', $category);
+		my $result = $self->getAccDataMTD->groupByWhere ('CATEGORY', 'DEBIT', \@where);
+		push(@dataExpenses, abs( @$result[1]) );
+		$total += abs (@$result[1]);
+	}
+	push(@dataExpenses, $total);
+	$jsonRecord{'data_depenses'} = \@dataExpenses;
+
+	$logger->print ( "Writting JSON file budget.json" , Helpers::Logger::DEBUG);
+	$logger->print ( "JSON scalar dump: ". Dumper(\%jsonRecord) , Helpers::Logger::DEBUG);
+		
+	Helpers::MbaFiles->writeJSONFile("budget.json", \%jsonRecord);
 }
 
 sub generateSummarySheet

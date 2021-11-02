@@ -38,13 +38,16 @@ saving.history.balance.max = 36
 saving.history.details.max = 1000
 ###
 
-### Excel files path
+### Various Files path
 root.account.config = ./user/accounts
 account.config.pattern = ^config\.\d+\.xls$
 saving.config.pattern = ^config\.saving.*\.xls$
 root.account.reporting = ./user/reporting
 dir.account.closing = closing
 account.previous.month.cache = .previous.month.cache
+previous.month.objective.cache = .previous.month.budget.objective.cache
+current.month.objective.cache = .current.month.budget.objective.cache
+webreport.json.reporting = ./user/web-report/json
 account.reporting.closing.prefix = _closing.xls
 account.reporting.yearly.prefix = _yearly.xls
 account.reporting.forecasted.prefix = _forecasted.xls
@@ -79,6 +82,7 @@ account.user.auth = BANK ACCOUNT AUTH
 account.number.label = BANK ACCOUNT NUMBER
 account.desc.label = BANK ACCOUNT DESC
 bank.name.label = BANK NAME
+account.category.budget.tofollow = BUDGET CATEGORY
 income.families = MONTHLY INCOMES; EXCEPTIONAL INCOMES
 expense.families = MONTHLY EXPENSES; WEEKLY EXPENSES; EXCEPTIONAL EXPENSES
 operation.keyword.default = ^DEFAULT[\-|\+](\d+)$
