@@ -38,6 +38,9 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 		$logger->print ( "Processing the yearly closing report", Helpers::Logger::INFO);
 		my $accountYTD = Helpers::Statement->buildYTDStatement($accountConfigFilePath, $accountPRM);
 		$reportingProcessor->createYearlyClosingReport($accountYTD);
+		if ( $accountMTD->getCategoriesBudgetToFollow ) { # This account uses web report interface
+			$reportProcessor->computeCurrentMontBudgetObjective();
+		}
 	}
 	
 	# Check if the forecasted report processing is needed
@@ -50,6 +53,14 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 		# Generate the actuals reporting
 		$logger->print ( "Processing the actuals report", Helpers::Logger::INFO);
 		$reportingProcessor->createActualsReport();
+	
+		# Generate JSON Files for Web report interface
+		if ( $accountMTD->getCategoriesBudgetToFollow ) { # This account uses web report interface
+			if (! -e Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ($accountMTD)) {
+				$reportProcessor->computeCurrentMontBudgetObjective();
+			}
+			$reportProcessor->generateBudgetJSON();
+		}
 	
 		# Run the balance control
 		$logger->print ( "Run the balance check", Helpers::Logger::INFO);
