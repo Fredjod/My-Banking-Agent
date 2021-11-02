@@ -105,8 +105,7 @@ sub computeCurrentMontBudgetObjective {
 	foreach my $category (@$categoryToFollow) {
 		my $a = $monthlyBudgetObjective->{$category};
 		$currentMontBudgetObjective{$category} = $a - sprintf("%.2f", $totalObjectiveAchivement/$nbrOfCategorie);
-	}
-	  
+	} 
     $logger->print ( "Writing current month objective cache file: ".Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ($self->getAccDataMTD), Helpers::Logger::DEBUG);
 	Helpers::MbaFiles->writeBudgetObjectiveCacheFile(Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ($self->getAccDataMTD), \%currentMontBudgetObjective);
 }
@@ -155,7 +154,6 @@ sub generateBudgetJSON {
 	$jsonRecord{'data_depenses'} = \@dataExpenses;
 
 	$logger->print ( "Writting JSON file budget.json" , Helpers::Logger::DEBUG);
-	$logger->print ( "JSON scalar dump: ". Dumper(\%jsonRecord) , Helpers::Logger::DEBUG);
 		
 	Helpers::MbaFiles->writeJSONFile("budget.json", \%jsonRecord);
 }

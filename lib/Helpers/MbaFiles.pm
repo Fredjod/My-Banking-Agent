@@ -208,6 +208,23 @@ sub writeJSONFile {
 	close OUT;
 }
 
+sub readJSONFile { # For testing purpose only
+	my ( $class, $fileName ) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+	
+	my $filePath = $prop->readParamValue('webreport.json.reporting').'/'.$fileName;
+	open IN, "<", $filePath or do {
+		$logger->print ( "File ".$filePath." cant't be opened!", Helpers::Logger::INFO);
+		return undef;
+	};
+	my $JSONtext;
+	while ( my $line = <IN> ) {
+		$JSONtext .= "$line\n"
+	}
+	close IN;
+	return decode_json $JSONtext;
+}
 
 sub deleteOldSavingFiles {
 	my ( $class, $dt ) = @_;
