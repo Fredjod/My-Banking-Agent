@@ -131,7 +131,7 @@ sub generateBudgetJSON {
 	my $total=0;
 	my $dtd = $self->getAccDataMTD->getMonth->day();
 	my $currentMonthObjective = Helpers::MbaFiles->readBudgetObjectiveCacheFile(Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ( $self->getAccDataMTD ) );
-	foreach my $category ( keys %{$currentMonthObjective} ) {
+	foreach my $category (@$categoryToFollow) {
 		push(@dataObjecif, $currentMonthObjective->{$category});
 		push(@dataExpected, sprintf("%.2f", $currentMonthObjective->{$category}*$dtd/30));
 		$total += $currentMonthObjective->{$category};
