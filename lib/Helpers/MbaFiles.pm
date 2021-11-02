@@ -200,11 +200,15 @@ sub writeJSONFile {
 	my ( $class, $fileName, $record ) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
+	my $json = JSON->new();
 	
 	my $filePath = $prop->readParamValue('webreport.json.reporting').'/'.$fileName;
-	open OUT, ">", $filePath or
-		$logger->print ( "File ".$filePath." cant't be written!", Helpers::Logger::ERROR);
-	print OUT encode_json $record;
+	
+	$json->canonical('true');
+	$json->indent('true');
+	$json->utf8('true');
+	open OUT, ">", $filePath or $logger->print ( "File ".$filePath." cant't be written!", Helpers::Logger::ERROR);
+	print OUT $json->encode($record);
 	close OUT;
 }
 

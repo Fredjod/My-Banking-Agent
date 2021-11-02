@@ -39,7 +39,7 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 		my $accountYTD = Helpers::Statement->buildYTDStatement($accountConfigFilePath, $accountPRM);
 		$reportingProcessor->createYearlyClosingReport($accountYTD);
 		if ( $accountMTD->getCategoriesBudgetToFollow ) { # This account uses web report interface
-			$reportProcessor->computeCurrentMontBudgetObjective();
+			$reportingProcessor->computeCurrentMonthBudgetObjective();
 		}
 	}
 	
@@ -57,9 +57,9 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 		# Generate JSON Files for Web report interface
 		if ( $accountMTD->getCategoriesBudgetToFollow ) { # This account uses web report interface
 			if (! -e Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ($accountMTD)) {
-				$reportProcessor->computeCurrentMontBudgetObjective();
+				$reportingProcessor->computeCurrentMonthBudgetObjective();
 			}
-			$reportProcessor->generateBudgetJSON();
+			$reportingProcessor->generateJSONWebreport();
 		}
 	
 		# Run the balance control

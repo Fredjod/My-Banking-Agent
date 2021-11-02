@@ -65,7 +65,11 @@ sub initAccountAuth {
 
 sub initCategoriesBudgetToFollow  {
 	my ($prop, $configFilePath) = @_;
-	my @list = map { trim($_) } split(',', lookForPairKeyValue($prop, $prop->readParamValue("account.category.budget.tofollow"), $configFilePath));
+	my @list = ();
+	my $values = lookForPairKeyValue($prop, $prop->readParamValue("account.category.budget.tofollow"), $configFilePath);
+	if (defined ($values)) {
+		@list = map { trim($_) } split(',', $values);
+	}
 	return \@list;
 }
 
@@ -85,7 +89,7 @@ sub lookForPairKeyValue {
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( $configFilePath );	
 	my $worksheet = $workbook->worksheet($prop->readParamValue("worksheet.categories.name"));		
 	my ( $row_min, $row_max ) = $worksheet->row_range();
-	my $value;
+	my $value = undef;
 	my $row;
 	for $row ( $row_min .. $row_max ) {
 		my $cell = $worksheet->get_cell( $row, 0 );

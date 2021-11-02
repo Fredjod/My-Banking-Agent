@@ -83,9 +83,16 @@ sub createActualsReport {
 	$self->generateVariationSheet ( $self->getAccDataMTD(), $wb_out, $currency_format, $date_format );
 }
 
-sub computeCurrentMontBudgetObjective {
+sub generateJSONWebreport {
 	my( $self) = @_;
-	my %currentMontBudgetObjective;
+	$self->generateBudgetJSON();
+	$self->generateDetailsJSON();
+	$self->generateCashflowJSON();
+}
+
+sub computeCurrentMonthBudgetObjective {
+	my( $self) = @_;
+	my %currentMonthBudgetObjective;
 	my $previousMonthObjective = Helpers::MbaFiles->readBudgetObjectiveCacheFile(Helpers::MbaFiles->getPreviousMonthCacheObjectiveFilePath ( $self->getAccDataPRM ) );
 	my $monthlyBudgetObjective = $self->getAccDataMTD->getMontlyBudgetObjective();
 	my $categoryToFollow = $self->getAccDataMTD->getCategoriesBudgetToFollow();
@@ -104,10 +111,10 @@ sub computeCurrentMontBudgetObjective {
 	my $nbrOfCategorie=scalar @$categoryToFollow;
 	foreach my $category (@$categoryToFollow) {
 		my $a = $monthlyBudgetObjective->{$category};
-		$currentMontBudgetObjective{$category} = $a - sprintf("%.2f", $totalObjectiveAchivement/$nbrOfCategorie);
+		$currentMonthBudgetObjective{$category} = $a - sprintf("%.2f", $totalObjectiveAchivement/$nbrOfCategorie);
 	} 
     $logger->print ( "Writing current month objective cache file: ".Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ($self->getAccDataMTD), Helpers::Logger::DEBUG);
-	Helpers::MbaFiles->writeBudgetObjectiveCacheFile(Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ($self->getAccDataMTD), \%currentMontBudgetObjective);
+	Helpers::MbaFiles->writeBudgetObjectiveCacheFile(Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ($self->getAccDataMTD), \%currentMonthBudgetObjective);
 }
 	
 sub generateBudgetJSON {
@@ -115,7 +122,6 @@ sub generateBudgetJSON {
 	my %jsonRecord;
 	# Date field
 	$jsonRecord{'date'} = sprintf("%2d/%02d/%04d", $self->getAccDataMTD->getMonth->day(), $self->getAccDataMTD->getMonth->month(), $self->getAccDataMTD->getMonth->year() );
-	my %currentMontBudgetObjective;
 	my $logger = Helpers::Logger->new();
 	
 	# Labels fied
@@ -153,9 +159,92 @@ sub generateBudgetJSON {
 	push(@dataExpenses, $total);
 	$jsonRecord{'data_depenses'} = \@dataExpenses;
 
-	$logger->print ( "Writting JSON file budget.json" , Helpers::Logger::DEBUG);
-		
+	$logger->print ( "Writing JSON file budget.json" , Helpers::Logger::DEBUG);	
 	Helpers::MbaFiles->writeJSONFile("budget.json", \%jsonRecord);
+}
+
+sub generateDetailsJSON {
+	my( $self) = @_;
+	my $operations = $self->getAccDataMTD->getOperations();
+	my $categoryToFollow = $self->getAccDataMTD->getCategoriesBudgetToFollow();
+	my @jsonOpsFiltered;
+	my $logger = Helpers::Logger->new();
+
+	if (defined $operations) {
+		foreach my $category (@$categoryToFollow) {
+			@jsonOpsFiltered = ();
+			foreach my $op (@$operations ) {
+				if ($op->{'CATEGORY'} eq $category) {
+					my %record;
+					$record{'Date'} = $op->{'DATE'};
+					$record{'€'} = sprintf ("%.2f", abs($op->{'DEBIT'}) );
+					$record{'Description '.$category} = $op->{'LIBELLE'};
+					push(@jsonOpsFiltered, \%record);
+			   }
+			}
+			$logger->print ( "Writing JSON file ".$category."_details.json" , Helpers::Logger::DEBUG);	
+			Helpers::MbaFiles->writeJSONFile($category.'_details.json', \@jsonOpsFiltered);
+		}
+		$logger->print ( "Can not generate Details.json because no operation yet this month" , Helpers::Logger::DEBUG);	
+	}
+	
+}
+
+sub generateCashflowJSON {
+	my( $self) = @_;
+	my $data;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $logger = Helpers::Logger->new();
+	my %jsonRecord;
+
+	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( Helpers::MbaFiles->getActualsFilePath ( $self->getAccDataMTD ));	
+	my $worksheet = $workbook->worksheet(1); # cashflow sheet	
+	$data = Helpers::ExcelWorkbook->readFromExcelSheetDetails ($worksheet);
+
+	if (defined $data) {
+
+		# Date field
+		$jsonRecord{'date'} = sprintf("%2d/%02d/%04d", $self->getAccDataMTD->getMonth->day(), $self->getAccDataMTD->getMonth->month(), $self->getAccDataMTD->getMonth->year() );
+
+
+		# Labels JSON field (days of the month)
+		my @labels;
+		push (@labels, "00"); # To have the balance at the end of previous month
+		for my $row ( 1 .. $#{$data} ) { # skipping the first line containing the column headers
+			if (defined @$data[$row]->[0]) {
+				if (@$data[$row]->[0]->{value} =~ qr[^(\d{1,2})/(\d{1,2})/(\d{4})$]) { #date column?
+					push(@labels, $1);
+				} else { next; }
+			} else { next; }
+		}
+		$jsonRecord{'labels'} = \@labels;
+		
+		# data_attendu JSON field (balance per day real and expected expenses/incomes till the end of the month)
+		my @balancePerDay;
+		push (@balancePerDay, $self->getAccDataPRM()->getBalance() ); # start with the balance at the end of the previous month
+		for my $row ( 1 .. $#{$data} ) { # skipping the first line containing the column headers
+			my $totalLine = 0;
+			for my $col ( 1 .. $#{@$data[$row]}-1 ) { # skipping the first colum containing the date and the last column containing the balance excel formula.
+				if (defined @$data[$row]->[$col]) {
+					if ( @$data[$row]->[$col]->{unformatted} =~ /^[+-]?\d+(\.\d+)?$/ ) { # currency column?
+						$totalLine += @$data[$row]->[$col]->{unformatted}; 
+					} else { next; }			
+				} else { next; }
+			}
+			push (@balancePerDay, $balancePerDay[$#balancePerDay]+$totalLine); # sum the total of expenses/incomes of the day with the balance of day before
+		}
+		$jsonRecord{'data_attendu'} = \@balancePerDay;
+		
+		# data_depenses JSON field (balance month to date, based only on real expenes / incomes)
+		my @balanceMTD;
+		for my $i (0 .. $self->getAccDataMTD->getMonth->day() ) { # Go from 0 to the balance of the current day (last day of the month)
+			push(@balanceMTD, $balancePerDay[$i]);
+		}
+		$jsonRecord{'data_depenses'} = \@balanceMTD;
+		$logger->print ( "Writing JSON file cashflow.json", Helpers::Logger::DEBUG);	
+		Helpers::MbaFiles->writeJSONFile("cashflow.json", \%jsonRecord);
+	}
+	$logger->print ( "Can not generate cashflow.json because no operation yet this month", Helpers::Logger::DEBUG);
 }
 
 sub generateSummarySheet

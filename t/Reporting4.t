@@ -22,15 +22,16 @@ require_ok "AccountStatement::CheckingAccount";
 my $dt = DateTime->new(
 	   year      => 2015,
 	   month     => 6,
-	   day       => 20,
+	   day       => 15,
 	   time_zone => 'local',
 	);
 my $statPRM = Helpers::Statement->buildPreviousMonthStatement($accountConfigFilePath, $dt);
 my $statMTD = Helpers::Statement->buildCurrentMonthStatement($accountConfigFilePath, $dt);
 my $reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 
-$reportProcessor->computeCurrentMontBudgetObjective();
-$reportProcessor->generateBudgetJSON();
+$reportProcessor->computeCurrentMonthBudgetObjective();
+$reportProcessor->generateJSONWebreport();
+
 my $json=Helpers::MbaFiles->readJSONFile("budget.json");
 is($json->{'data_objectif'}[2], 4003.44, 'Total budget objective for june is 4 003.44');
 
@@ -45,7 +46,7 @@ $statPRM = Helpers::Statement->buildPreviousMonthStatement($accountConfigFilePat
 $statMTD = Helpers::Statement->buildCurrentMonthStatement($accountConfigFilePath, $dt);
 $reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 
-$reportProcessor->computeCurrentMontBudgetObjective();
+$reportProcessor->computeCurrentMonthBudgetObjective();
 $reportProcessor->generateBudgetJSON();
 $json=Helpers::MbaFiles->readJSONFile("budget.json");
 is($json->{'data_objectif'}[2], 6636.9, 'Total budget objective for june is 6 636.90');
