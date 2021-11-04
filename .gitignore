@@ -26,4 +26,4 @@ nytprof.out
 /*.tar.gz
 /t/reporting/*
 /t/*.cookies.txt
-t/json/budget.json
+/web-report/public-html/mba-report/json/*.json

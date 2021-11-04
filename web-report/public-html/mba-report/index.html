@@ -1,0 +1,170 @@
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<title>MBA Web Report</title>
+		<link rel="stylesheet" href="report.css">
+		<link rel="icon" type="image/png" href="favicon.png">
+		<link rel="apple-touch-icon" type="image/png" href="favicon.png">
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<script type="text/javascript">
+
+			function json2Table(json, tableStyle) {
+
+			  //Map over columns, make headers,join into string
+			  let cols = Object.keys(json[0]);
+			  let headerRow = cols
+			    .map(col => `<th>${col}</th>`)
+			    .join("");
+
+			  //map over array of json objs, for each row(obj) map over column values,
+			  //and return a td with the value of that object for its column
+			  //take that array of tds and join them
+			  //then return a row of the tds
+			  //finally join all the rows together
+			  let rows = json
+			    .map(row => {
+			      let tds = cols.map(col => `<td>${row[col]}</td>`).join("");
+			      return `<tr>${tds}</tr>`;
+			    })
+			    .join("");
+
+			  // Compute the total amount
+			  let total = 0;
+			  json.forEach(function(item){ total += parseFloat(Object.values(item)[2].replace(/\s/g, "").replace(",", ".")); });
+			  total=(total).toFixed(2);
+
+
+			  //build the table
+			  const table = `
+				<table class="${tableStyle}">
+					<thead>
+						<tr>${headerRow}</tr>
+					<thead>
+					<tbody>
+						${rows}
+					<tr> <td colspan="3" align="right" style='font-size:120%'>${total} €</td></tr>
+					<tbody>
+				<table>`;
+
+			  return table;
+			}
+
+			function readTextFile(file, callback) {
+			    var xhr = new XMLHttpRequest();
+			    xhr.overrideMimeType("application/json");
+			    xhr.open("GET", file+'?_nocahe='+new Date().getTime(), true);
+			    xhr.setRequestHeader("Cache-Control", "no-cache, no-store, max-age=0");
+			    xhr.onreadystatechange = function() {
+			        if (xhr.readyState === 4 && xhr.status == "200") {
+			            callback(xhr.responseText);
+			        }
+			    }
+			    xhr.send();
+			}
+
+			// Budget
+			readTextFile("/mba-report/json/budget.json", function(text){
+		    	const budget = JSON.parse(text);
+				const dataBudget = {
+				  labels: budget.labels,
+				  datasets: [{
+				    label: 'Objectifs',
+				    backgroundColor: 'rgb(70,130,180)',
+				    borderColor: 'rgb(70,130,180)',
+				    data: budget.data_objectif,
+				  },
+				  {
+				  	label: 'Attendu',
+				    backgroundColor: 'rgb(135,206,250)',
+				    borderColor: 'rgb(135,206,250)',
+				    data: budget.data_attendu,
+				  },
+				  {
+				  	label: 'Depenses '+budget.date,
+				    backgroundColor: 'rgb(255,140,0)',
+				    borderColor: 'rgb(255,140,0)',
+				    data: budget.data_depenses,
+				  }
+				  ]
+				};
+				const configBudget = {
+				  type: 'bar',
+				  data: dataBudget,
+				  options: { }
+				};
+				Chart.defaults.font.size = 22;
+  				const budgetChart = new Chart(
+    				document.getElementById('BudgetChart'),
+    				configBudget
+  				);			
+			});			
+
+			// Month tresorerie
+
+			readTextFile("/mba-report/json/cashflow.json", function(text){
+		    	const treso = JSON.parse(text);
+				const dataTreso = {
+				  labels: treso.labels,
+				  datasets: [{
+				    label: 'Tresorerie '+treso.date,
+				    backgroundColor: 'rgb(255,140,0)',
+				    borderColor: 'rgb(255,140,0)',
+				    data: treso.data_depenses,
+				    order: 1,
+				  },
+				  {
+				    label: 'Attendu',
+				    backgroundColor: 'rgb(255,255,255)',
+				    borderColor: 'rgb(192,192,192)',
+					borderDash: [10,5],
+				    data: treso.data_attendu,
+				    order: 2,
+				  }
+				  ]
+				};
+				console.log(treso);
+				const configTreso = {
+				  type: 'line',
+				  data: dataTreso,
+				  options: {
+					  }
+				};
+  				const tresoChart = new Chart(
+    				document.getElementById('TresoChart'),
+    				configTreso
+  				);			
+			});
+
+			readTextFile("/mba-report/json/Alimentation_details.json", function(text){
+		    	const food_details = JSON.parse(text);
+		    	foodTable = document.getElementById('foodTable')
+				foodTable.innerHTML = json2Table(food_details, "styled-table-food")
+
+			});
+
+			readTextFile("/mba-report/json/Divers_details.json", function(text){
+		    	const divers_details = JSON.parse(text);
+		    	diversTable = document.getElementById('diversTable')
+				diversTable.innerHTML = json2Table(divers_details, "styled-table-divers")
+
+			});
+		</script>
+	</head>
+
+	<body>
+		<div>
+		  <canvas id="BudgetChart"></canvas>
+		</div>
+		<hr>
+		<div>
+		  <canvas id="TresoChart"></canvas>
+		</div>
+		<div>
+			<p id='foodTable'>
+		</div>
+		<div>
+			<p id='diversTable'>
+		</div>
+	</body>
+
+</html>
