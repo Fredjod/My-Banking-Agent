@@ -78,7 +78,7 @@ my $pivot2 = $statement->groupBy ('CATEGORY', 'DEBIT');
 # print Dumper @$pivot2[0], "\n";
 # print "total: ", @$pivot2[1],"\n";
 is(@$pivot2[0]->{'Assurance'}, -127.3, 'Check Assurance total category');
-is(@$pivot2[0]->{'Depenses courantes'}, -1243.43, 'Check Depenses courantes total category');
+is(@$pivot2[0]->{'Divers'}, -2233.18, 'Check Depenses courantes total category');
 is(@$pivot2[1], -7870.73, 'Check total debits');
 
 my $date = $statement->getMonth();

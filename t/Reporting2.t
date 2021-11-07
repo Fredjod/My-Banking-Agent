@@ -39,9 +39,9 @@ $reportProcessor->createYearlyClosingReport($accountYTD);
 my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRM );
 my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 my $ws = $wb->worksheet( 0 ); # Summary
-is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'NoOperationInCurrentMonth::Closing::Summary: Cell B10 value?');
-is( $ws->get_cell( 16, 1 )->unformatted(), -647.22, 'NoOperationInCurrentMonth::Closing::Summary: Cell B17 value?');
-is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'NoOperationInCurrentMonth::Closing::Summary: Cell E12 value?');
+is( $ws->get_cell( 13, 1 )->unformatted(), -17.97, 'NoOperationInCurrentMonth::Closing::Summary: Cell B14 value?');
+is( $ws->get_cell( 9, 1 )->unformatted(), -647.22, 'NoOperationInCurrentMonth::Closing::Summary: Cell B10 value?');
+is( $ws->get_cell( 12, 4 )->unformatted(), 130, 'NoOperationInCurrentMonth::Closing::Summary: Cell E13 value?');
 $ws = $wb->worksheet( 1 ); # Details
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'NoOperationInCurrentMonth::Closing::Details: Cell E4 value?');
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'NoOperationInCurrentMonth::Closing::Details: Cell C9 value?');
@@ -50,7 +50,7 @@ is( $ws->get_cell( 20, 6 )->unformatted(), 8774.52, 'NoOperationInCurrentMonth::
 $XLSfile = Helpers::MbaFiles->getYearlyClosingFilePath( $statPRM );
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 ); # Yearly Summary
-is( $ws->get_cell( 9, 4 )->unformatted(), 2777.55, 'YealyReport::Summary:: Cell E10 value?');
+is( $ws->get_cell( 10, 4 )->unformatted(), 2777.55, 'YealyReport::Summary:: Cell E11 value?');
 $ws = $wb->worksheet( 1 ); # Details Summary
 is( $ws->get_cell( 143, 2 )->unformatted(), 340, 'YealyReport::Details:: Cell C144 value?');
 

@@ -58,9 +58,9 @@ my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRM );
 my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 my $ws = $wb->worksheet( 0 ); # Summary
 is( $ws->get_cell( 5, 1 )->unformatted(), 8075.14, 'Closing::Summary: Cell B6 value?');
-is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'Closing::Summary: Cell B10 value?');
-is( $ws->get_cell( 16, 1 )->unformatted(), -1006.82, 'Closing::Summary: Cell B17 value?');
-is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'Closing::Summary: Cell E12 value?');
+is( $ws->get_cell( 13, 1 )->unformatted(), -17.97, 'Closing::Summary: Cell B14 value?');
+is( $ws->get_cell( 9, 1 )->unformatted(), -1006.82, 'Closing::Summary: Cell B10 value?');
+is( $ws->get_cell( 12, 4 )->unformatted(), 130, 'Closing::Summary: Cell E11 value?');
 $ws = $wb->worksheet( 1 ); # Details
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'Closing::Details: Cell E4 value?');
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'Closing::Details: Cell C9 value?');
@@ -101,9 +101,9 @@ $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRMCache );
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 ); # Summary
 is( $ws->get_cell( 5, 1 )->unformatted(), 8075.14, 'Closing::Summary: Cell B6 value?');
-is( $ws->get_cell( 9, 1 )->unformatted(), -17.97, 'CacheData::Closing::Summary: Cell B10 value?');
-is( $ws->get_cell( 16, 1 )->unformatted(), -1006.82, 'CacheData::Closing::Summary: Cell B17 value?');
-is( $ws->get_cell( 11, 4 )->unformatted(), 130, 'CacheData::Closing::Summary: Cell E12 value?');
+is( $ws->get_cell( 13, 1 )->unformatted(), -17.97, 'CacheData::Closing::Summary: Cell B10 value?');
+is( $ws->get_cell( 9, 1 )->unformatted(), -1006.82, 'CacheData::Closing::Summary: Cell B17 value?');
+is( $ws->get_cell( 12, 4 )->unformatted(), 130, 'CacheData::Closing::Summary: Cell E12 value?');
 $ws = $wb->worksheet( 1 ); # Details
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'CacheData::Closing::Details: Cell E4 value?');
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'CacheData::Closing::Details: Cell C9 value?');

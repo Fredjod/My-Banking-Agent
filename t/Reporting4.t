@@ -33,7 +33,7 @@ $reportProcessor->computeCurrentMonthBudgetObjective();
 $reportProcessor->generateJSONWebreport();
 
 my $json=Helpers::MbaFiles->readJSONFile("budget.json");
-is($json->{'data_objectif'}[2], 4003.44, 'Total budget objective for june is 4 003.44');
+is($json->{'data_objectif'}[2], 2760, 'Total budget objective for june is 4 003.44');
 
 # Generate Jully JSON file
 $dt = DateTime->new(
@@ -49,4 +49,4 @@ $reportProcessor = AccountStatement::Reporting->new($statPRM, $statMTD);
 $reportProcessor->computeCurrentMonthBudgetObjective();
 $reportProcessor->generateBudgetJSON();
 $json=Helpers::MbaFiles->readJSONFile("budget.json");
-is($json->{'data_objectif'}[2], 6636.9, 'Total budget objective for june is 6 636.90');
+is($json->{'data_objectif'}[2], 6195.54, 'Total budget objective for july is 6 636.90');

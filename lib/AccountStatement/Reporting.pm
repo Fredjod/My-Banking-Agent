@@ -300,7 +300,10 @@ sub generateSummarySheet
 			}
 		}
 	}
-	$ws_out->set_column(0, 4,  15);
+	$ws_out->set_column(0, 0,  25);
+	$ws_out->set_column(2, 3,  25);
+	$ws_out->set_column(1, 1,  20);
+	$ws_out->set_column(4, 4,  15);
 	$ws_out->set_zoom(85);
 }
 
@@ -666,11 +669,25 @@ sub displayPivotSumup {
 	my( $self, $statement, $wb_out, $ws_out, $row, $col, $currency_format, $fx_out, $type ) = @_;
 	my $rinit = $row;
 	if (defined $statement->getOperations()) {
+		
 		my $categories = $statement->getCategories();
-		my $result = $statement->groupBy ('CATEGORY', $type);
 		my $found;
+		my $breakFam = "";
+				
+		my $fx_breakFam = $wb_out->add_format();
+	    $fx_breakFam->copy($fx_out);
+	    $fx_breakFam->set_bold();
+
+		
 		foreach my $i (0 .. $#{$categories}) {
 			if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? AccountStatement::Account::INCOME : AccountStatement::Account::EXPENSE) ) {
+				my @where = ('FAMILY', @$categories[$i]->{'FAMILY'});
+				my $result = $statement->groupByWhere ('CATEGORY', $type, \@where);
+				if ( $breakFam ne @$categories[$i]->{'FAMILY'}) {
+					$ws_out->write( $row, $col, @$categories[$i]->{'FAMILY'}, $fx_breakFam );
+					$breakFam = @$categories[$i]->{'FAMILY'};
+					$row++;
+				}
 				$ws_out->write( $row, $col, @$categories[$i]->{'CATEGORY'}, $fx_out );
 				$found = 0;
 				my $pivot = @$result[0];
@@ -693,8 +710,8 @@ sub displayPivotSumup {
 	    $fx_tot->set_bold();
 	   	$fx_sum->copy($currency_format);
 	   	$fx_sum->set_bold();
-		$ws_out->write( $row, $col, 'Total', $fx_tot ); 	
-		$ws_out->write( $row, $col+1, '=SUM('.xl_rowcol_to_cell( $rinit, $col+1 ).':'.xl_rowcol_to_cell( $row-1, $col+1 ).')', $fx_sum );
+		$ws_out->write( $row, $col, 'TOTAL', $fx_tot ); 	
+		$ws_out->write( $row+1, $col+1, '=SUM('.xl_rowcol_to_cell( $rinit, $col+1 ).':'.xl_rowcol_to_cell( $row-1, $col+1 ).')', $fx_sum );
 	} else {
 		$ws_out->write ($row, $col, 'NO TRANSACTION', $fx_out);
 		$row++;
