@@ -50,7 +50,9 @@ sub createYearlyClosingReport {
 	my $date_format = $wb_out->add_format(num_format => $prop->readParamValue('workbook.dashboard.date.format'));
 	
 	$self->generateSummarySheet($YTDStat, $wb_out, $currency_format, $date_format);
+	$self->generateMonthyYTDSheet($YTDStat, $wb_out, $currency_format, $date_format);
 	$self->generateDetailsSheet($YTDStat, $wb_out, $currency_format, $date_format);
+
 }
 
 sub createForecastedCashflowReport {
@@ -353,6 +355,152 @@ sub generateDetailsSheet
 	$ws_out->set_column(5, 5,  52);
 	$ws_out->set_column(6, 6,  10);
 	$ws_out->set_zoom(85);
+}
+
+sub generateMonthyYTDSheet
+{
+	my ( $self, $statement, $wb_out, $currency_format, $date_format) = @_;
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	my $wb_tpl = Helpers::ExcelWorkbook->openExcelWorkbook($prop->readParamValue("workbook.dashboard.template.path"));
+	my $log = Helpers::Logger->new();
+	
+	### YTD sheet
+	my $ws_tpl = $wb_tpl->worksheet( 3 );		
+	my $ws_out = $wb_out->add_worksheet( $ws_tpl->get_name() );
+	my $ops = $statement->getOperations();	
+	
+	if (defined $ops) {
+		
+		my $categories = $statement->getCategories();
+		my $month = 1;
+		my $row = 1;
+		my $breakFam = "";
+				
+		my $fx_out = $wb_out->add_format();
+	    
+		my $fx_breakFam = $wb_out->add_format();
+	    $fx_breakFam->set_bold();
+	    
+	    # First column : family and categories labels
+	    $row = $self->displayYTDSheetHeaderCategories($statement, $wb_out, $ws_out, $row, 'CREDIT');
+	    $row+=1;
+		$ws_out->write( $row, 0, 'TOTAL INCOMES', $fx_breakFam );
+	    $row+=2;
+	    $row = $self->displayYTDSheetHeaderCategories($statement, $wb_out, $ws_out, $row, 'DEBIT');
+	    $row+=1;
+		$ws_out->write( $row, 0, 'TOTAL EXPENSES', $fx_breakFam );
+	    $row+=2;
+		$ws_out->write( $row, 0, 'MONTHLY RESULT', $fx_breakFam );
+	    $row+=1;
+		$ws_out->write( $row, 0, 'EOM BALANCE', $fx_breakFam );		
+		
+		my $col =1;
+		
+		# Sum of transaction amount per month colum and per category
+		foreach $month (1 .. $statement->getDateTo()->month()) {
+			$row = 1;
+			my $monthyResult = 0;
+			my $result = $self->displayYTDSheetData ($statement, $wb_out, $ws_out, $row, $col, $month, 'CREDIT', $currency_format );
+			$row = @$result[0];
+			$monthyResult += @$result[1];
+			$row+=2;
+			$result = $self->displayYTDSheetData ($statement, $wb_out, $ws_out, $row, $col, $month, 'DEBIT', $currency_format );
+			$row = @$result[0];
+			$monthyResult += @$result[1];
+			$row+=2;
+			$ws_out->write( $row, $col, $monthyResult, $currency_format );
+			my $EOMBalance = 0;
+			for (my $i=0; $i<$#{$ops}+1; $i++) {
+				if (@$ops[$i]->{'MONTH'} == $month ) {
+					$EOMBalance = @$ops[$i]->{'SOLDE'};
+				}
+				if (@$ops[$i]->{'MONTH'} > $month ) {
+					last;
+				}
+			}
+			$row+=1;
+			$ws_out->write( $row, $col, $EOMBalance, $currency_format );
+			$col++;
+		}
+		$ws_out->set_column(0, 0,  25);
+		$ws_out->set_column(1, $col,  11);
+		$ws_out->set_zoom(85);
+	}
+
+}
+
+sub displayYTDSheetHeaderCategories {
+	my( $self, $statement, $wb_out, $ws_out, $row, $type ) = @_;
+	
+	my $categories = $statement->getCategories();
+	my $breakFam = "";
+	
+			
+	my $fx_out = $wb_out->add_format();
+	my $fx_breakFam = $wb_out->add_format();
+    $fx_breakFam->set_bold();
+    
+    # First column : family and categories labels
+	foreach my $i (0 .. $#{$categories}) {
+		if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? AccountStatement::Account::INCOME : AccountStatement::Account::EXPENSE) ) {
+
+			if ( $breakFam ne @$categories[$i]->{'FAMILY'}) {
+				$ws_out->write( $row, 0, @$categories[$i]->{'FAMILY'}, $fx_breakFam );
+				$breakFam = @$categories[$i]->{'FAMILY'};
+				$row++;
+			}
+			$ws_out->write( $row, 0, @$categories[$i]->{'CATEGORY'}, $fx_out );
+			$row++;
+		}
+	}
+	return $row;
+}
+
+sub displayYTDSheetData {
+	my( $self, $statement, $wb_out, $ws_out, $row, $col, $month, $type, $currency_format ) = @_;
+	
+	my $categories = $statement->getCategories();
+	my $found = 0;
+	my $breakFam = "";
+	my $totalType = 0;
+	my @months = qw( Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec );
+			
+	my $fx_out = $wb_out->add_format();
+	my $fx_breakFam = $wb_out->add_format();
+    $fx_breakFam->set_bold();
+ 	
+	
+	$ws_out->write( 0, $col, $months[$month-1] , $fx_out );
+	
+	foreach my $i (0 .. $#{$categories}) {
+		if ( @$categories[$i]->{'TYPEOPE'} == (($type eq 'CREDIT') ? AccountStatement::Account::INCOME : AccountStatement::Account::EXPENSE) ) {
+
+			# Jumping the row containing the breaking line
+			if ( $breakFam ne @$categories[$i]->{'FAMILY'}) {
+				$breakFam = @$categories[$i]->{'FAMILY'};
+				$row++;
+			}
+			my @where = ('MONTH', $month, 'FAMILY', @$categories[$i]->{'FAMILY'});
+			my $result = $statement->groupByWhere ('CATEGORY', ( (@$categories[$i]->{'TYPEOPE'}==AccountStatement::Account::INCOME) ? 'CREDIT' : 'DEBIT' ), \@where);
+			$found = 0;
+			my $pivot = @$result[0];
+			foreach my $key ( keys %{$pivot} ) {
+				if ( $key eq @$categories[$i]->{'CATEGORY'} ) {
+					$ws_out->write( $row, $col, $pivot->{$key}, $currency_format );
+					$totalType += $pivot->{$key};
+					$found = 1;
+					last;
+				}
+			}
+			if (!$found) {
+				$ws_out->write( $row, $col, 0, $currency_format );
+			}
+			$row++;
+		}
+	}
+	$row+=1;
+	$ws_out->write( $row, $col, $totalType, $currency_format );
+	return [$row, $totalType];
 }
 
 sub generateCashflowSheet

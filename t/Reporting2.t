@@ -1,4 +1,4 @@
-use Test::More tests => 14;
+use Test::More tests => 16;
 use lib '../lib';
 use Data::Dumper;
 use diagnostics;
@@ -17,6 +17,7 @@ my $accountConfigFilePath = "./accounts/config.0303900020712303.xls";
 
 require_ok "AccountStatement::Reporting";
 require_ok "AccountStatement::CheckingAccount";
+
 
 my $dt = DateTime->new(
 	   year      => 2015,
@@ -38,6 +39,7 @@ $reportProcessor->createYearlyClosingReport($accountYTD);
 
 my $XLSfile = Helpers::MbaFiles->getClosingFilePath( $statPRM );
 my $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
+$logger->print ( "Testing closing file: ".$XLSfile, Helpers::Logger::INFO);
 my $ws = $wb->worksheet( 0 ); # Summary
 is( $ws->get_cell( 13, 1 )->unformatted(), -17.97, 'NoOperationInCurrentMonth::Closing::Summary: Cell B14 value?');
 is( $ws->get_cell( 9, 1 )->unformatted(), -647.22, 'NoOperationInCurrentMonth::Closing::Summary: Cell B10 value?');
@@ -45,13 +47,16 @@ is( $ws->get_cell( 12, 4 )->unformatted(), 130, 'NoOperationInCurrentMonth::Clos
 $ws = $wb->worksheet( 1 ); # Details
 is( $ws->get_cell( 3, 4 )->unformatted(), 'Sophie', 'NoOperationInCurrentMonth::Closing::Details: Cell E4 value?');
 is( $ws->get_cell( 8, 2 )->unformatted(), 129.35, 'NoOperationInCurrentMonth::Closing::Details: Cell C9 value?');
-is( $ws->get_cell( 20, 6 )->unformatted(), 8774.52, 'NoOperationInCurrentMonth::Closing::Details: Cell G21 value?');
+is( $ws->get_cell( 20, 6 )->unformatted(), 7346.46, 'NoOperationInCurrentMonth::Closing::Details: Cell G21 value?');
 
 $XLSfile = Helpers::MbaFiles->getYearlyClosingFilePath( $statPRM );
 $wb = Helpers::ExcelWorkbook->openExcelWorkbook($XLSfile);
 $ws = $wb->worksheet( 0 ); # Yearly Summary
 is( $ws->get_cell( 10, 4 )->unformatted(), 2777.55, 'YealyReport::Summary:: Cell E11 value?');
-$ws = $wb->worksheet( 1 ); # Details Summary
+$ws = $wb->worksheet( 1 ); # YTD
+is( $ws->get_cell( 36, 6 )->unformatted(), -1428.06, 'YealyReport::YTD:: Cell G37 value?');
+is( $ws->get_cell( 37, 6 )->unformatted(), 6647.08, 'YealyReport::YTD:: Cell G38 value?');
+$ws = $wb->worksheet( 2 ); # Details Summary
 is( $ws->get_cell( 143, 2 )->unformatted(), 340, 'YealyReport::Details:: Cell C144 value?');
 
 $reportProcessor->createForecastedCashflowReport();

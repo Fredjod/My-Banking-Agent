@@ -341,6 +341,7 @@ sub buildExtendedRecord {
 	$operationRecord{DAY}		= $date->day();
 	$operationRecord{WDAY}		= int(($date->day()-1)/7).'.'.$date->wday();
 	$operationRecord{WDAYNAME}	= $date->day_name();		
+	$operationRecord{MONTH}		= $date->month();
 	$operationRecord{DEBIT}		= ( $line->{AMOUNT} < 0 ) ? $line->{AMOUNT} : undef;
 	$operationRecord{CREDIT}	= ( $line->{AMOUNT} >= 0 ) ? $line->{AMOUNT} : undef;
 	$operationRecord{TYPE}		= $categoryRecord->{TYPEOPE};

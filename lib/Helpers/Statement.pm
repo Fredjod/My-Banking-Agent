@@ -82,7 +82,7 @@ sub loadOperationsFromDetailsSheet {
 	my $tabDetails;
 	if (-e $path ) { # Reading the content of the existing yearly file.
 		my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( $path );	
-		my $worksheet = $workbook->worksheet(1); # operation details	
+		my $worksheet = $workbook->worksheet(2); # operation details	
 		$tabDetails = Helpers::ExcelWorkbook->readFromExcelSheetDetails ($worksheet);
 	}
 	my $monthToExlude = "NA";
