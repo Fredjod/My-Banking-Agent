@@ -69,8 +69,11 @@ sub initCategoriesBudgetToFollow  {
 	my $values = lookForPairKeyValue($prop, $prop->readParamValue("account.category.budget.tofollow"), $configFilePath);
 	if (defined ($values)) {
 		@list = map { trim($_) } split(',', $values);
+		return \@list;
+	} else {
+		return undef;
 	}
-	return \@list;
+	
 }
 
 sub initMonthlyBudgetObjective {
