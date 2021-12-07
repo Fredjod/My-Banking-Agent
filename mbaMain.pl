@@ -15,15 +15,15 @@ use AccountStatement::SavingAccount;
 my $logger = Helpers::Logger->new();
 my $prop = Helpers::ConfReader->new("properties/app.txt");
 
-$logger->print ( "Start running...", Helpers::Logger::INFO);
+$logger->print ( "##### Start running...", Helpers::Logger::INFO);
 
 my @accountConfigFiles = Helpers::MbaFiles->getAccountConfigFilesName();
 foreach my $accountConfigFilePath (@accountConfigFiles) {
 	
+	$logger->print ( '>>>>> Processing account '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
+	
 	my $accountPRM = Helpers::Statement->buildPreviousMonthStatement($accountConfigFilePath);
 	my $accountMTD = Helpers::Statement->buildCurrentMonthStatement($accountConfigFilePath);
-
-	$logger->print ( 'Processing account '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
 
 	# Check the balance Integrity
 	$accountPRM = Helpers::Statement->checkBalanceIntegrity($accountConfigFilePath, $accountMTD, $accountPRM);
@@ -67,7 +67,7 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 		$reportingProcessor->controlBalance ();
 	}
 	
-	$logger->print ( 'End of the account processing '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
+	$logger->print ( '<<<<< End of the account processing '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
 }
 
 # Bank Saving report
@@ -76,4 +76,4 @@ my $saving = AccountStatement::SavingAccount->new( );
 $saving->generateLastMonthSavingReport();
 
 # End of the script
-$logger->print ( "End of running.", Helpers::Logger::INFO);
+$logger->print ( "##### End of running.", Helpers::Logger::INFO);

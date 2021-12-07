@@ -3,6 +3,8 @@
 		<meta charset="utf-8"/>
 		<title>MBA Web Report</title>
 		<link rel="stylesheet" href="report.css">
+		<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+
 		<link rel="icon" type="image/png" href="favicon.png">
 		<link rel="apple-touch-icon" type="image/png" href="favicon.png">
 		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -36,7 +38,7 @@
 
 			  //build the table
 			  const table = `
-				<table class="${tableStyle}">
+				<table class="styled-table ${tableStyle}">
 					<thead>
 						<tr>${headerRow}</tr>
 					<thead>
@@ -151,18 +153,33 @@
 		</script>
 	</head>
 
-	<body>
-		<div>
+	<body style="padding-left: 10px; padding-top:10px">
+		<div class="w3-blue w3-card-4 style-canvas style-canvas-header">
+		  Contrôle Budget
+		</div>
+		<div class="w3-card-4 style-canvas">
 		  <canvas id="BudgetChart"></canvas>
 		</div>
-		<hr>
-		<div>
+		<div class="w3-card-1 style-canvas style-canvas-header style-canvas-footer">
+		  Ce graphique affiche l'objectif budgétaire du mois à ne pas dépasser, l'attendu à ne pas dépasser à date en cours de mois et enfin les dépenses réelles à date.
+		</div>
+		<P>
+
+		<div class="w3-orange w3-card-4 style-canvas style-canvas-header">
+		  Contrôle Trésorerie
+		</div>
+		<div class="w3-card-4 style-canvas">
 		  <canvas id="TresoChart"></canvas>
 		</div>
-		<div>
+		<div class="w3-card-1 style-canvas style-canvas-header style-canvas-footer">
+		  Ce graphique affiche la situation de la trésorerie du mois, le réel (en trait plein) et l'estimé (en pointillé).
+		</div>
+		<P>
+
+		<div class="w3-panel w3-border w3-round-large style-canvas">
 			<p id='foodTable'>
 		</div>
-		<div>
+		<div class="w3-panel w3-border w3-round-large style-canvas">
 			<p id='diversTable'>
 		</div>
 	</body>

@@ -140,7 +140,7 @@ sub generateBudgetJSON {
 	my $currentMonthObjective = Helpers::MbaFiles->readBudgetObjectiveCacheFile(Helpers::MbaFiles->getCurrentMonthCacheObjectiveFilePath ( $self->getAccDataMTD ) );
 	foreach my $category (@$categoryToFollow) {
 		push(@dataObjecif, $currentMonthObjective->{$category});
-		push(@dataExpected, sprintf("%.2f", $currentMonthObjective->{$category}*$dtd/30));
+		push(@dataExpected, sprintf("%.2f", $currentMonthObjective->{$category}*$dtd/31));
 		$total += $currentMonthObjective->{$category};
 	}
 	push(@dataObjecif, $total);
@@ -376,19 +376,23 @@ sub generateMonthyYTDSheet
 		my $row = 1;
 		my $breakFam = "";
 				
-		my $fx_out = $wb_out->add_format();
-	    
 		my $fx_breakFam = $wb_out->add_format();
 	    $fx_breakFam->set_bold();
+	    my $fx_breakFam_tot_incomes = $wb_out->add_format();
+	    $fx_breakFam_tot_incomes->set_bold();
+	    my $fx_breakFam_tot_expenses = $wb_out->add_format();
+	    $fx_breakFam_tot_expenses->set_bold();
 	    
 	    # First column : family and categories labels
-	    $row = $self->displayYTDSheetHeaderCategories($statement, $wb_out, $ws_out, $row, 'CREDIT');
+	    $row = $self->displayYTDSheetHeaderCategories($statement, $wb_out, $ws_out, $row, 'CREDIT', $fx_breakFam);
 	    $row+=1;
-		$ws_out->write( $row, 0, 'TOTAL INCOMES', $fx_breakFam );
+		$fx_breakFam_tot_incomes->set_bg_color('lime');
+		$ws_out->write( $row, 0, 'TOTAL INCOMES', $fx_breakFam_tot_incomes );
 	    $row+=2;
-	    $row = $self->displayYTDSheetHeaderCategories($statement, $wb_out, $ws_out, $row, 'DEBIT');
+	    $row = $self->displayYTDSheetHeaderCategories($statement, $wb_out, $ws_out, $row, 'DEBIT', $fx_breakFam);
 	    $row+=1;
-		$ws_out->write( $row, 0, 'TOTAL EXPENSES', $fx_breakFam );
+	    $fx_breakFam_tot_expenses->set_bg_color('cyan');
+		$ws_out->write( $row, 0, 'TOTAL EXPENSES', $fx_breakFam_tot_expenses );
 	    $row+=2;
 		$ws_out->write( $row, 0, 'MONTHLY RESULT', $fx_breakFam );
 	    $row+=1;
@@ -430,15 +434,13 @@ sub generateMonthyYTDSheet
 }
 
 sub displayYTDSheetHeaderCategories {
-	my( $self, $statement, $wb_out, $ws_out, $row, $type ) = @_;
+	my( $self, $statement, $wb_out, $ws_out, $row, $type, $fx_breakFam ) = @_;
 	
 	my $categories = $statement->getCategories();
 	my $breakFam = "";
 	
 			
 	my $fx_out = $wb_out->add_format();
-	my $fx_breakFam = $wb_out->add_format();
-    $fx_breakFam->set_bold();
     
     # First column : family and categories labels
 	foreach my $i (0 .. $#{$categories}) {
@@ -468,7 +470,6 @@ sub displayYTDSheetData {
 	my $fx_out = $wb_out->add_format();
 	my $fx_breakFam = $wb_out->add_format();
     $fx_breakFam->set_bold();
- 	
 	
 	$ws_out->write( 0, $col, $months[$month-1] , $fx_out );
 	
@@ -499,7 +500,11 @@ sub displayYTDSheetData {
 		}
 	}
 	$row+=1;
-	$ws_out->write( $row, $col, $totalType, $currency_format );
+	my $currency_format_tot = $wb_out->add_format();
+	$currency_format_tot->copy($currency_format);
+	my $bg_color = ($type eq 'CREDIT') ? 'lime' : 'cyan'; 
+	$currency_format_tot->set_bg_color($bg_color);
+	$ws_out->write( $row, $col, $totalType, $currency_format_tot );
 	return [$row, $totalType];
 }
 
