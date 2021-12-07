@@ -20,10 +20,13 @@ $logger->print ( "##### Start running...", Helpers::Logger::INFO);
 my @accountConfigFiles = Helpers::MbaFiles->getAccountConfigFilesName();
 foreach my $accountConfigFilePath (@accountConfigFiles) {
 	
-	$logger->print ( '>>>>> Processing account '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
-	
+	$logger->print ( '>>>> Loading statement from config file: '.$accountConfigFilePath , Helpers::Logger::INFO);
+		
 	my $accountPRM = Helpers::Statement->buildPreviousMonthStatement($accountConfigFilePath);
 	my $accountMTD = Helpers::Statement->buildCurrentMonthStatement($accountConfigFilePath);
+
+	$logger->print ( 'Processing account '.$accountMTD->getAccountNumber. ' of bank '.$accountMTD->getBankName , Helpers::Logger::INFO);
+
 
 	# Check the balance Integrity
 	$accountPRM = Helpers::Statement->checkBalanceIntegrity($accountConfigFilePath, $accountMTD, $accountPRM);
