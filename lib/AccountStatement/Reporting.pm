@@ -108,7 +108,7 @@ sub computeCurrentMonthBudgetObjective {
 		my @where = ('CATEGORY', $category);
 		my $result = $self->getAccDataPRM->groupByWhere ('CATEGORY', 'DEBIT', \@where);
 		my $c = abs(@$result[1]); # total en valeur absolue
-		$totalObjectiveAchivement += ( ($a - $b) + ($c - $b) );
+		$totalObjectiveAchivement += ($c - $b);
 	}
 	my $nbrOfCategorie=scalar @$categoryToFollow;
 	foreach my $category (@$categoryToFollow) {
@@ -144,7 +144,7 @@ sub generateBudgetJSON {
 		$total += $currentMonthObjective->{$category};
 	}
 	push(@dataObjecif, $total);
-	push(@dataExpected, sprintf("%.2f", $total*$dtd/30));
+	push(@dataExpected, sprintf("%.2f", $total*$dtd/31));
 	$jsonRecord{'data_objectif'} = \@dataObjecif;
 	$jsonRecord{'data_attendu'} = \@dataExpected;
 	
