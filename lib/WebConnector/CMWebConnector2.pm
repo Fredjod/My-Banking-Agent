@@ -78,7 +78,7 @@ sub logIn
 	unless ($response->content() !~ /<title>Authentification forte<\/title>/m) {
 		
 		$logger->print ( "Strong Authentification content page (step 1): ".$response->content(), Helpers::Logger::DEBUG);
-		if ($response->content() =~ (/href="\/fr\/banque\/validation.aspx\?_tabi=C&amp;_pid=AuthChoicePage&amp;k___ValidateAntiForgeryToken=(.+)&amp;_fid=SCA"/m)) {
+		if ($response->content() =~ (/href="\/fr\/banque\/validation.aspx\?_tabi=C&amp;_stack=OtpAuthActivityStep.+_pid=AuthChoiceActPage&amp;k___ValidateAntiForgeryToken=(.+)&amp;_fid=SCA"/m)) {
 			my $validateAntiForgeryToken = $1 ;
 			$request->method('GET');
 			$request->url('https://www.creditmutuel.fr/fr/banque/validation.aspx?_tabi=C&_pid=AuthChoicePage&k___ValidateAntiForgeryToken='. $validateAntiForgeryToken .'&_fid=SCA');

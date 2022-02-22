@@ -187,6 +187,8 @@ sub generateDetailsJSON {
 			$logger->print ( "Writing JSON file ".$category."_details.json" , Helpers::Logger::DEBUG);	
 			Helpers::MbaFiles->writeJSONFile($category.'_details.json', \@jsonOpsFiltered);
 		}
+	}
+	else {
 		$logger->print ( "Can not generate Details.json because no operation yet this month" , Helpers::Logger::DEBUG);	
 	}
 	
@@ -246,7 +248,9 @@ sub generateCashflowJSON {
 		$logger->print ( "Writing JSON file cashflow.json", Helpers::Logger::DEBUG);	
 		Helpers::MbaFiles->writeJSONFile("cashflow.json", \%jsonRecord);
 	}
-	$logger->print ( "Can not generate cashflow.json because no operation yet this month", Helpers::Logger::DEBUG);
+	else {
+		$logger->print ( "Can not generate cashflow.json because no operation yet this month", Helpers::Logger::DEBUG);
+	}
 }
 
 sub generateSummarySheet

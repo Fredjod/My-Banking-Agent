@@ -56,8 +56,10 @@ my $a = "29.6";
 my $b = "29.61";
 print "Diff: ".(abs($a-$b) > 0.009), "\n";
 
+=pod
 my $size = stat("README.md")->size;
 print "README.md size: $size\n";
+=cut
 
 my $string = "04/05/2015;-251.58;VIR SEPA WEB VERS ECOSYNDIC CDN;10748.49";
 my @data = split (';', $string);
@@ -75,9 +77,9 @@ else {print "does exist\n"; }
 
 #print $auth{'MARC.KEY'}[1], "\n";
 
-my $dth = Helpers::Date->new();
-my $dtToday = $dth->getDate();
-print sprintf ("%02d/%02d", $dtToday->day(), $dtToday->month()), "\n";
+#my $dth = Helpers::Date->new();
+#my $dtToday = $dth->getDate();
+#print sprintf ("%02d/%02d", $dtToday->day(), $dtToday->month()), "\n";
 
 $i = 1;
 $filePath = './reporting/0603900020712304/11-15_actuals.xls';
@@ -103,8 +105,8 @@ my $number="06039 000207123 05";
 spaceRemover($number);
 print "number: $number\n";
 	
-print "login: ", Helpers::WebConnector->getLogin ('MARC.KEY'), "\n";
-print "password: ", Helpers::WebConnector->getPwd ('MARC.KEY'), "\n";
+#print "login: ", Helpers::WebConnector->getLogin ('MARC.KEY'), "\n";
+#print "password: ", Helpers::WebConnector->getPwd ('MARC.KEY'), "\n";
 
 my $QIFdata="!Type:Bank
 D01/02/16
@@ -123,6 +125,36 @@ for my $j (0 .. 6) {
 	}
 	print "\n";
 }
+
+
+$data="
+<b>Pourquoi nous vous demandons de confirmer votre identité ?</b><br/><br/>Dans le cadre de la directive européenne relative aux services de paiement (DSP2), le niveau de sécurité de l'accès à votre Espace Client est renforcé.<br/><br/>Pour accéder à vos comptes, merci de confirmer votre identité depuis votre smartphone ou votre tablette avec <b>Confirmation Mobile</b>. Cette étape est obligatoire au moins une fois tous les 90 jours.  
+</div><div id=\"C:F:D\" class=\"ei_fnblock\">
+<div id=\"C:F:expContent\" class=\"ei_fnblock_body\">
+<div id=\"C:T3:D\" class=\"bloctxt\">
+<b>Votre derni&#232;re authentification forte a &#233;t&#233; enregistr&#233;e le jeudi 23 d&#233;cembre 2021.</b><br /><b>Vous devrez saisir un nouveau code de confirmation au plus tard le mercredi 23 mars 2022.</b>  
+</div><div id=\"C:G:D\" class=\"ei_gpblock\">
+<div id=\"C:G:expContent\" class=\"ei_gpblock_body\">
+<div id=\"C:O:D\" class=\"blocboutons\">
+  <span id=\"C:B:S\" class=\"ei_buttonbar\"><span id=\"C:R:RootSpan\" class=\"ei_button\"><a id=\"C:R:link\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_stack=OtpAuthActivityStep%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%2c__Transaction%3d55458214&amp;_pid=AuthChoiceActPage&amp;k___ValidateAntiForgeryToken=4c18f7a3-fed6-48b1-b6ac-e5ed3f8a809d&amp;_fid=SCA\" class=\"ei_btn ei_btn_fn_forward\"><span id=\"C:R:labelsubmit\" class=\"_c1 ei_btn_body _c1\"><span class=\"_c1 ei_btn_tlcorn _c1\"></span><span class=\"_c1 ei_btn_label _c1\">Confirmer mon identit&#233;</span><span aria-hidden=\"true\" class=\"_c1 ei_iblock ei_btn_pic _c1\">&nbsp;</span></span><span class=\"_c1 ei_btn_footer _c1\"><span class=\"_c1 ei_btn_blcorn _c1\"></span></span></a></span></span>
+</div> 
+</div>
+</div><ul class=\"_c1 niv1 _c1\">
+<li>Si vous pr&#233;f&#233;rez confirmer votre identit&#233; plus tard : <a id=\"C:L1\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_stack=OtpAuthActivityStep%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%2c__Transaction%3d55458214&amp;_pid=AuthChoiceActPage&amp;k___ValidateAntiForgeryToken=4c18f7a3-fed6-48b1-b6ac-e5ed3f8a809d&amp;_fid=Bypass\">cliquez ici.</a></li>
+</ul>  
+</div>
+</div>Consultez notre <a id=\"C:L2\" href=\"https://www.creditmutuel.fr/fr/assistance/faq/connexion-comptes.html\" target=\"_blank\">Foire Aux Questions (FAQ).</a> <div id=\"C:O1:D\" class=\"blocboutons\">
+  <span id=\"C:B1:S\" class=\"ei_buttonbar\"><span id=\"C:R1:RootSpan\" class=\"ei_button\"><a id=\"C:R1:link\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_stack=OtpAuthActivityStep%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%2c__Transaction%3d55458214&amp;_pid=AuthChoiceActPage&amp;k___ValidateAntiForgeryToken=4c18f7a3-fed6-48b1-b6ac-e5ed3f8a809d&amp;_fid=DoCancel\" class=\"ei_btn ei_btn_typ_back\"><span id=\"C:R1:labelsubmit\" class=\"_c1 ei_btn_body _c1\"><span class=\"_c1 ei_btn_tlcorn _c1\"></span><span class=\"_c1 ei_btn_label _c1\">Abandonner</span><span aria-hidden=\"true\" class=\"_c1 ei_iblock ei_btn_pic _c1\">&nbsp;</span></span><span class=\"_c1 ei_btn_footer _c1\"><span class=\"_c1 ei_btn_blcorn _c1\"></span></span></a></span></span>
+";
+		
+		
+if ( $data =~ (/href="\/fr\/banque\/validation.aspx\?_tabi=C&amp;_stack=OtpAuthActivityStep.+_pid=AuthChoiceActPage&amp;k___ValidateAntiForgeryToken=(.+)&amp;_fid=SCA"/m) ) {
+	print "k___ValidateAntiForgeryToken=".$1."\n";
+}
+else {
+	print "k___ValidateAntiForgeryToken not found\n"
+}
+
 
 =pod
 my $imagefile = "NSImgGrille.gif";
