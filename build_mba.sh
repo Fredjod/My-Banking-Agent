@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=4.21
+VERSION=4.22
 
 # Create/Update the Perl Docker image
 docker build -t mba:build ./mba_app/build
