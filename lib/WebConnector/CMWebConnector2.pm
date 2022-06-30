@@ -77,18 +77,18 @@ sub logIn
 	# Authentification forte
 	unless ($response->content() !~ /<title>Authentification forte<\/title>/m) {
 		
-		$logger->print ( "Strong Authentification content page (step 1): ".$response->content(), Helpers::Logger::DEBUG);
-		if ($response->content() =~ (/href="\/fr\/banque\/validation.aspx\?_tabi=C&amp;_stack=OtpAuthActivityStep.+_pid=AuthChoiceActPage&amp;_fid=SCA"/m)) {
-			# my $validateAntiForgeryToken = $1 ;
+		if ($response->content() =~ (/href="\/fr\/banque\/validation.aspx\?_tabi=C&amp;(.+)&amp;_fid=SCA"/m)) {
+			$logger->print ( "Strong Authentification page (1 month before warning):\n".$response->content(), Helpers::Logger::DEBUG);
+			my $URIbody = $1 ;
+			$URIbody =~ s/&amp;/&/g;
 			$request->method('GET');
-			# $request->url('https://www.creditmutuel.fr/fr/banque/validation.aspx?_tabi=C&_pid=AuthChoicePage&k___ValidateAntiForgeryToken='. $validateAntiForgeryToken .'&_fid=SCA');
-			$request->url('https://www.creditmutuel.fr/fr/banque/validation.aspx?_tabi=C&_pid=AuthChoicePage&_fid=SCA');
+			$request->url('https://www.creditmutuel.fr/fr/banque/validation.aspx?_tabi=C&'.$URIbody.'&_fid=SCA');
 			$cookies->add_cookie_header($request);
 			$response = $ua->request($request);
-			$logger->print ( "Strong Authentification content page (step 2): ".$response->content(), Helpers::Logger::DEBUG);
 		}
+		$logger->print ( "Strong Authentification page\n".$response->content(), Helpers::Logger::DEBUG);
 	
-		my $count = 100;
+		my $count = 40;
 		my $ok = 1;
 		my $transactionId = 0;
 		my $nextURIpost = "";
@@ -112,7 +112,7 @@ sub logIn
 			$postValueHidden2 = $1;
 		}
 	
-		$logger->print ( "Login to website failed: Strong authentication requiered with transactionId: " . $transactionId . "! Waiting for 5 min...", Helpers::Logger::INFO);
+		$logger->print ( "Login to website requires strong authentication with the transactionId: " . $transactionId . "! Waiting for 2 min...", Helpers::Logger::INFO);
 		do {
 			# Strong authentication validation URL
 			sleep(3);
@@ -159,7 +159,7 @@ sub logIn
 		$logger->print ( "Login to website failed!", Helpers::Logger::ERROR);
 		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
 		$self->loginLock();
-		$logger->print ( "HTML content: \n".$response->content(), Helpers::Logger::DEBUG);
+		$logger->print ( "HTML content:\n".$response->content(), Helpers::Logger::DEBUG);
 		return 0;				
 	}
 	
@@ -175,7 +175,7 @@ sub logIn
 	
 	unless (${$response->content_ref} =~ /form id="P1:F" action="(.+)"\smethod/) {
 		$logger->print ( "Can't open download page", Helpers::Logger::ERROR);
-		$logger->print ( "HTML content: \n".${$response->content_ref}, Helpers::Logger::DEBUG);
+		$logger->print ( "HTML content:\n".${$response->content_ref}, Helpers::Logger::DEBUG);
 		return 0;				
 	}
 	$url .= $1;
