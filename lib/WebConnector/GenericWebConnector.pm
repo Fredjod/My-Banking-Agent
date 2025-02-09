@@ -32,7 +32,7 @@ sub new
     my $ua = $self->{_ua};
     $ua->cookie_jar( $self->{_cookie_jar} );
 	$ua->ssl_opts( 'verify_hostname' => 0 );
-	$ua->agent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:72.0) Gecko/20100101 Firefox/72.0');
+	$ua->agent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36');
 	$ua->default_header(
 		'Accept' => 'text/html,application/xhtml+xml,application/xml,application/x-excel;q=0.9,*/*;q=0.8',
 		'Accept-Charset' => 'iso-8859-1,*,utf-8',

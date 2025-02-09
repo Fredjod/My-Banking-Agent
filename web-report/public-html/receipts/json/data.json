@@ -1,0 +1,35 @@
+{
+  "Recettes": [
+    {
+      "Titre": "Riz japonais à sushi",
+      "Ingredients": [
+        {
+          "Ingredient": "Riz rond",
+          "Quantity": 300,
+          "Unite": "g"
+        },
+        {
+          "Ingredient": "Eau",
+          "Quantity": 30,
+          "Unite": "cl"
+        },
+        {
+          "Ingredient": "Vinaigre de riz",
+          "Quantity": 4,
+          "Unite": "CaS"
+        },
+        {
+          "Ingredient": "Sucre",
+          "Quantity": 2,
+          "Unite": "CaS"
+        },
+        {
+          "Ingredient": "Sel",
+          "Quantity": 0.5,
+          "Unite": "CaC"
+        }
+      ],
+      "Preparation": ". Versez le riz dans une passoire, plongez-le dans un grand saladier et mélangez bien. Éliminez l’eau laiteuse et continuez de laver le riz à l’eau courant jusqu’à ce que l’eau qui s’écoule soit bien claire. Laissez essorer 30 min.\r\n\t\t2. Pendant ce temps, faites chauffer le vinaigre de riz avec le sucre et le sel. Laissez cuire sans bouillir, jusqu’à dissolution complète du sucre. Laissez refroidir.\r\n\t\t3. Placez le riz et l’eau froide dans une casserole à fond épais. Couvrez d’un couvercle. Faites chauffer sur feu moyen (presque doux) pour porter l’eau à ébullition. Ne retirez pas le couvercle, écoutez le bruit provenant de la casserole. Comptez 5 min de cuisson à partir de l’ébullition.\r\n\t\t4. Poursuivez la cuisson 10 min sur feu très doux, sans soulever le couvercle.\r\n\t\t5. Ôtez du feu, laissez le couvercle et laissez reposer 10 min.\r\n\t\t6. Déposez le riz dans un grand saladier et versez la sauce vinaigrée. Mélangez délicatement à l’aide d’une cuillère en bois, en faisant attention de ne pas écraser les grains.\r\n\r\n\t\tMon conseil : gardez votre riz à température ambiante jusqu’à utilisation. Au réfrigérateur, il deviendrait dur et compact."
+    }
+  ]
+}

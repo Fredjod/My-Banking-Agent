@@ -17,7 +17,7 @@ use Data::Dumper;
 
 sub new
 {
-    my ($class, $configFilePath, $dt_to ) = @_;
+    my ($class, $configFilePath, $dt_to, $authKey ) = @_;
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
     $logger->print ( "Opening account config file: $configFilePath", Helpers::Logger::DEBUG);
@@ -26,7 +26,7 @@ sub new
     	_bankName => initBankName($prop, $configFilePath),
     	_accountNumber =>	initAccountNumber($prop, $configFilePath),
     	_accountDesc =>	initAccountDesc($prop, $configFilePath),
-    	_accountAuth => initAccountAuth ($prop, $configFilePath),
+    	_accountAuth => (defined $authKey) ? $authKey : initAccountAuth ($prop, $configFilePath),
     	_categoriesBudgetToFollow => initCategoriesBudgetToFollow ($prop, $configFilePath),
     	_montly_budget_objective => undef,
     	_categories => 	undef,
@@ -60,7 +60,7 @@ sub initBankName {
 
 sub initAccountAuth {
 	my ($prop, $configFilePath) = @_;
-	return lookForPairKeyValue($prop, $prop->readParamValue("account.user.auth"), $configFilePath);	
+	return lookForPairKeyValue($prop, $prop->readParamValue("account.user.auth"), $configFilePath);
 }
 
 sub initCategoriesBudgetToFollow  {

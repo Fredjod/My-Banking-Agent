@@ -12,6 +12,7 @@ use MIME::Base64;
 use DateTime;
 use Helpers::Logger;
 use Helpers::ConfReader;
+use URI::Encode;
 
 use Data::Dumper;
 
@@ -86,7 +87,7 @@ sub logIn
 			$cookies->add_cookie_header($request);
 			$response = $ua->request($request);
 		}
-		$logger->print ( "Strong Authentification page\n".$response->content(), Helpers::Logger::DEBUG);
+		# $logger->print ( "Strong Authentification page\n".$response->content(), Helpers::Logger::DEBUG);
 	
 		my $count = 40;
 		my $ok = 1;
@@ -94,12 +95,15 @@ sub logIn
 		my $nextURIpost = "";
 		my $postValueHidden1 = "";
 		my $postValueHidden2 = "";
+		my $postValueHidden3 = "";
+		my $postValueHidden4 = "";
+		my $uri = URI::Encode->new( { encode_reserved => 0 } );
 		
 		if ($response->content() =~ /transactionId: '(.+)'/) {
 			$transactionId = $1;
 		}
 		
-		if ($response->content() =~ /form id="C:P:F"\saction="(.+)"\smethod/) {
+		if ($response->content() =~ /form id="I0:P:F"\saction="(.+)"\smethod/) {
 			$nextURIpost = $1;
 		}
 		$nextURIpost =~ s/&amp;/&/g;
@@ -108,8 +112,16 @@ sub logIn
 			$postValueHidden1 = $1;
 		}	
 	
-		if ($response->content() =~ /id="InputHiddenKeyInAppSendNew1"\svalue="(.+)"\s\/>/) {
+		if ($response->content() =~ /name="InputHiddenKeyInAppSendNew1"\svalue="(.+)"\s\/>/) {
 			$postValueHidden2 = $1;
+		}
+
+		if ($response->content() =~ /name="InputHiddenKeyInAppSendNew2"\svalue="(.+)"\s\/>/) {
+			$postValueHidden3 = $1;
+		}
+
+		if ($response->content() =~ /name="\$CPT"\stype="hidden"\svalue="(.+)"\s\/><input name=/) {
+			$postValueHidden4 = $uri->encode($1, { encode_reserved => 1 } );
 		}
 	
 		$logger->print ( "Login to website requires strong authentication with the transactionId: " . $transactionId . "! Waiting for 2 min...", Helpers::Logger::INFO);
@@ -130,9 +142,13 @@ sub logIn
 			return 0;
 		} else {
 			$request->method('POST');
-			$request->url('https://www.creditmutuel.fr'.$nextURIpost);
+			my $validationURL='https://www.creditmutuel.fr'.$nextURIpost;
+			# $logger->print ( "validation.aspx URL: ".$validationURL, Helpers::Logger::DEBUG);
+			$request->url($validationURL);
 			$request->header('Content-Type' => 'application/x-www-form-urlencoded');
-			$request->content('otp_hidden='. $postValueHidden1 .'&InputHiddenKeyInAppSendNew1='. $postValueHidden2 .'&_FID_DoValidate.x=0&_FID_DoValidate.y=0&_wxf2_cc=fr-FR');
+			my $payload = 'otp_hidden='. $postValueHidden1 .'&InputHiddenKeyInAppSendNew1='. $postValueHidden2 .'&InputHiddenKeyInAppSendNew2='. $postValueHidden3 .'&$CPT='. $postValueHidden4 .'&_FID_DoValidate&_wxf2_cc=fr-FR';
+			# $logger->print ( "validation.aspx payload: ".$payload, Helpers::Logger::DEBUG);
+			$request->content($payload);
 			$cookies->add_cookie_header($request);
 			$response = $ua->request($request);	
 			$cookies->extract_cookies($response);
@@ -143,8 +159,9 @@ sub logIn
 	# print Dumper $cookies->dump_cookies();
 	 
 	# Page perso
+	sleep(1);
 	$request->method('GET');
-	$request->url('https://www.creditmutuel.fr/fr/banque/pageaccueil.html');
+	$request->url('https://www.creditmutuel.fr/fr/banque/pageaccueil.html?referer=paci');
 	$request->header('Content-Type' => 'text/plain');
 	$request->content('');
 	$cookies->add_cookie_header($request);
@@ -155,7 +172,7 @@ sub logIn
 	$response = $ua->request($request);	
 	$cookies->extract_cookies($response);
 	
-	unless ($response->content() =~ /deconnexion\.cgi/m) {
+	unless ($response->content() =~ /deconnexion\.cgi/m && $response->content() =~ /<title>Crédit Mutuel: Espace personnel<\/title>/m) {
 		$logger->print ( "Login to website failed!", Helpers::Logger::ERROR);
 		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
 		$self->loginLock();
@@ -167,13 +184,14 @@ sub logIn
 	$self->saveCookies($login);
 	
 	# Account statement download page
+	sleep(1);
 	$request->method('GET');
 	$request->url('https://www.creditmutuel.fr/fr/banque/compte/telechargement.cgi');
 	$request->header('Content-Type' => 'text/plain');
 	$request->content('');
 	$response = $ua->request($request);
 	
-	unless (${$response->content_ref} =~ /form id="P1:F" action="(.+)"\smethod/) {
+	unless (${$response->content_ref} =~ /form id="P:F" action="(.+)"\smethod/) {
 		$logger->print ( "Can't open download page", Helpers::Logger::ERROR);
 		$logger->print ( "HTML content:\n".${$response->content_ref}, Helpers::Logger::DEBUG);
 		return 0;				
@@ -203,7 +221,7 @@ sub logOut
 	$request->url('https://www.creditmutuel.fr/fr/identification/msg_deconnexion.html');
 	$request->header('Content-Type' => 'application/x-www-form-urlencoded');
 	$response = $ua->request($request);
-	unless ($response->content() =~ /<title>Page de déconnexion - Crédit Mutuel<\/title>/m) {
+	unless ($response->code() == '200') {
 		$logger->print ( "Logout to website failed!", Helpers::Logger::ERROR);
 		$logger->print ( "The login is locked for avoiding intempstive errors and bank website locking.", Helpers::Logger::ERROR);
 		$self->loginLock();

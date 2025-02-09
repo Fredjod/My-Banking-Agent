@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  nginx:
+    image: nginx
+    restart: always
+    ports:
+      - 8080:8080
+    volumes:
+      - /Users/frederic/git/My-Banking-Agent/nginx/etc/nginx:/etc/nginx
+      - /Users/frederic/git/My-Banking-Agent/nginx/etc/ssl/private:/etc/ssl/private
+      - /Users/frederic/git/My-Banking-Agent/nginx/certbot/conf:/etc/letsencrypt
+      - /Users/frederic/git/My-Banking-Agent/nginx/certbot/www:/var/www/certbot
+      - /Users/frederic/git/My-Banking-Agent//web-report/public-html:/var/www/web-report

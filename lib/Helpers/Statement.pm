@@ -12,7 +12,7 @@ use Helpers::WebConnector;
 use Helpers::MbaFiles;
 
 sub buildCurrentMonthStatement {
-	my ($class, $accountConfigFilePath, $currentDate) = @_;
+	my ($class, $accountConfigFilePath, $currentDate, $authKey) = @_;
 
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
@@ -27,7 +27,7 @@ sub buildCurrentMonthStatement {
 	$dt_from = $dth->getDate();
 	$dt_from->set_day(1);
 
-	my $statement = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $dt_to);
+	my $statement = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $dt_to, $authKey);
 
 	# Call the web connector of the account bank
 	my $connector = Helpers::WebConnector->buildWebConnectorObject ( $statement->getBankName() );
@@ -37,7 +37,7 @@ sub buildCurrentMonthStatement {
 }
 
 sub buildPreviousMonthStatement {
-	my ($class, $accountConfigFilePath, $currentDate, $forceCacheRefreshing) = @_;
+	my ($class, $accountConfigFilePath, $currentDate, $forceCacheRefreshing, $authKey) = @_;
 	my $prop = Helpers::ConfReader->new("properties/app.txt");
 	my $logger = Helpers::Logger->new();
 
@@ -51,7 +51,7 @@ sub buildPreviousMonthStatement {
 	$dt_from->set_day(1);
 	my $dt_to = DateTime->last_day_of_month( year => $dt_from->year(), month => $dt_from->month() );
 
-	my $statement = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $dt_to);
+	my $statement = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $dt_to, $authKey);
 	
 	# Load statement from previous month cache file
 	if ( $statement->loadBankData() and !defined $forceCacheRefreshing) {
@@ -136,7 +136,7 @@ sub checkBalanceIntegrity {
 	# closing report and yearly report are regenerated
 	# the forecasted report is renamed, because could have been updated by user. A new one is regenerated.
 	
-	my ( $class, $accountConfigFilePath, $MTDStat, $PRMStat ) = @_;
+	my ( $class, $accountConfigFilePath, $MTDStat, $PRMStat, $authKey ) = @_;
 	my $newPRMStatement = $PRMStat;
 	my $logger = Helpers::Logger->new();
 	my $ops = $MTDStat->getOperations();
@@ -149,7 +149,7 @@ sub checkBalanceIntegrity {
 		if (abs($PRMStat->getBalance() - $initialMTDBalance) > 0.009 ) { # Integrity check failed
 			$logger->print ( "Balances integrity testing failded. PRM: ".$PRMStat->getBalance()." / MTD: ".$initialMTDBalance." Diff: ".abs($PRMStat->getBalance() - $initialMTDBalance), Helpers::Logger::ERROR);
 			$logger->print ( "Balances integrity testing failded: Previous month closing is rebuilding", Helpers::Logger::INFO);
-			$newPRMStatement = $class->buildPreviousMonthStatement ($accountConfigFilePath, $MTDStat->getMonth(), 1); # Force the cache refreshing
+			$newPRMStatement = $class->buildPreviousMonthStatement ($accountConfigFilePath, $MTDStat->getMonth(), 1, $authKey); # Force the cache refreshing
 			if ( -e Helpers::MbaFiles->getClosingFilePath( $PRMStat ) ) {
 				$logger->print ( "Balances integrity failded: Deleting the obsoleted previous month closing report", Helpers::Logger::INFO);
 				unlink glob Helpers::MbaFiles->getClosingFilePath( $PRMStat );

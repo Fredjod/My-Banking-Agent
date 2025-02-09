@@ -1,13 +1,14 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=4.23
+VERSION=5.1
 
 # Create/Update the Perl Docker image
 docker build -t mba:build ./mba_app/build
 
 # Run unit testing in the Docker container
 echo '--- Unit testing... ---'
+
 
 
 testFilesArray=( "ConfReader.t"
@@ -44,6 +45,7 @@ cp -R lib mba/
 cp -R properties mba/
 mv mba/properties/app.txt mba/properties/app.dist.txt 
 cp mbaMain.pl mba/
+cp mbaDeamon.pl mba/
 cp mba.sh mba/
 cp t/accounts/config.0303900020712303.xls mba/accounts/dist.config.0303900020712303.xls
 cp t/reporting/0303900020712303/dist.planned_operations.xls mba/reporting/dist.planned_operations.xls
@@ -64,3 +66,5 @@ tar -zcf ../mba_app/prod/mba_$VERSION.tar.gz ./*
 echo '--- Package mba_'$VERSION'.tar.gz is ready --- '
 cd ..
 rm -r ./mba
+
+docker build -t mba:prod ./mba_app/prod

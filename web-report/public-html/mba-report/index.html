@@ -2,7 +2,7 @@
 	<head>
 		<meta charset="utf-8"/>
 		<title>MBA Web Report</title>
-		<link rel="stylesheet" href="report.css">
+		<link rel="stylesheet" href="report.css?20241218">
 		<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
 
 		<link rel="icon" type="image/png" href="favicon.png">
@@ -63,97 +63,162 @@
 			    }
 			    xhr.send();
 			}
+			
+			function ajax(url, callback, timeout) {
+				console.log("called URL: "+url);
+				var req = new XMLHttpRequest();
+				var status = '';
+				req.open('GET', url);
+				if(timeout !== null) {
+					req.timeout = timeout;
+				}
+				
+				req.addEventListener('load', function () {
+					if (req.status >= 200 && req.status < 400) {
+				        status = callback(this.responseText)
+				    } else {
+				        console.error(req.status + " " + req.statusText);
+				    }
+				});
+				req.addEventListener('error', function () {
+					console.error(req.status + " " + req.statusText);
+				    console.error('La requête a recontré un problème');
+				});
+				if(timeout !== null) {
+					req.addEventListener('timeout', function () {
+				    	console.error('timeout');
+					});
+				}
+				req.send();
+				return status;
+			}
+			
 
-			// Budget
-			readTextFile("/mba-report/json/budget.json", function(text){
-		    	const budget = JSON.parse(text);
-				const dataBudget = {
-				  labels: budget.labels,
-				  datasets: [{
-				    label: 'Objectifs',
-				    backgroundColor: 'rgb(70,130,180)',
-				    borderColor: 'rgb(70,130,180)',
-				    data: budget.data_objectif,
-				  },
-				  {
-				  	label: 'Attendu',
-				    backgroundColor: 'rgb(135,206,250)',
-				    borderColor: 'rgb(135,206,250)',
-				    data: budget.data_attendu,
-				  },
-				  {
-				  	label: 'Depenses '+budget.date,
-				    backgroundColor: 'rgb(255,140,0)',
-				    borderColor: 'rgb(255,140,0)',
-				    data: budget.data_depenses,
-				  }
-				  ]
-				};
-				const configBudget = {
-				  type: 'bar',
-				  data: dataBudget,
-				  options: { }
-				};
-				Chart.defaults.font.size = 22;
-  				const budgetChart = new Chart(
-    				document.getElementById('BudgetChart'),
-    				configBudget
-  				);			
-			});			
+			async function load () { // We need to wrap the loop into an async function for this to work
+				var status ='';
+				var loop = 0;
+				const mbaBaseURL='/mba/runmba';
+				// Returns a Promise that resolves after "ms" Milliseconds
+				const timer = ms => new Promise(res => setTimeout(res, ms));
+				const queryString = window.location.search;
+				const urlParams = new URLSearchParams(queryString);
+				
+				var mbaURL = mbaBaseURL+'?';
+				if (urlParams.has('force')) {
+					mbaURL+='&force='+urlParams.get('force');
+				}
+				if (urlParams.has('key')) {
+					mbaURL+='&key='+urlParams.get('key');
+				}			
+				while (status != 'ready' && loop <= 75 ) { // 75*4s = 5min d'attente max
+					status = ajax(mbaURL, function(res) {
+						// console.log(res);
+						// const obj = JSON.parse(res);
+						status = JSON.parse(res).mbaStatus;
+						return status;
+					}, 2000);
+					console.log('status: ' + status);
+   				 	await timer(4000); // then the created Promise can be awaited during 4s		
+   				 	mbaURL = mbaBaseURL;
+   				 	loop++;
+  				}
+ 
+  				document.getElementById("overlay").style.display = 'none';  
 
-			// Month tresorerie
-
-			readTextFile("/mba-report/json/cashflow.json", function(text){
-		    	const treso = JSON.parse(text);
-				const dataTreso = {
-				  labels: treso.labels,
-				  datasets: [{
-				    label: 'Tresorerie '+treso.date,
-				    backgroundColor: 'rgb(255,140,0)',
-				    borderColor: 'rgb(255,140,0)',
-				    data: treso.data_depenses,
-				    order: 1,
-				  },
-				  {
-				    label: 'Attendu',
-				    backgroundColor: 'rgb(255,255,255)',
-				    borderColor: 'rgb(192,192,192)',
-					borderDash: [10,5],
-				    data: treso.data_attendu,
-				    order: 2,
-				  }
-				  ]
-				};
-				console.log(treso);
-				const configTreso = {
-				  type: 'line',
-				  data: dataTreso,
-				  options: {
+				// Budget
+				readTextFile("/mba-report/json/budget.json", function(text){
+			    	const budget = JSON.parse(text);
+					const dataBudget = {
+					  labels: budget.labels,
+					  datasets: [{
+					    label: 'Objectifs',
+					    backgroundColor: 'rgb(70,130,180)',
+					    borderColor: 'rgb(70,130,180)',
+					    data: budget.data_objectif,
+					  },
+					  {
+					  	label: 'Attendu',
+					    backgroundColor: 'rgb(135,206,250)',
+					    borderColor: 'rgb(135,206,250)',
+					    data: budget.data_attendu,
+					  },
+					  {
+					  	label: 'Depenses '+budget.date,
+					    backgroundColor: 'rgb(255,140,0)',
+					    borderColor: 'rgb(255,140,0)',
+					    data: budget.data_depenses,
 					  }
-				};
-  				const tresoChart = new Chart(
-    				document.getElementById('TresoChart'),
-    				configTreso
-  				);			
-			});
+					  ]
+					};
+					const configBudget = {
+					  type: 'bar',
+					  data: dataBudget,
+					  options: { }
+					};
+					Chart.defaults.font.size = 22;
+	  				const budgetChart = new Chart(
+	    				document.getElementById('BudgetChart'),
+	    				configBudget
+	  				);			
+				});			
+	
+				// Month tresorerie
+	
+				readTextFile("/mba-report/json/cashflow.json", function(text){
+			    	const treso = JSON.parse(text);
+					const dataTreso = {
+					  labels: treso.labels,
+					  datasets: [{
+					    label: 'Tresorerie '+treso.date,
+					    backgroundColor: 'rgb(255,140,0)',
+					    borderColor: 'rgb(255,140,0)',
+					    data: treso.data_depenses,
+					    order: 1,
+					  },
+					  {
+					    label: 'Attendu',
+					    backgroundColor: 'rgb(255,255,255)',
+					    borderColor: 'rgb(192,192,192)',
+						borderDash: [10,5],
+					    data: treso.data_attendu,
+					    order: 2,
+					  }
+					  ]
+					};
+					console.log(treso);
+					const configTreso = {
+					  type: 'line',
+					  data: dataTreso,
+					  options: {
+						  }
+					};
+	  				const tresoChart = new Chart(
+	    				document.getElementById('TresoChart'),
+	    				configTreso
+	  				);			
+				});
+	
+				readTextFile("/mba-report/json/Alimentation_details.json", function(text){
+			    	const food_details = JSON.parse(text);
+			    	foodTable = document.getElementById('foodTable')
+					foodTable.innerHTML = json2Table(food_details, "styled-table-food")
+	
+				});
+	
+				readTextFile("/mba-report/json/Divers_details.json", function(text){
+			    	const divers_details = JSON.parse(text);
+			    	diversTable = document.getElementById('diversTable')
+					diversTable.innerHTML = json2Table(divers_details, "styled-table-divers")
+	
+				});
+			}
+			load();
 
-			readTextFile("/mba-report/json/Alimentation_details.json", function(text){
-		    	const food_details = JSON.parse(text);
-		    	foodTable = document.getElementById('foodTable')
-				foodTable.innerHTML = json2Table(food_details, "styled-table-food")
-
-			});
-
-			readTextFile("/mba-report/json/Divers_details.json", function(text){
-		    	const divers_details = JSON.parse(text);
-		    	diversTable = document.getElementById('diversTable')
-				diversTable.innerHTML = json2Table(divers_details, "styled-table-divers")
-
-			});
 		</script>
 	</head>
 
 	<body style="padding-left: 10px; padding-top:10px">
+		
 		<div class="w3-blue w3-card-4 style-canvas style-canvas-header">
 		  Contrôle Budget
 		</div>
@@ -182,6 +247,7 @@
 		<div class="w3-panel w3-border w3-round-large style-canvas">
 			<p id='diversTable'>
 		</div>
+		<div class="overlay" id="overlay"></div>
 	</body>
 
 </html>

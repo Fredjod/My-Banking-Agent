@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  mba:
+    image: mba:prod
+    restart: always
+    ports:
+      - 8081:8080
+#    volumes:
+#      - /Users/frederic/mba_app:/usr/mba/app
+#      - /Volumes/Master/VMs/data/logs:/usr/mba/logs
+#      - /Volumes/Master/VMs/data/mba:/usr/mba/files
+    volumes:
+      - /home/pi/mba_app/prod/app:/usr/mba/app
+      - /mnt/logs:/usr/mba/logs
+      - /mnt/mba:/usr/mba/files

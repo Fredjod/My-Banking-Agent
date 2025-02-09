@@ -17,7 +17,7 @@ use Spreadsheet::WriteExcel::Utility;
 use Data::Dumper;
 
 sub new {
-    my ($class ) = @_;
+    my ($class, $authKey ) = @_;
     # $class->SUPER::new(@_);
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
@@ -39,13 +39,13 @@ sub new {
     }
     else {
     	$logger->print ( "Opening account config file: ". $config[0], Helpers::Logger::DEBUG);
-    	$self->{_accountReferences} = initReferences($config[0]);
+    	$self->{_accountReferences} = initReferences($config[0], $authKey);
     }
     return $self;  
 }
 
 sub initReferences {
-	my ($savingConfigFilePath) = @_;
+	my ($savingConfigFilePath, $authKey) = @_;
 	my $workbook = Helpers::ExcelWorkbook->openExcelWorkbook( $savingConfigFilePath );	
 	my $worksheet = $workbook->worksheet( 0 );		
 	my ( $row_min, $row_max ) = $worksheet->row_range();
@@ -57,7 +57,7 @@ sub initReferences {
 		next unless $cell;
 		my %record;
 		$record{'BANK'} = $worksheet->get_cell( $row, 0 )->unformatted();
-		$record{'KEY'} = $worksheet->get_cell( $row, 1 )->unformatted();
+		$record{'KEY'} = (defined $authKey) ? $authKey : $worksheet->get_cell( $row, 1 )->unformatted();
 		$record{'NUMBER'} = $worksheet->get_cell( $row, 2 )->unformatted();
 		$record{'DESC'} = $worksheet->get_cell( $row, 3 )->unformatted();
 		push (@ref, \%record);
@@ -85,6 +85,7 @@ sub generateLastMonthSavingReport {
     }
     else {
      	$logger->print ( "Generate previous month saving reporting...", Helpers::Logger::INFO);
+  #todo: passer le paramètre FRED.KEY ou VANES.KEY
     	$self->loadOperationsAndBalances($dt_from, $dt_to);
     	$self->mergeWithPreviousSavingReport();
     	Helpers::MbaFiles->deleteOldSavingFiles ($dt_from);
@@ -198,6 +199,7 @@ sub loadOperationsAndBalances {
 	while ( $i<$#{$ref}+1 ) {
 		my $bankname = @$ref[$i]->{'BANK'};
 		my $authKey = @$ref[$i]->{'KEY'};
+#todo: passer le parametre FRED.KEY ou VANES.KEY
 		my $connector = Helpers::WebConnector->buildWebConnectorObject ($bankname);
 		my @listOfAccountToDownloadInOneLogin;
 		do {

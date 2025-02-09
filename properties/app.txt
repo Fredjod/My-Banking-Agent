@@ -54,6 +54,9 @@ account.reporting.forecasted.prefix = _forecasted.xls
 account.reporting.actuals.prefix = _actuals.xls
 account.reporting.planned.prefix = planned_operations.xls
 account.reporting.saving.prefix = _saving.xls
+mba.main.path = /user/app/mbaMain.pl
+mba.pid.file = /user/app/mbapid.txt
+owncloudsync.pid.file = /user/app/ownsyncpid.txt
 ###
 
 
