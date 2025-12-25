@@ -20,7 +20,7 @@ use Data::Dumper;
 #use File::stat;
 #use URI::Encode;
 
-
+=pod
 my $data = "<td><span id=\"accountListController:S\" style=\"margin-left:5px;\"><a id=\"accountListController:chk\" href=\"#\">Tout cocher</a>&nbsp;|&nbsp;<a id=\"accountListController:uchk\" href=\"#\">Tout d&#233;cocher</a></span></td>
 </tr><tr>
 <td><table id=\"account-table\" width=\"100%\" cellspacing=\"1\" summary=\"\" class=\"liste\">
@@ -56,10 +56,10 @@ my $a = "29.6";
 my $b = "29.61";
 print "Diff: ".(abs($a-$b) > 0.009), "\n";
 
-=pod
+
 my $size = stat("README.md")->size;
 print "README.md size: $size\n";
-=cut
+
 
 my $string = "04/05/2015;-251.58;VIR SEPA WEB VERS ECOSYNDIC CDN;10748.49";
 my @data = split (';', $string);
@@ -125,36 +125,45 @@ for my $j (0 .. 6) {
 	}
 	print "\n";
 }
-
-
-$data="
-<b>Pourquoi nous vous demandons de confirmer votre identité ?</b><br/><br/>Dans le cadre de la directive européenne relative aux services de paiement (DSP2), le niveau de sécurité de l'accès à votre Espace Client est renforcé.<br/><br/>Pour accéder à vos comptes, merci de confirmer votre identité depuis votre smartphone ou votre tablette avec <b>Confirmation Mobile</b>. Cette étape est obligatoire au moins une fois tous les 90 jours.  
-</div><div id=\"C:F:D\" class=\"ei_fnblock\">
-<div id=\"C:F:expContent\" class=\"ei_fnblock_body\">
-<div id=\"C:T3:D\" class=\"bloctxt\">
-<b>Votre derni&#232;re authentification forte a &#233;t&#233; enregistr&#233;e le jeudi 23 d&#233;cembre 2021.</b><br /><b>Vous devrez saisir un nouveau code de confirmation au plus tard le mercredi 23 mars 2022.</b>  
-</div><div id=\"C:G:D\" class=\"ei_gpblock\">
-<div id=\"C:G:expContent\" class=\"ei_gpblock_body\">
-<div id=\"C:O:D\" class=\"blocboutons\">
-  <span id=\"C:B:S\" class=\"ei_buttonbar\"><span id=\"C:R:RootSpan\" class=\"ei_button\"><a id=\"C:R:link\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_stack=OtpAuthActivityStep%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%2c__Transaction%3d55458214&amp;_pid=AuthChoiceActPage&amp;k___ValidateAntiForgeryToken=4c18f7a3-fed6-48b1-b6ac-e5ed3f8a809d&amp;_fid=SCA\" class=\"ei_btn ei_btn_fn_forward\"><span id=\"C:R:labelsubmit\" class=\"_c1 ei_btn_body _c1\"><span class=\"_c1 ei_btn_tlcorn _c1\"></span><span class=\"_c1 ei_btn_label _c1\">Confirmer mon identit&#233;</span><span aria-hidden=\"true\" class=\"_c1 ei_iblock ei_btn_pic _c1\">&nbsp;</span></span><span class=\"_c1 ei_btn_footer _c1\"><span class=\"_c1 ei_btn_blcorn _c1\"></span></span></a></span></span>
-</div> 
-</div>
-</div><ul class=\"_c1 niv1 _c1\">
-<li>Si vous pr&#233;f&#233;rez confirmer votre identit&#233; plus tard : <a id=\"C:L1\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_stack=OtpAuthActivityStep%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%2c__Transaction%3d55458214&amp;_pid=AuthChoiceActPage&amp;k___ValidateAntiForgeryToken=4c18f7a3-fed6-48b1-b6ac-e5ed3f8a809d&amp;_fid=Bypass\">cliquez ici.</a></li>
-</ul>  
-</div>
-</div>Consultez notre <a id=\"C:L2\" href=\"https://www.creditmutuel.fr/fr/assistance/faq/connexion-comptes.html\" target=\"_blank\">Foire Aux Questions (FAQ).</a> <div id=\"C:O1:D\" class=\"blocboutons\">
-  <span id=\"C:B1:S\" class=\"ei_buttonbar\"><span id=\"C:R1:RootSpan\" class=\"ei_button\"><a id=\"C:R1:link\" href=\"/fr/banque/validation.aspx?_tabi=C&amp;_stack=OtpAuthActivityStep%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%3aai_r%3dSOSD%2cai_an%3dSOSD_OTPAUTH%2cai_rctc%3dFalse%2cai_inac%3dFalse%2c__Transaction%3d55458214&amp;_pid=AuthChoiceActPage&amp;k___ValidateAntiForgeryToken=4c18f7a3-fed6-48b1-b6ac-e5ed3f8a809d&amp;_fid=DoCancel\" class=\"ei_btn ei_btn_typ_back\"><span id=\"C:R1:labelsubmit\" class=\"_c1 ei_btn_body _c1\"><span class=\"_c1 ei_btn_tlcorn _c1\"></span><span class=\"_c1 ei_btn_label _c1\">Abandonner</span><span aria-hidden=\"true\" class=\"_c1 ei_iblock ei_btn_pic _c1\">&nbsp;</span></span><span class=\"_c1 ei_btn_footer _c1\"><span class=\"_c1 ei_btn_blcorn _c1\"></span></span></a></span></span>
-";
-		
-		
-if ( $data =~ (/href="\/fr\/banque\/validation.aspx\?_tabi=C&amp;_stack=OtpAuthActivityStep.+_pid=AuthChoiceActPage&amp;k___ValidateAntiForgeryToken=(.+)&amp;_fid=SCA"/m) ) {
-	print "k___ValidateAntiForgeryToken=".$1."\n";
-}
-else {
-	print "k___ValidateAntiForgeryToken not found\n"
+=cut
+sub parseCookies {
+	my ($rawCookies) = @_;
+	my %result;
+	my @allcookies = split(/, /, $rawCookies);
+	for my $cookie (@allcookies) {
+		#print "cookie: $cookie\n";
+		my @cookieItems = split(/; /, $cookie);
+		for my $item (@cookieItems) {
+			#print "item: $item\n";
+			my @keypair = split(/=/, $item);
+			if (defined $keypair[1] 
+				&& $keypair[0] ne "expires"
+				&& $keypair[0] ne "Max-Age" 
+				&& $keypair[0] ne "Path"
+				&& $keypair[0] ne "Secure"
+				&& $keypair[0] ne "SameSite"
+				&& $keypair[0] ne "HttpOnly"
+			) {
+				print "$keypair[0]: $keypair[1]\n";
+				$result{$keypair[0]} = $keypair[1];
+			}
+		}
+	}
+	return %result;
 }
 
+my %cookies;
+my $cookie3 = "initially_requested_url=/fr/banque/pageaccueil.html; HttpOnly; Max-Age=120; Path=/; Secure, IdSes=5719186e81619cd716080813d91ecd60276560f9959de31bcfb2c9f16f78f368ca588d8fb9b21056212d7b4b0a9f90e4c35db41ba54c8917b7b0863abd549f00d4281ba2c3f8e269014f900e502f49efd4e0f97bee03e4ee8ecb3e0a2433efe26ae96f451e3a58a932f9f66a6dd71c7941a001d02ec51fb54e20b466de0fd1b46644b886a6b588b84a00cb749f24c28edec08ecbf1714e5d36c3a601637e910d0967573d5b8c9a45add329447d6840266f941edfe6936ec7b48444431e2e2316c9050863cd6efdf8790d542532ec135677918cf8e4d3f75b17f362ffc8a975f705f2ce10f4c37cf6a27a1aff2234cfc5bba64b6533c9b0d5f902c40e7997eced3d4245ce8d272742d0e05de294abd963e0cfa2ce3b5cb9ab520d56cd3cc67193e9fe27146f5948408385411ac1825c9a80d216617125cf8966a9cfa2531d2d9a225c99316acdae65681648aa0bb34d74e4cb210f4010a42212f594ffc6035aa8e1e8ea4dea0485e44093cb155cd9f4d679e4262c404cb90fce1ff8b14cbe22b01b6b361f22aa32c09f07acd128aed45665afb3078536fe1deb77eea6ae3c2a8cc9040b68b534ed0dd128289d227629f998ba29584d91b7e6703f27ff7ac7df0c17ecb89db788852532b821d68cc3230e3021071841df2b94319d8b0ca27e20a3370b460a8cc84e294a14b6a615eed48192373adf18337240a0df96e61f4c2b1b111882ac5a4ecb1d220edafbb9df092330aa287bb3300f4a4a7512d417221c996a64dc960b87f64081c73b2e70157e6f; HttpOnly; Path=/; SameSite=lax; Secure, SessionStart=1766367384; Path=/; Secure, SessionTimeout=5; Path=/; Secure";
+my $cookie2 = "SessionStart=; expires=Fri, 01 Jan 1971 01:00:00 GMT; Max-Age=0; Path=/; Secure, SessionTimeout=; expires=Fri, 01 Jan 1971 01:00:00 GMT; Max-Age=0; Path=/; Secure";
+my $cookie1 = "nid=259DC49A08B193DB470BF9FD61957C1397C1FBFE; HttpOnly; Max-Age=31536000; Path=/; Secure, SessionStart=; expires=Fri, 01 Jan 1971 01:00:00 GMT; Max-Age=0; Path=/; Secure, SessionTimeout=; expires=Fri, 01 Jan 1971 01:00:00 GMT; Max-Age=0; Path=/; Secure";
+my $cookie4 = "nid=83A07EB7A3D44D1DB4718D75089BC106CA39D98F; HttpOnly; Max-Age=31536000; Path=/; Secure, SessionStart=; expires=Fri, 01 Jan 1971 01:00:00 GMT; Max-Age=0; Path=/; Secure, SessionTimeout=; expires=Fri, 01 Jan 1971 01:00:00 GMT; Max-Age=0; Path=/; Secure";
+
+%cookies =(%cookies, parseCookies($cookie1));
+%cookies =(%cookies, parseCookies($cookie2));
+%cookies =(%cookies, parseCookies($cookie3));
+%cookies =(%cookies, parseCookies($cookie4));
+
+print Dumper \%cookies;
 
 =pod
 my $imagefile = "NSImgGrille.gif";

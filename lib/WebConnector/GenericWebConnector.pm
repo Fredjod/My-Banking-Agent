@@ -8,8 +8,8 @@ use warnings;
 use LWP::UserAgent;
 
 # Documentation: https://metacpan.org/source/DAGOLDEN/HTTP-CookieJar-0.008/lib/HTTP
-use HTTP::CookieJar;
-use HTTP::CookieJar::LWP;
+#use HTTP::CookieJar;
+#use HTTP::CookieJar::LWP;
 
 use HTTP::Request;
 use HTTP::Cookies;
@@ -18,21 +18,22 @@ use DateTime;
 use Helpers::Logger;
 use Encode;
 use Path::Tiny;
+use Data::Dumper;
 
 
 sub new
 {
     my ($class, $url) = @_;
     my $self = {
-         _ua 				=> LWP::UserAgent->new(),
-       	 _cookie_jar		=> HTTP::CookieJar::LWP->new(),
-         _url 				=> $url,
-         _response 			=> undef,
+        _ua 		=> LWP::UserAgent->new(),
+        _cookies	=> {},
+        _url 		=> $url,
+        _response 	=> undef,
     };
     my $ua = $self->{_ua};
-    $ua->cookie_jar( $self->{_cookie_jar} );
+    
 	$ua->ssl_opts( 'verify_hostname' => 0 );
-	$ua->agent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36');
+	$ua->agent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.37');
 	$ua->default_header(
 		'Accept' => 'text/html,application/xhtml+xml,application/xml,application/x-excel;q=0.9,*/*;q=0.8',
 		'Accept-Charset' => 'iso-8859-1,*,utf-8',
@@ -250,18 +251,95 @@ sub forwardBalanceCompute {
 	return $bankData;
 }
 
-sub getStoredCookies {
-	my ( $self, $login ) = @_;
-	my $filename = $login.'.cookies.txt';
-	if (-e $filename) {
- 		$self->{_cookie_jar}->load_cookies( path($filename)->lines );
+#sub getStoredCookies {
+#	my ( $self, $login ) = @_;
+#	my $filename = $login.'.cookies.txt';
+#	if (-e $filename) {
+#		# $self->{_cookie_jar}->load ( path($filename)->lines );
+# 		$self->{_cookie_jar}->load ( $filename );
+# 		$self->{_ua}->cookie_jar( $self->{_cookie_jar} );
+#	}
+#}
+
+#sub saveCookies {
+#	my ( $self, $login ) = @_;
+#	my $filename = $login.'.cookies.txt';
+#	$self->{_cookie_jar} = $self->{_ua}->cookie_jar;
+#	$self->{_cookie_jar}->save( $filename );
+#	#path($filename)->spew( join "\n", $self->{_cookie_jar}->save ( { persistent => 1 } ) );
+#}
+
+sub requestCall {
+	my ($self, $request, $id) = @_;
+	my $ua = $self->{_ua};
+	my %cookies;
+	my $response;
+	my $logger = Helpers::Logger->new();
+	
+	$request->header( 'Cookie' => $self->buildCookieString() );
+	# $logger->print ( "HTTP Request $id: \n".$request->as_string(), Helpers::Logger::DEBUG);
+	$response = $ua->request($request);
+	my @setcookie = $response->header('set-cookie');
+	%cookies = ( %{$self->{_cookies}}, parseCookies(\@setcookie) );
+	$self->{_cookies} = \%cookies;
+	
+	while ( $response->code() == '302' ) {
+		$request->method('GET');
+		$request->content('');
+		$request->url($response->header( 'Location' ));
+		$request->header( 'Cookie' => $self->buildCookieString() );
+		# $logger->print ( "HTTP Request $id->302: \n".$request->as_string(), Helpers::Logger::DEBUG);
+		$response = $ua->request($request);
+		@setcookie = $response->header('set-cookie');
+		%cookies = ( %{$self->{_cookies}}, parseCookies(\@setcookie) );
+		$self->{_cookies} = \%cookies;	
 	}
+	if ($response->previous()) {
+		my $prevResponse = $response->previous();
+		do {
+			@setcookie = $prevResponse->header('set-cookie');
+			%cookies = ( %{$self->{_cookies}}, parseCookies(\@setcookie) );
+			$self->{_cookies} = \%cookies;
+			$prevResponse = $prevResponse->previous();			
+		} while ($prevResponse)
+	}
+	return $response;
 }
 
-sub saveCookies {
-	my ( $self, $login ) = @_;
-	my $filename = $login.'.cookies.txt';
-	path($filename)->spew( join "\n", $self->{_cookie_jar}->dump_cookies ( { persistent => 1 } ) );
+sub parseCookies {
+	my ($allCookies) = @_;
+	my %result;
+	foreach my $cookie (@$allCookies) {
+		my @cookieItems = split(/; /, $cookie);
+		my @keypair = split(/=/, $cookieItems[0]);
+		my $cookieName = $keypair[0];
+		my $cookieValue = '';
+		for my $i (1 .. $#keypair) {
+			$cookieValue .= $keypair[$i];
+		}
+		$result{$cookieName} = $cookieValue;
+		
+	}
+	return %result;
+}
+
+sub buildCookieString {
+	my ($self) = @_;
+	my $result='';
+	my $cookies = $self->{_cookies};
+	my $logger = Helpers::Logger->new();
+	my $i = 0;
+	foreach my $key (keys %{$cookies}) {
+		if ($i>0) { $result .= "; " }
+		if (defined $cookies->{$key}) { 
+			$result .= $key.'='.$cookies->{$key};
+		}
+		else  {
+			$result .= $key.'='; #empty value
+		}
+		$i++;
+	}
+	return $result;
 }
 
 1;
