@@ -7,10 +7,6 @@ use strict;
 use warnings;
 use LWP::UserAgent;
 
-# Documentation: https://metacpan.org/source/DAGOLDEN/HTTP-CookieJar-0.008/lib/HTTP
-#use HTTP::CookieJar;
-#use HTTP::CookieJar::LWP;
-
 use HTTP::Request;
 use HTTP::Cookies;
 use MIME::Base64;
@@ -274,30 +270,32 @@ sub requestCall {
 	my $ua = $self->{_ua};
 	my %cookies;
 	my $response;
-	my $logger = Helpers::Logger->new();
+	my $logger = Helpers::Logger->new('logs.http.output');
 	
-	$request->header( 'Cookie' => $self->buildCookieString() );
-	# $logger->print ( "HTTP Request $id: \n".$request->as_string(), Helpers::Logger::DEBUG);
-	$response = $ua->request($request);
-	my @setcookie = $response->header('set-cookie');
-	%cookies = ( %{$self->{_cookies}}, parseCookies(\@setcookie) );
-	$self->{_cookies} = \%cookies;
+	$response = $self->httpCallnTrace ($request, $id);
 	
 	while ( $response->code() == '302' ) {
 		$request->method('GET');
 		$request->content('');
 		$request->url($response->header( 'Location' ));
-		$request->header( 'Cookie' => $self->buildCookieString() );
-		# $logger->print ( "HTTP Request $id->302: \n".$request->as_string(), Helpers::Logger::DEBUG);
-		$response = $ua->request($request);
-		@setcookie = $response->header('set-cookie');
-		%cookies = ( %{$self->{_cookies}}, parseCookies(\@setcookie) );
-		$self->{_cookies} = \%cookies;	
+		$response = $self->httpCallnTrace ($request, $id.'-302');
 	}
 	if ($response->previous()) {
 		my $prevResponse = $response->previous();
+		my @setcookie;
 		do {
 			@setcookie = $prevResponse->header('set-cookie');
+
+			$logger->print ( "################################# HTTP Call $id-prev: ####################################", Helpers::Logger::DEBUG );
+			$logger->print ( $prevResponse->request->as_string(), Helpers::Logger::DEBUG);
+			$logger->print ( "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< HTTP Response $id-prev:", Helpers::Logger::DEBUG);
+			$logger->print ( $prevResponse->code()." - ".$prevResponse->message(), Helpers::Logger::DEBUG);	
+			$logger->print ( "Set-Cookie: ".join( '; ', @setcookie ), Helpers::Logger::DEBUG);
+			$logger->print ( "Location: ".$prevResponse->header('location'), Helpers::Logger::INFO);
+			$logger->print ( "Content-Type: ".$prevResponse->header('content-type'), Helpers::Logger::INFO);	
+			# $logger->print ( "Content: ".$prevResponse->content(), Helpers::Logger::INFO);
+			$logger->print ( "##########################################################################################", Helpers::Logger::DEBUG );
+			
 			%cookies = ( %{$self->{_cookies}}, parseCookies(\@setcookie) );
 			$self->{_cookies} = \%cookies;
 			$prevResponse = $prevResponse->previous();			
@@ -305,6 +303,33 @@ sub requestCall {
 	}
 	return $response;
 }
+
+sub httpCallnTrace {
+	
+	my ($self, $request, $id) = @_;
+	my $ua = $self->{_ua};
+	my %cookies;
+	my $response;
+	my $logger = Helpers::Logger->new('logs.http.output');
+	
+	$request->header( 'Cookie' => $self->buildCookieString() );
+	$logger->print ( "###################################### HTTP Call $id ####################################", Helpers::Logger::DEBUG );
+	$logger->print ( $request->as_string(), Helpers::Logger::DEBUG);
+	$response = $ua->request($request);
+	$logger->print ( "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< HTTP Response $id:", Helpers::Logger::DEBUG);
+	$logger->print ( $response->code()." - ".$response->message(), Helpers::Logger::DEBUG);
+	my @setcookie = $response->header('set-cookie');
+	$logger->print ( "Set-Cookie: ".join( '; ', @setcookie), Helpers::Logger::DEBUG);
+	$logger->print ( "Location: ".$response->header('location'), Helpers::Logger::INFO);
+	$logger->print ( "Content-Type: ".$response->header('content-type'), Helpers::Logger::INFO);
+	# $logger->print ( "Content: ".$response->content(), Helpers::Logger::INFO);
+	$logger->print ( "#########################################################################################", Helpers::Logger::DEBUG );				
+
+	%cookies = ( %{$self->{_cookies}}, parseCookies(\@setcookie) );
+	$self->{_cookies} = \%cookies;
+	return $response;
+}
+	
 
 sub parseCookies {
 	my ($allCookies) = @_;
@@ -327,7 +352,7 @@ sub buildCookieString {
 	my ($self) = @_;
 	my $result='';
 	my $cookies = $self->{_cookies};
-	my $logger = Helpers::Logger->new();
+
 	my $i = 0;
 	foreach my $key (keys %{$cookies}) {
 		if ($i>0) { $result .= "; " }

@@ -63,8 +63,9 @@ owncloudsync.pid.file = /user/app/ownsyncpid.txt
 ### Logger properties
 # output can be STDOUT (for consol display) or a path file (like logs/output.txt)
 logs.output = /usr/local/logs/mba.log
+logs.http.output = /usr/local/logs/mba.http.log
 # log level possible value: DEBUG, INFO or ERROR. Default is INFO.
-logs.level = INFO
+logs.level = DEBUG
 # Max size in bytes of the log file before rotating to a 2nd file. Script generate around 4Ko per day.
 log.maxsize = 260000
 ###
