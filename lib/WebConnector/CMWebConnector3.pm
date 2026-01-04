@@ -38,8 +38,8 @@ sub logIn
 	
 	#  Adding of RGPD consent cookie to the cookieJAR:
 	my $cookies = $self->{_cookies};
-	$cookies->{'eu-consent'} = '%7B%22%2Ffr%2F%22%3A%7B%22solutions%22%3A%7B%22ABTasty%22%3Afalse%2C%22uxcustom%22%3Afalse%2C%22persado%22%3Afalse%2C%22DCLIC%22%3Afalse%2C%22googleMarketingPlatform%22%3Afalse%2C%22commanders_act%22%3Afalse%2C%22meta%22%3Afalse%2C%22bing%22%3Afalse%2C%22youtube%22%3Afalse%2C%22ivs%22%3Afalse%2C%22googleMaps%22%3Afalse%7D%2C%22expireDate%22%3A%222026-06-22T02%3A50%3A49.787Z%22%2C%22version%22%3A%224.0%22%7D%7D';
-
+	$self->getStoredCookies($login);
+	
 	# Check whether already logged in to resuse the current access
 	# Page perso
 	sleep(1);
@@ -51,6 +51,10 @@ sub logIn
 
 	
 	unless ($response->content() =~ /deconnexion\.cgi/m && $response->content() =~ /<title>Crédit Mutuel: Espace personnel<\/title>/m) {
+		%{$cookies} = (); # clear cookies store
+		$self->{_cookies} = $cookies;
+		$cookies->{'eu-consent'} = '%7B%22%2Ffr%2F%22%3A%7B%22solutions%22%3A%7B%22ABTasty%22%3Afalse%2C%22uxcustom%22%3Afalse%2C%22persado%22%3Afalse%2C%22DCLIC%22%3Afalse%2C%22googleMarketingPlatform%22%3Afalse%2C%22commanders_act%22%3Afalse%2C%22meta%22%3Afalse%2C%22bing%22%3Afalse%2C%22youtube%22%3Afalse%2C%22ivs%22%3Afalse%2C%22googleMaps%22%3Afalse%7D%2C%22expireDate%22%3A%222026-06-22T02%3A50%3A49.787Z%22%2C%22version%22%3A%224.0%22%7D%7D';
+
 		# Page authentification
 		$request->method('GET');
 		$request->url( 'https://www.creditmutuel.fr/fr/authentification.html' );
@@ -149,6 +153,8 @@ sub logIn
 		}
 		
 		$logger->print ( "Login to website v3 succeed", Helpers::Logger::INFO);
+		#$cookies->{'mba-session'} = encode_base64($login);
+		$self->saveCookies($login);
 	}
 
 	# Account statement download page

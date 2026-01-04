@@ -68,7 +68,7 @@ sub initReferences {
 
 
 sub generateLastMonthSavingReport {
-	my ( $self, $dt ) = @_;
+	my ( $self, $authKey, $dt ) = @_;
 	my $logger = Helpers::Logger->new();
 	
 	unless (defined $self->getAccountReferences) {
@@ -198,14 +198,12 @@ sub loadOperationsAndBalances {
 	my $i = 0;
 	while ( $i<$#{$ref}+1 ) {
 		my $bankname = @$ref[$i]->{'BANK'};
-		my $authKey = @$ref[$i]->{'KEY'};
-#todo: passer le parametre FRED.KEY ou VANES.KEY
 		my $connector = Helpers::WebConnector->buildWebConnectorObject ($bankname);
 		my @listOfAccountToDownloadInOneLogin;
 		do {
 			push (@listOfAccountToDownloadInOneLogin, @$ref[$i]);
 			$i++;
-		} while ( $i<$#{$ref}+1 && @$ref[$i]->{'BANK'} eq $bankname && @$ref[$i]->{'KEY'} eq $authKey);
+		} while ( $i<$#{$ref}+1 && @$ref[$i]->{'BANK'} eq $bankname ); #&& @$ref[$i]->{'KEY'} eq $authKey
 		my $result = $connector->downloadMultipleBankStatement(\@listOfAccountToDownloadInOneLogin, $dt_from, $dt_to);
 		for my $record ( @$result ) {
 			$self->addSavingRecord ($record->{'BANKOPE'}, $record->{'NUMBER'}, $record->{'DESC'}, $record->{'BALANCE'});

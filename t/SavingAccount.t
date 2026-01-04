@@ -34,7 +34,7 @@ if (-e Helpers::MbaFiles->getSavingFilePath ( $dt_from )) {
 	unlink glob Helpers::MbaFiles->getSavingFilePath ( $dt_from );
 }
 
-$saving->generateLastMonthSavingReport($dt);
+$saving->generateLastMonthSavingReport(undef, $dt);
 
 $dth = Helpers::Date->new ($dt); #if $dt is undef, return the current date.
 $dt_from = $dth->rollPreviousMonth();
@@ -68,7 +68,7 @@ if (-e Helpers::MbaFiles->getSavingFilePath ( $dt_from )) {
 }
 
 $saving = AccountStatement::SavingAccount->new( );
-$saving->generateLastMonthSavingReport($dt);
+$saving->generateLastMonthSavingReport(undef, $dt);
 
 $dth = Helpers::Date->new ($dt);
 $dt_from = $dth->rollPreviousMonth();

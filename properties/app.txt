@@ -56,7 +56,9 @@ account.reporting.planned.prefix = planned_operations.xls
 account.reporting.saving.prefix = _saving.xls
 mba.main.path = /user/app/mbaMain.pl
 mba.pid.file = /user/app/mbapid.txt
-owncloudsync.pid.file = /user/app/ownsyncpid.txt
+owncloudsync.path = /usr/mba/app/occFileScanTrigger.pl
+owncloudsync.pid.file = /usr/mba/app/ownsyncpid.txt
+owncloudsync.trigger.file = /tmp/owncloud_filescan/run.it
 ###
 
 

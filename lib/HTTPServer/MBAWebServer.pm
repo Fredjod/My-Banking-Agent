@@ -18,7 +18,7 @@ my %dispatch = (
 sub new
 {
 	my ($class) = shift;
-	resetMbaPidFile();
+	resetPidFile();
 	return $class->SUPER::new(@_);
 }
 
@@ -43,6 +43,25 @@ sub handle_request {
               $cgi->end_html;
     }
 }
+
+sub resetPidFile {
+	my $logger = Helpers::Logger->new();
+	my $prop = Helpers::ConfReader->new("properties/app.txt");
+	
+	my @pidFilesToReset = (
+		$prop->readParamValue("mba.pid.file"),
+		$prop->readParamValue("owncloudsync.pid.file")
+	);
+	
+	foreach my $pidFile (@pidFilesToReset) {
+		if ( open( my $FH_PIDFILE, ">", $pidFile ) ) {
+		    print $FH_PIDFILE 0;
+		    close $FH_PIDFILE;
+		} else {
+			$logger->print ( "Can't write in: ". $pidFile, Helpers::Logger::ERROR);
+		}
+	}
+}
   
 sub run_mba {
     my $cgi  = shift;   # CGI.pm object
@@ -50,27 +69,44 @@ sub run_mba {
     
     my $prop = Helpers::ConfReader->new("properties/app.txt");
     my $logger = Helpers::Logger->new();
-     
+    
     my $forceStart = 0;
     my $key = undef;
     my $readOnly = 0;
     $key = $cgi->param('key');
     $forceStart = $cgi->param('force');
     $readOnly = $cgi->param('readOnly');
-    my $pid = 0;
-	my $modifiedTimeinSecs = -1;
 	my $pidFile = $prop->readParamValue("mba.pid.file");
 	my $keyParam = (defined $key) ? " ".$key : "";
-	my $daemon = Helpers::SimpleDaemon->new( $pidFile, "perl ".$prop->readParamValue("mba.main.path").$keyParam );
+	
+	print $cgi->header('application/json');
+	manageCalledProcess ("mbaStatus", $pidFile, "perl ".$prop->readParamValue("mba.main.path").$keyParam, $forceStart, 120, $readOnly);  
+}
+
+sub synch_owncloud {
+    my $cgi  = shift;   # CGI.pm object
+    return if !ref $cgi;
+    
+    my $logger = Helpers::Logger->new();
+    my $prop = Helpers::ConfReader->new("properties/app.txt");
+    my $forceStart = $cgi->param('force');
+
+	print $cgi->header('application/json');
+ 	manageCalledProcess ("owncloudSynchStatus", $prop->readParamValue("owncloudsync.pid.file"), "perl ". $prop->readParamValue("owncloudsync.path"), $forceStart, 15 );
+}
+
+sub manageCalledProcess {
+	my ( $processName, $pidFile, $execPath, $forceStart, $maxAge, $readOnly) = @_;
+	my $pid = 0;
+	my $modifiedTimeinSecs = -1;
 	my $json = new JSON;
 	my %jsonHash = ();
 
-
-	print $cgi->header('application/json');
+	my $daemon = Helpers::SimpleDaemon->new( $pidFile, $execPath );
 	
 	$pid = $daemon->status();
 	if ($pid) {
-		%jsonHash = ("mbaStatus", "running", "pid", $pid);
+		%jsonHash = ($processName, "running", "pid", $pid);
 		print $json->encode(\%jsonHash);
 	}
 	else {
@@ -81,43 +117,19 @@ sub run_mba {
 		
 		my $modifiedTimeinMin = $modifiedTimeinSecs/60;
 		
-		if (($modifiedTimeinMin < 0 || $modifiedTimeinMin > 120 || $forceStart) && !$readOnly) {
+		if (($modifiedTimeinMin < 0 || $modifiedTimeinMin > $maxAge || $forceStart) && !$readOnly) {
 			$pid = $daemon->init();
 			if ($pid != 0) {
 				# parent process
-				%jsonHash = ("mbaStatus", "starting", "modifiedTimeInMin", sprintf("%.2f", $modifiedTimeinMin));
+				%jsonHash = ($processName, "starting", "modifiedTimeInMin", sprintf("%.2f", $modifiedTimeinMin));
 				print $json->encode(\%jsonHash);
 			}
 		}
 		else {
-			%jsonHash = ("mbaStatus", "ready", "modifiedTimeInMin", sprintf("%.2f", $modifiedTimeinMin));
+			%jsonHash = ($processName, "ready", "modifiedTimeInMin", sprintf("%.2f", $modifiedTimeinMin));
 			print $json->encode(\%jsonHash);
 		}
-	}   
-}
-
-sub resetMbaPidFile
-{
-	my $logger = Helpers::Logger->new();
-	my $prop = Helpers::ConfReader->new("properties/app.txt");
-	
-	if ( open( my $FH_PIDFILE, ">", $prop->readParamValue("mba.pid.file") ) ) {
-	    print $FH_PIDFILE 0;
-	    close $FH_PIDFILE;
-	} else {
-		$logger->print ( "Can't write in: ". $prop->readParamValue("mba.pid.file"), Helpers::Logger::ERROR);
 	}
-}
-
-sub synch_owncloud {
-    my $cgi  = shift;   # CGI.pm object
-    return if !ref $cgi;
-    
-    my $prop = Helpers::ConfReader->new("properties/app.txt");
-    my $logger = Helpers::Logger->new();
-    $logger->print ( "process synch_owncloud request", Helpers::Logger::DEBUG);
-    my $daemon = Helpers::SimpleDaemon->new( $prop->readParamValue("owncloudsync.pid.file "), "docker exec owncloud_server occ files:scan \"--path=/jaudin/files/MBA\"" );
-    $daemon->init();
 }
 
 1;

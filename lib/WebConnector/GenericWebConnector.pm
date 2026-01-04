@@ -105,7 +105,7 @@ sub downloadBankStatement {
 	my ( $bankData, $balance );
 	my $logger = Helpers::Logger->new();
 	# Get the operations from website
-	$logger->print ( "Log in to ".$account->getBankName()." website", Helpers::Logger::INFO);
+	$logger->print ( "Log in to ".$account->getBankName()." website with key ".$account->getAccountAuth, Helpers::Logger::INFO);
 	if ( $self->logIn( Helpers::WebConnector->getLogin ($account->getAccountAuth), Helpers::WebConnector->getPwd ($account->getAccountAuth) ) ) {
 		$logger->print ( "Download and parse bank statement for account ".$account->getAccountNumber()." for month ".$dateTo->month(), Helpers::Logger::INFO);
 		$balance = $self->downloadBalance ( $account->getAccountNumber(), $dateFrom, $dateTo );
@@ -114,8 +114,8 @@ sub downloadBankStatement {
 			$self->backwardBalanceCompute ( $bankData, $balance );
 		}
 	}
-	$logger->print ( "Log out", Helpers::Logger::INFO);
-	$self->logOut( Helpers::WebConnector->getLogin ($account->getAccountAuth) );
+	# $logger->print ( "Log out", Helpers::Logger::INFO);
+	# $self->logOut( Helpers::WebConnector->getLogin ($account->getAccountAuth) );
 	return $bankData;
 }
 
@@ -145,8 +145,8 @@ sub downloadMultipleBankStatement {
 			push (@result, \%record);
 		}
 	}
-	$logger->print ( "Log out", Helpers::Logger::INFO);
-	$self->logOut( Helpers::WebConnector->getLogin ($authKey) );
+	# $logger->print ( "Log out", Helpers::Logger::INFO);
+	# $self->logOut( Helpers::WebConnector->getLogin ($authKey) );
 	return \@result;
 }
 
@@ -247,23 +247,33 @@ sub forwardBalanceCompute {
 	return $bankData;
 }
 
-#sub getStoredCookies {
-#	my ( $self, $login ) = @_;
-#	my $filename = $login.'.cookies.txt';
-#	if (-e $filename) {
-#		# $self->{_cookie_jar}->load ( path($filename)->lines );
-# 		$self->{_cookie_jar}->load ( $filename );
-# 		$self->{_ua}->cookie_jar( $self->{_cookie_jar} );
-#	}
-#}
+sub getStoredCookies {
+	my ( $self, $login ) = @_;
+	my $filename = $login.'.cookies.txt';
+	my $cookies = $self->{_cookies};
+	if (-e $filename) {
+		open my $fh, '<', $filename or return 0;
+		while (my $line = <$fh>) {
+		    chomp $line;
+		    my ($key, $val) = split /=/, $line, 2;
+		    $cookies->{$key} = $val;
+		}
+		close $fh;
+	}
+	$self->{_cookies} = $cookies;
+	return 1;
+}
 
-#sub saveCookies {
-#	my ( $self, $login ) = @_;
-#	my $filename = $login.'.cookies.txt';
-#	$self->{_cookie_jar} = $self->{_ua}->cookie_jar;
-#	$self->{_cookie_jar}->save( $filename );
-#	#path($filename)->spew( join "\n", $self->{_cookie_jar}->save ( { persistent => 1 } ) );
-#}
+sub saveCookies {
+	my ( $self, $login ) = @_;
+	my $cookies = $self->{_cookies};
+	open my $fh, '>', "$login.cookies.txt" or return 0;
+	foreach my $key (sort keys %{$cookies}) {
+    	print $fh "$key=$cookies->{$key}\n";
+	}
+	close $fh;
+	return 1;
+}
 
 sub requestCall {
 	my ($self, $request, $id) = @_;

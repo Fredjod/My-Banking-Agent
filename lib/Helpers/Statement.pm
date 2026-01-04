@@ -67,9 +67,9 @@ sub buildPreviousMonthStatement {
 }
 
 sub buildYTDStatement {
-	my ( $class, $accountConfigFilePath, $PRMStat ) = @_;
+	my ( $class, $accountConfigFilePath, $PRMStat, $authKey ) = @_;
 
-	my $statement = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $PRMStat->getMonth());	
+	my $statement = AccountStatement::CheckingAccount->new ($accountConfigFilePath, $PRMStat->getMonth(), $authKey);	
 	my $yearlyFilePath = Helpers::MbaFiles->getYearlyClosingFilePath ( $statement );
 	# Filling the statement operations
 	$class->loadOperationsFromDetailsSheet ( $yearlyFilePath, $statement, $PRMStat->getMonth() );

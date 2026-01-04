@@ -43,7 +43,7 @@ foreach my $accountConfigFilePath (@accountConfigFiles) {
 		$logger->print ( "Processing the previous month closing report", Helpers::Logger::INFO);
 		$reportingProcessor->createPreviousMonthClosingReport();
 		$logger->print ( "Processing the yearly closing report", Helpers::Logger::INFO);
-		my $accountYTD = Helpers::Statement->buildYTDStatement($accountConfigFilePath, $accountPRM);
+		my $accountYTD = Helpers::Statement->buildYTDStatement($accountConfigFilePath, $accountPRM, $authKey);
 		$reportingProcessor->createYearlyClosingReport($accountYTD);
 		if ( defined $accountMTD->getCategoriesBudgetToFollow ) { # This account uses web report interface
 			$reportingProcessor->computeCurrentMonthBudgetObjective();

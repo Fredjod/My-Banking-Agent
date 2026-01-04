@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### PARAMS ###
-VERSION=5.3
+VERSION=5.4
 
 # Create/Update the Perl Docker image
 docker build -t mba:build ./mba_app/build
@@ -46,6 +46,7 @@ cp -R properties mba/
 mv mba/properties/app.txt mba/properties/app.dist.txt 
 cp mbaMain.pl mba/
 cp mbaDeamon.pl mba/
+cp occFileScanTrigger.pl mba/
 cp mba.sh mba/
 cp t/accounts/config.0303900020712303.xls mba/accounts/dist.config.0303900020712303.xls
 cp t/reporting/0303900020712303/dist.planned_operations.xls mba/reporting/dist.planned_operations.xls
