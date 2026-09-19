@@ -1,5 +1,7 @@
 FROM perl:latest
 
+ENV PERL_CPANM_OPT="--notest"
+
 # RUN cpanm DateTime 
 RUN cpanm Archive::Zip
 RUN cpanm LWP::UserAgent
