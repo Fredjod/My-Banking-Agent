@@ -236,29 +236,39 @@ sub download
 		$logger->print ( "HTML content: \n".$response->content(), Helpers::Logger::DEBUG);
 		return undef;	
 	}
-	my $checkedAccount = "CB%3Adata_accounts_account_$1ischecked=on";
-	my $boolAccount = "Bool%3Adata_accounts_account_$1ischecked=true";
-	
+
 	my $idStatment=undef;
 	if ( defined $1 ) {
 		if ( $1 ne '') {
-			$idStatment = substr($1, 0, 1);
+			if (length($1) == 3) {
+				$idStatment = substr($1, 0, 1);
+			}
+			else {
+				$idStatment = substr($1, 0, 2);
+			}
 		}
 	}
 
-	my $boolFalse = '';
-	for (my $i=1; $i<14; $i++) {
-		if ($i == 1) { 
-			if (defined $idStatment ) {
-				$boolFalse = "&Bool%3Adata_accounts_account_ischecked=false";
-			}
+	my $boolAccount = '';
+	if (!defined $idStatment) {
+		$boolAccount = "Bool%3Adata_accounts_account_ischecked=true";
+		$boolAccount .= "&CB%3Adata_accounts_account_ischecked=on";
+	}
+	else {
+		$boolAccount = "Bool%3Adata_accounts_account_ischecked=false";
+	}
+	for (my $i=2; $i<14; $i++) {
+		if (!defined $idStatment) {
+			$boolAccount .= "&Bool%3Adata_accounts_account_".$i."__ischecked=false";
 		}
-		else {
-			if ( defined $idStatment) {
-				if ($idStatment ne $i ) {
-					$boolFalse .= "&Bool%3Adata_accounts_account_".$i."__ischecked=false";
-				}
+		else {		
+			if ($idStatment ne $i ) {
+				$boolAccount .= "&Bool%3Adata_accounts_account_".$i."__ischecked=false";
 			}
+			else {
+				$boolAccount .= "&Bool%3Adata_accounts_account_".$i."__ischecked=true";
+				$boolAccount .= "&CB%3Adata_accounts_account_".$i."__ischecked=on";
+			} 
 		}
 	}
 
@@ -284,9 +294,9 @@ sub download
 	}
 	
 	my $CPT="";
-	my $uri = URI::Encode->new( { encode_reserved => 0 } );
-	if ($response->content() =~ /name="\$CPT"\stype="hidden"\svalue="(.+)"\s\/><input name=/) {
-		$CPT = "%24CPT=".$uri->encode($1, { encode_reserved => 1 } );
+	my $uri = URI::Encode->new( { encode_reserved => 1 } );
+	if ($response->content() =~ /name="\$CPT"\stype="hidden"\svalue="([^"]*)"\s\/><input name=/) {
+		$CPT = "%24CPT=".$uri->encode($1);
 	}
 
 	# File download
@@ -298,9 +308,10 @@ sub download
 	$request->content(
 		'data_formats_selected='.$format.'&data_formats_options_cmi_download=0'.
 		'&data_formats_options_ofx_format=7'.
-		'&Bool%3Adata_formats_options_ofx_zonetiers=false'.
+		'&Bool%3Adata_formats_options_ofx_zonetiers=true'.
+		'&CB%3Adata_formats_options_ofx_zonetiers=on'.
 		'&data_formats_options_qif_fileformat=6'.
-		'&data_formats_options_qif_dateformat=0'.
+		'&data_formats_options_qif_dateformat=0'.	
 		'&data_formats_options_qif_amountformat=0'.
 		'&data_formats_options_qif_headerformat=0'.
 		'&Bool%3Adata_formats_options_qif_zonetiers=true'.
@@ -312,13 +323,11 @@ sub download
 		'&data_formats_options_csv_decimalseparator=0'.
 		'&Bool%3Adata_formats_options_csv_includebudgetanalysisinfos=false'.
 		'&'.$boolAccount.
-		'&'.$checkedAccount.
-		 $boolFalse.
 		'&data_daterange_value=range'.
 		'&%5Bt%3Adbt%253adate%3B%5Ddata_daterange_startdate_value='.$arrayDateFrom[0].'%2F'.$arrayDateFrom[1].'%2F'.$arrayDateFrom[2].
 		'&%5Bt%3Adbt%253adate%3B%5Ddata_daterange_enddate_value='.$arrayDateTo[0].'%2F'.$arrayDateTo[1].'%2F'.$arrayDateTo[2].
 		'&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_selection='.$selectedStatment.
-		'&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_webid=64cd03a2b9ae0974fba985c7b8f3179963a25f2dae1c47361ec9bd99ffb4c699&data_accounts_account_is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_2__webid=0e4482e278c5d121f2091b91db34dc38ae2ac8289f10c59ef08ac508136b787f&data_accounts_account_2__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_3__webid=633334cecb22a1bafec7658db015d99fa349db947d8c3f70f6f58257b3037d81&data_accounts_account_3__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_4__webid=a322851c2464141ee4da170b62cd3f43167156f920e5339fbc635d283b15e4bd&data_accounts_account_4__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_5__webid=b377a082df2b4d55a01a431d912ebd06212ef8b90b9bcd486d1dc5019d943bd4&data_accounts_account_5__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_6__webid=0f3df3ee288b3c77f55a5f89f7a2cdf4049bd00aba99c32f79338865df52eb2f&data_accounts_account_6__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_7__webid=d65553398e0c238b08811edf74123f304a6be87b36bf82cc072aad7701734a57&data_accounts_account_7__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_8__webid=8820205a7580d6c8a406b1a096cc23341b06d2a2d3abff4ccb771433b2ebc372&data_accounts_account_8__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_9__webid=c46e781adcccb8742915ee8b1f70ebb1eb6292b77f2d930e5a8e65bdfd7da7e3&data_accounts_account_9__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_10__webid=18dafb5f11fc15907afc5f1d8baf61f323d84f2e4c935a0b9ae6b6f41bf60699&data_accounts_account_10__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_11__webid=0e1008e70673d1c2274793bf6ed431e90eb6ea0faca75ac2c5790590d45a949d&data_accounts_account_11__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_12__webid=26d5a9269549d6bc4bf454ffc1c04198b94d3ba26028d2f386d7d96e5003c7a0&data_accounts_account_12__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_13__webid=b0e8e156ba4196f8d91ae42fffdd88068cf5583bb3c0f658548621a46529d667&data_accounts_account_13__is%255fcard='.
+		'&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_webid=0f3df3ee288b3c77f55a5f89f7a2cdf4049bd00aba99c32f79338865df52eb2f&data_accounts_account_is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_2__webid=0e1008e70673d1c2274793bf6ed431e90eb6ea0faca75ac2c5790590d45a949d&data_accounts_account_2__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_3__webid=64cd03a2b9ae0974fba985c7b8f3179963a25f2dae1c47361ec9bd99ffb4c699&data_accounts_account_3__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_4__webid=d65553398e0c238b08811edf74123f304a6be87b36bf82cc072aad7701734a57&data_accounts_account_4__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_5__webid=c46e781adcccb8742915ee8b1f70ebb1eb6292b77f2d930e5a8e65bdfd7da7e3&data_accounts_account_5__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_6__webid=18dafb5f11fc15907afc5f1d8baf61f323d84f2e4c935a0b9ae6b6f41bf60699&data_accounts_account_6__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_7__webid=8820205a7580d6c8a406b1a096cc23341b06d2a2d3abff4ccb771433b2ebc372&data_accounts_account_7__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_8__webid=26d5a9269549d6bc4bf454ffc1c04198b94d3ba26028d2f386d7d96e5003c7a0&data_accounts_account_8__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_9__webid=b0e8e156ba4196f8d91ae42fffdd88068cf5583bb3c0f658548621a46529d667&data_accounts_account_9__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_10__webid=633334cecb22a1bafec7658db015d99fa349db947d8c3f70f6f58257b3037d81&data_accounts_account_10__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_11__webid=a322851c2464141ee4da170b62cd3f43167156f920e5339fbc635d283b15e4bd&data_accounts_account_11__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_12__webid=b377a082df2b4d55a01a431d912ebd06212ef8b90b9bcd486d1dc5019d943bd4&data_accounts_account_12__is%255fcard=&%5Bt%3Axsd%253astring%3B%5Ddata_accounts_account_13__webid=0e4482e278c5d121f2091b91db34dc38ae2ac8289f10c59ef08ac508136b787f&data_accounts_account_13__is%255fcard='.
 		'&'.$CPT.
 		'&_wxf2_cc=fr-FR'.
 		'&_FID_DoDownload='

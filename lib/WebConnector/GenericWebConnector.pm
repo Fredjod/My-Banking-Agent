@@ -302,8 +302,9 @@ sub requestCall {
 			$logger->print ( $prevResponse->code()." - ".$prevResponse->message(), Helpers::Logger::DEBUG);	
 			$logger->print ( "Set-Cookie: ".join( '; ', @setcookie ), Helpers::Logger::DEBUG);
 			$logger->print ( "Location: ".$prevResponse->header('location'), Helpers::Logger::INFO);
-			$logger->print ( "Content-Type: ".$prevResponse->header('content-type'), Helpers::Logger::INFO);	
-			# $logger->print ( "Content: ".$prevResponse->content(), Helpers::Logger::INFO);
+			$logger->print ( "Content-Type: ".$prevResponse->header('content-type'), Helpers::Logger::INFO);
+			$logger->print ( "Content-Lenght: ".length($prevResponse->content), Helpers::Logger::INFO);
+#			$logger->print ( "Content: ".$prevResponse->content(), Helpers::Logger::INFO);
 			$logger->print ( "##########################################################################################", Helpers::Logger::DEBUG );
 			
 			%cookies = ( %{$self->{_cookies}}, parseCookies(\@setcookie) );
@@ -332,7 +333,8 @@ sub httpCallnTrace {
 	$logger->print ( "Set-Cookie: ".join( '; ', @setcookie), Helpers::Logger::DEBUG);
 	$logger->print ( "Location: ".$response->header('location'), Helpers::Logger::INFO);
 	$logger->print ( "Content-Type: ".$response->header('content-type'), Helpers::Logger::INFO);
-	# $logger->print ( "Content: ".$response->content(), Helpers::Logger::INFO);
+	$logger->print ( "Content-Lenght: ".length($response->content), Helpers::Logger::INFO);
+#	$logger->print ( "Content: ".$response->content(), Helpers::Logger::INFO);
 	$logger->print ( "#########################################################################################", Helpers::Logger::DEBUG );				
 
 	%cookies = ( %{$self->{_cookies}}, parseCookies(\@setcookie) );
